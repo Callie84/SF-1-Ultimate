@@ -58,8 +58,8 @@ app.get('/queue/stats', async (req, res) => {
 app.post('/admin/scrape/:seedbank', async (req, res) => {
   try {
     const { seedbank } = req.params;
-    
-    const { scheduleScrap eJob } = await import('./workers/scraper.worker');
+
+    const { scheduleScrapeJob } = await import('./workers/scraper.worker');
     await scheduleScrapeJob(seedbank);
     
     res.json({ success: true, message: `Scrape job scheduled for ${seedbank}` });
