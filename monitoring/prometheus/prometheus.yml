@@ -1,0 +1,108 @@
+# Prometheus Configuration für SF-1 Ultimate
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'sf1-ultimate'
+    environment: 'production'
+
+# Alertmanager Configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Alert Rules
+rule_files:
+  - '/etc/prometheus/alerts/*.yml'
+
+# Scrape Configurations
+scrape_configs:
+  # ==========================================
+  # MICROSERVICES
+  # ==========================================
+
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['auth-service:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'price-service'
+    static_configs:
+      - targets: ['price-service:3002']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'journal-service'
+    static_configs:
+      - targets: ['journal-service:3003']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'tools-service'
+    static_configs:
+      - targets: ['tools-service:3004']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'community-service'
+    static_configs:
+      - targets: ['community-service:3005']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'notification-service'
+    static_configs:
+      - targets: ['notification-service:3006']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'search-service'
+    static_configs:
+      - targets: ['search-service:3007']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'media-service'
+    static_configs:
+      - targets: ['media-service:3008']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'gamification-service'
+    static_configs:
+      - targets: ['gamification-service:3009']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  - job_name: 'ai-service'
+    static_configs:
+      - targets: ['ai-service:3010']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # ==========================================
+  # INFRASTRUCTURE
+  # ==========================================
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+
+  - job_name: 'mongodb-exporter'
+    static_configs:
+      - targets: ['mongodb-exporter:9216']
