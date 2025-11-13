@@ -1,0 +1,20 @@
+{
+  "name": "@sf1/shared",
+  "version": "1.0.0",
+  "description": "Shared utilities and middleware for SF-1 Ultimate services",
+  "main": "index.ts",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "rate-limit-redis": "^4.2.0",
+    "prom-client": "^15.1.0",
+    "redis": "^4.6.0",
+    "winston": "^3.11.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  }
+}
