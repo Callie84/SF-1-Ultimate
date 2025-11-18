@@ -108,3 +108,27 @@ coverage/
 .cache/
 .turbo/
 .vercel/
+
+# SECURITY: NEVER COMMIT SECRETS!
+.env
+.env.*
+*.env
+!.env.example
+.secrets.*
+secrets/
+*.key
+*.pem
+*.BACKUP*
+*.COMPROMISED*
+
+# SECURITY: NEVER COMMIT SECRETS!
+.env
+.env.*
+*.env
+!.env.example
+.secrets.*
+secrets/
+*.key
+*.pem
+*.BACKUP*
+*.COMPROMISED*
