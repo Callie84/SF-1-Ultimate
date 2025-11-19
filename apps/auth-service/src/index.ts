@@ -1,4 +1,4 @@
-// Auth Service - Main Entry
+﻿// Auth Service - Main Entry
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import { connectDatabase } from './config/database';
 import { connectRedis } from './config/redis';
 import { logger } from './utils/logger';
+import authRoutes from './routes/auth.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -29,7 +30,7 @@ app.get('/health', (req, res) => {
 });
 
 // Routes
-// app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 
 // Start
 async function start() {
