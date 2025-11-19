@@ -132,3 +132,8 @@ secrets/
 *.pem
 *.BACKUP*
 *.COMPROMISED*
+
+# Environment Variables (enthält Secrets!)
+.env
+.env.*
+!.env.template
