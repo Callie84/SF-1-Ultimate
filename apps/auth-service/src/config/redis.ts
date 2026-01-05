@@ -17,3 +17,8 @@ redis.on('connect', () => {
 export async function connectRedis(): Promise<void> {
   await redis.connect();
 }
+
+export async function disconnectRedis(): Promise<void> {
+  await redis.quit();
+  logger.info('[Redis] Disconnected');
+}
