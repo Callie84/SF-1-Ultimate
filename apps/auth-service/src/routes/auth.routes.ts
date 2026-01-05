@@ -13,7 +13,6 @@ import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { jwtService } from '../services/jwt.service';
 import { userService } from '../services/user.service';
-import bcrypt from 'bcrypt';
 
 const router = Router();
 
@@ -57,15 +56,9 @@ router.post(
       });
 
       // Generiere Tokens
-      const accessToken = jwtService.generateAccessToken({
-        userId: user.id,
-        email: user.email,
-        role: user.role
-      });
+      const accessToken = jwtService.generateAccessToken(user);
 
-      const refreshToken = jwtService.generateRefreshToken({
-        userId: user.id
-      });
+      const { token: refreshToken } = jwtService.generateRefreshToken(user.id);
 
       return res.status(201).json({
         message: 'Registration erfolgreich',
@@ -117,21 +110,15 @@ router.post(
       }
 
       // Prüfe Password
-      const isValidPassword = await bcrypt.compare(password, user.password);
+      const isValidPassword = await userService.verifyPassword(user, password);
       if (!isValidPassword) {
         return res.status(401).json({ error: 'Ungültige Credentials' });
       }
 
       // Generiere Tokens
-      const accessToken = jwtService.generateAccessToken({
-        userId: user.id,
-        email: user.email,
-        role: user.role
-      });
+      const accessToken = jwtService.generateAccessToken(user);
 
-      const refreshToken = jwtService.generateRefreshToken({
-        userId: user.id
-      });
+      const { token: refreshToken } = jwtService.generateRefreshToken(user.id);
 
       // Update Last-Login
       await userService.updateLastLogin(user.id);
@@ -278,11 +265,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
     }
 
     // Generiere neuen Access Token
-    const newAccessToken = jwtService.generateAccessToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role
-    });
+    const newAccessToken = jwtService.generateAccessToken(user);
 
     return res.status(200).json({
       accessToken: newAccessToken,
