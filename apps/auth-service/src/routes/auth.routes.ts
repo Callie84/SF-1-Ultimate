@@ -264,12 +264,14 @@ router.post('/refresh', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'User not found' });
     }
 
-    // Generiere neuen Access Token
+    // Generiere neue Tokens (Token Rotation für erhöhte Sicherheit)
     const newAccessToken = jwtService.generateAccessToken(user);
+    const { token: newRefreshToken } = jwtService.generateRefreshToken(user.id);
 
     return res.status(200).json({
       accessToken: newAccessToken,
-      message: 'Token refreshed successfully'
+      refreshToken: newRefreshToken,
+      message: 'Tokens refreshed successfully'
     });
 
   } catch (error) {

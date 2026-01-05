@@ -31,7 +31,7 @@ api.interceptors.request.use(
 
 // Response interceptor - Handle auth errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => response.data, // ✅ Return only data, not full response
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
