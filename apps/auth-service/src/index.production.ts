@@ -4,8 +4,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import compression from 'compression';
-import { connectDatabase } from './config/database';
-import { connectRedis } from './config/redis';
+import { connectDatabase, prisma, disconnectDatabase } from './config/database';
+import { connectRedis, redis, disconnectRedis } from './config/redis';
+import authRoutes from './routes/auth.routes';
 
 // Import Shared Middleware
 import {
@@ -87,7 +88,7 @@ app.use(standardRateLimiter(redisUrl));
 healthManager.register(
   createDatabaseHealthCheck('postgres', async () => {
     try {
-      // TODO: Implement actual DB check
+      await prisma.$queryRaw`SELECT 1`;
       return true;
     } catch {
       return false;
@@ -98,8 +99,7 @@ healthManager.register(
 healthManager.register(
   createRedisHealthCheck({
     ping: async () => {
-      // TODO: Implement actual Redis check
-      return 'PONG';
+      return await redis.ping();
     }
   })
 );
@@ -113,8 +113,7 @@ app.get('/metrics', metricsHandler);
 // ROUTES
 // ==========================================
 
-// TODO: Import und registriere Auth Routes
-// app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 
 // ==========================================
 // ERROR HANDLING
@@ -152,12 +151,12 @@ async function start() {
     // Setup Graceful Shutdown
     gracefulShutdown.register('database', async () => {
       logger.info('Closing database connections...');
-      // TODO: Implement DB disconnect
+      await disconnectDatabase();
     });
 
     gracefulShutdown.register('redis', async () => {
       logger.info('Closing Redis connection...');
-      // TODO: Implement Redis disconnect
+      await disconnectRedis();
     });
 
     gracefulShutdown.register('cache', async () => {
