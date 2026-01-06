@@ -1,0 +1,46 @@
+# ==========================================
+# Price Service - .dockerignore
+# ==========================================
+
+# Dependencies (will be installed during build)
+node_modules
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Build artifacts (will be generated)
+dist
+build
+*.tsbuildinfo
+
+# Testing
+coverage
+*.test.ts
+*.spec.ts
+__tests__
+jest.config.js
+
+# Development
+.env
+.env.local
+.env.development
+.env.test
+*.log
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Documentation
+*.md
+docs
+
+# Scraped data (large files, not needed in image)
+# data/
+# scraped_prices/

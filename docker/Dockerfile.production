@@ -1,16 +1,35 @@
-# Production Dockerfile mit Multi-Stage Build
-# Stage 1: Build
-FROM node:20-alpine AS builder
+# ==========================================
+# Generic Production Dockerfile mit Multi-Stage Build
+# Optimized for minimal image size and build time
+# ==========================================
+
+# ==========================================
+# Stage 1: Dependencies
+# ==========================================
+FROM node:20-alpine AS deps
+
+# Install build dependencies for native modules (argon2, bcrypt, etc.)
+RUN apk add --no-cache libc6-compat python3 make g++
 
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+COPY package.json package-lock.json* ./
 
-# Install dependencies
-RUN npm ci --only=production && \
+# Install ALL dependencies (need devDependencies for TypeScript compilation)
+RUN npm ci --include=dev && \
     npm cache clean --force
+
+# ==========================================
+# Stage 2: Builder
+# ==========================================
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json tsconfig.json ./
 
 # Copy source code
 COPY src ./src
@@ -19,35 +38,57 @@ COPY src ./src
 RUN npm run build
 
 # ==========================================
-# Stage 2: Production
+# Stage 3: Production Dependencies
+# ==========================================
+FROM node:20-alpine AS prod-deps
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+
+# Install ONLY production dependencies (smaller image)
+RUN npm ci --omit=dev && \
+    npm cache clean --force
+
+# ==========================================
+# Stage 4: Production Runtime
 # ==========================================
 FROM node:20-alpine AS production
 
-# Sicherheit: Non-Root User
+# Install dumb-init for proper signal handling (graceful shutdown)
+RUN apk add --no-cache dumb-init
+
+# Security: Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Working Directory
 WORKDIR /app
 
-# Copy dependencies from builder
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+# Copy production dependencies (smaller than copying from builder)
+COPY --from=prod-deps --chown=nodejs:nodejs /app/node_modules ./node_modules
 
-# Create logs directory
+# Copy built application
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+
+# Copy package.json for metadata
+COPY --chown=nodejs:nodejs package.json ./
+
+# Create logs directory with correct permissions
 RUN mkdir -p /app/logs && \
     chown -R nodejs:nodejs /app/logs
 
 # Switch to non-root user
 USER nodejs
 
-# Expose Port
+# Expose application port (can be overridden with PORT env var)
 EXPOSE 3000
 
-# Health Check
+# Health check for container orchestration
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3000) + '/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Start Application
+# Use dumb-init for proper signal handling (SIGTERM/SIGINT)
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start application
 CMD ["node", "dist/index.js"]

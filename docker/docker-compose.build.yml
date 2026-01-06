@@ -1,0 +1,48 @@
+# ==========================================
+# Docker Compose Build Configuration
+# Optimized build settings with BuildKit caching
+# ==========================================
+#
+# Usage:
+#   docker-compose -f docker-compose.build.yml build
+#   docker-compose -f docker-compose.build.yml build --parallel
+#   docker-compose -f docker-compose.build.yml build --no-cache auth-service
+#
+# ==========================================
+
+version: '3.8'
+
+services:
+  auth-service:
+    build:
+      context: ../apps/auth-service
+      dockerfile: Dockerfile
+      target: production
+      cache_from:
+        - node:20-alpine
+        - ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-sf1-ultimate}/auth-service:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+        NODE_ENV: production
+      labels:
+        - "com.sf1.service=auth-service"
+        - "com.sf1.version=${VERSION:-dev}"
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-sf1-ultimate}/auth-service:${TAG:-latest}
+
+  price-service:
+    build:
+      context: ../apps/price-service
+      dockerfile: Dockerfile
+      target: production
+      cache_from:
+        - node:20-alpine
+        - ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-sf1-ultimate}/price-service:latest
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+        NODE_ENV: production
+      labels:
+        - "com.sf1.service=price-service"
+        - "com.sf1.version=${VERSION:-dev}"
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-sf1-ultimate}/price-service:${TAG:-latest}
+
+  # Add more services as needed following the same pattern
