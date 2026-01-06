@@ -1,0 +1,56 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run security scan weekly on Monday at 00:00 UTC
+    - cron: '0 0 * * 1'
+
+jobs:
+  security-scan:
+    name: Security Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run npm audit (Auth Service)
+        working-directory: apps/auth-service
+        run: |
+          npm ci
+          npm audit --audit-level=moderate || true
+
+      - name: Run npm audit (Frontend)
+        working-directory: apps/web-app
+        run: |
+          npm ci
+          npm audit --audit-level=moderate || true
+
+      - name: Check for secrets in code
+        run: |
+          # Check for common secret patterns
+          ! grep -r "CHANGE_ME" .env 2>/dev/null || echo "Warning: Found CHANGE_ME in .env"
+          ! git log --all -p | grep -i "password.*=" | grep -v ".env.example" || echo "Warning: Potential secrets in git history"
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
