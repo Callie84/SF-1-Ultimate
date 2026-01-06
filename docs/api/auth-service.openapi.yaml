@@ -1,0 +1,466 @@
+openapi: 3.0.3
+info:
+  title: SF-1 Ultimate Auth Service API
+  description: |
+    Authentication and user management service for SF-1 Ultimate platform.
+
+    ## Features
+    - JWT-based authentication with access & refresh tokens
+    - Token rotation for enhanced security
+    - Argon2id password hashing (OWASP recommended)
+    - Role-based access control (USER, ADMIN)
+    - Premium subscription tracking
+
+    ## Authentication Flow
+    1. Register or login to receive access + refresh tokens
+    2. Include access token in `Authorization: Bearer <token>` header
+    3. Refresh expired access tokens using refresh endpoint
+    4. Logout to invalidate tokens
+
+  version: 1.1.0
+  contact:
+    name: SF-1 Ultimate Team
+    email: support@seedfinderpro.de
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:3001
+    description: Local development
+  - url: http://localhost:8080/api/auth
+    description: Local via API Gateway
+  - url: https://api.seedfinderpro.de/api/auth
+    description: Production
+
+tags:
+  - name: Authentication
+    description: User authentication operations
+  - name: Users
+    description: User management operations
+  - name: Health
+    description: Service health and status
+
+paths:
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      description: Creates a new user account with email and password
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              basicUser:
+                summary: Basic user registration
+                value:
+                  email: user@example.com
+                  password: SecurePassword123!
+                  name: John Doe
+              adminUser:
+                summary: Admin registration
+                value:
+                  email: admin@example.com
+                  password: AdminSecurePass456!
+                  name: Admin User
+                  role: ADMIN
+      responses:
+        '201':
+          description: User successfully registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Validation error or duplicate email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                duplicateEmail:
+                  summary: Email already exists
+                  value:
+                    error: EMAIL_EXISTS
+                    message: User with this email already exists
+                validationError:
+                  summary: Validation failed
+                  value:
+                    error: VALIDATION_ERROR
+                    message: Invalid email format
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      description: Authenticates user with email and password, returns JWT tokens
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: user@example.com
+              password: SecurePassword123!
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidPassword:
+                  summary: Wrong password
+                  value:
+                    error: INVALID_CREDENTIALS
+                    message: Invalid email or password
+                userNotFound:
+                  summary: User doesn't exist
+                  value:
+                    error: INVALID_CREDENTIALS
+                    message: Invalid email or password
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/verify:
+    get:
+      tags:
+        - Authentication
+      summary: Verify JWT token
+      description: Validates access token and returns user information (used by API Gateway)
+      operationId: verifyToken
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token is valid
+          headers:
+            x-user-id:
+              schema:
+                type: string
+              description: User ID for downstream services
+            x-user-email:
+              schema:
+                type: string
+              description: User email
+            x-user-role:
+              schema:
+                type: string
+              description: User role (USER, ADMIN)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResponse'
+        '401':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingToken:
+                  summary: No token provided
+                  value:
+                    error: NO_AUTH_HEADER
+                    message: No authorization header provided
+                invalidFormat:
+                  summary: Invalid token format
+                  value:
+                    error: INVALID_AUTH_FORMAT
+                    message: Invalid authorization header format
+                expiredToken:
+                  summary: Token expired
+                  value:
+                    error: INVALID_TOKEN
+                    message: Invalid or expired token
+
+  /api/auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      description: Exchanges refresh token for new access + refresh tokens (token rotation)
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+            example:
+              refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        '200':
+          description: Tokens refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      description: Invalidates refresh token (access token expires naturally)
+      operationId: logoutUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+            example:
+              refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Logged out successfully
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Returns service health status with database connectivity
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token (15 minute expiry)
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email address
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: User password (min 8 characters)
+          example: SecurePassword123!
+        name:
+          type: string
+          description: User display name (optional, defaults to email username)
+          example: John Doe
+        role:
+          type: string
+          enum: [USER, ADMIN]
+          default: USER
+          description: User role
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          example: SecurePassword123!
+
+    RefreshRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          description: Refresh token from login/register response
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    LogoutRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          description: Refresh token to invalidate
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token (15 minute expiry)
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxMjM0NSIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSIsInJvbGUiOiJVU0VSIiwicHJlbWl1bSI6ZmFsc2UsImlhdCI6MTcwNDQ3NzYwMCwiZXhwIjoxNzA0NDc4NTAwfQ...
+        refreshToken:
+          type: string
+          description: Refresh token (7 day expiry)
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxMjM0NSIsImZhbWlseSI6ImFiY2RlZmdoaWprbG1ub3BxcnN0dXYiLCJpYXQiOjE3MDQ0Nzc2MDAsImV4cCI6MTcwNTA4MjQwMH0...
+        user:
+          $ref: '#/components/schemas/User'
+
+    RefreshResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: New JWT access token
+        refreshToken:
+          type: string
+          description: New refresh token (token rotation)
+
+    VerifyResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          example: "12345"
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        role:
+          type: string
+          enum: [USER, ADMIN]
+          example: USER
+        premium:
+          type: boolean
+          description: Whether user has active premium subscription
+          example: false
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "12345"
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        name:
+          type: string
+          example: John Doe
+        role:
+          type: string
+          enum: [USER, ADMIN]
+          example: USER
+        premium:
+          type: boolean
+          description: Active premium subscription
+          example: false
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-06T10:30:00Z"
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+          example: healthy
+        database:
+          type: string
+          enum: [connected, disconnected]
+          example: connected
+        redis:
+          type: string
+          enum: [connected, disconnected]
+          example: connected
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-06T10:30:00Z"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: INVALID_CREDENTIALS
+        message:
+          type: string
+          description: Human-readable error message
+          example: Invalid email or password
+        details:
+          type: object
+          description: Additional error details (optional)
+          additionalProperties: true
