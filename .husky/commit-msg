@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# ==========================================
+# Commit Message Hook
+# ==========================================
+# Validates commit messages follow conventional commits
+#
+# Format: <type>(<scope>): <subject>
+#
+# Types:
+# - feat:     New feature
+# - fix:      Bug fix
+# - docs:     Documentation changes
+# - style:    Code style changes (formatting, etc.)
+# - refactor: Code refactoring
+# - perf:     Performance improvements
+# - test:     Adding or updating tests
+# - chore:    Build process or auxiliary tool changes
+# - ci:       CI/CD changes
+# ==========================================
+
+# Run commitlint if available
+if command -v npx &> /dev/null; then
+  npx --no -- commitlint --edit "$1"
+else
+  echo "⚠️  commitlint not available, skipping commit message validation"
+fi
