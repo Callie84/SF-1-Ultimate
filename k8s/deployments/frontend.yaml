@@ -1,0 +1,150 @@
+---
+# ==========================================
+# Deployment - Frontend (Next.js)
+# ==========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: sf1-ultimate
+  labels:
+    app: frontend
+    tier: frontend
+    version: v1
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        tier: frontend
+        version: v1
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+
+      containers:
+        - name: frontend
+          image: sf1/frontend:latest
+          imagePullPolicy: Always
+
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+
+          env:
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: sf1-config
+                  key: NODE_ENV
+
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: frontend-config
+                  key: PORT
+
+            - name: NEXT_PUBLIC_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: frontend-config
+                  key: NEXT_PUBLIC_API_URL
+
+            - name: NEXT_PUBLIC_WS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: frontend-config
+                  key: NEXT_PUBLIC_WS_URL
+
+            - name: NEXT_PUBLIC_ENABLE_ANALYTICS
+              valueFrom:
+                configMapKeyRef:
+                  name: frontend-config
+                  key: NEXT_PUBLIC_ENABLE_ANALYTICS
+
+            - name: NEXT_PUBLIC_ENABLE_PWA
+              valueFrom:
+                configMapKeyRef:
+                  name: frontend-config
+                  key: NEXT_PUBLIC_ENABLE_PWA
+
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+            capabilities:
+              drop:
+                - ALL
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: nextjs-cache
+              mountPath: /app/.next/cache
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: nextjs-cache
+          emptyDir: {}
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - frontend
+                topologyKey: kubernetes.io/hostname

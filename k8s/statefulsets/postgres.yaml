@@ -1,0 +1,123 @@
+---
+# ==========================================
+# StatefulSet - PostgreSQL
+# ==========================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: sf1-ultimate
+  labels:
+    app: postgres
+    tier: database
+spec:
+  serviceName: postgres-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+        tier: database
+    spec:
+      securityContext:
+        fsGroup: 999
+
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: database-secrets
+                  key: postgres-user
+
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: database-secrets
+                  key: postgres-password
+
+            - name: POSTGRES_DB
+              value: sf1_auth
+
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U $POSTGRES_USER
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U $POSTGRES_USER
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        # Specify storage class if needed
+        # storageClassName: fast-ssd
+
+---
+# ==========================================
+# Headless Service for StatefulSet
+# ==========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-headless
+  namespace: sf1-ultimate
+  labels:
+    app: postgres
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+      name: postgres
+  selector:
+    app: postgres
