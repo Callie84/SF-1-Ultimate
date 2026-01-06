@@ -1,0 +1,169 @@
+---
+# ==========================================
+# Service - Auth Service
+# ==========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: sf1-ultimate
+  labels:
+    app: auth-service
+    tier: backend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3001
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: auth-service
+
+---
+# ==========================================
+# Service - Price Service
+# ==========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: price-service
+  namespace: sf1-ultimate
+  labels:
+    app: price-service
+    tier: backend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3002
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: price-service
+
+---
+# ==========================================
+# Service - Frontend
+# ==========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: sf1-ultimate
+  labels:
+    app: frontend
+    tier: frontend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: frontend
+
+---
+# ==========================================
+# Service - PostgreSQL
+# ==========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: sf1-ultimate
+  labels:
+    app: postgres
+    tier: database
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: postgres
+      protocol: TCP
+      name: postgres
+  selector:
+    app: postgres
+
+---
+# ==========================================
+# Service - MongoDB
+# ==========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service
+  namespace: sf1-ultimate
+  labels:
+    app: mongodb
+    tier: database
+spec:
+  type: ClusterIP
+  ports:
+    - port: 27017
+      targetPort: mongodb
+      protocol: TCP
+      name: mongodb
+  selector:
+    app: mongodb
+
+---
+# ==========================================
+# Service - Redis
+# ==========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: sf1-ultimate
+  labels:
+    app: redis
+    tier: cache
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: redis
+      protocol: TCP
+      name: redis
+  selector:
+    app: redis
+
+---
+# ==========================================
+# Service - Load Balancer (External Access)
+# ==========================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: sf1-loadbalancer
+  namespace: sf1-ultimate
+  labels:
+    app: sf1-ultimate
+  annotations:
+    # Cloud provider specific annotations
+    # AWS
+    # service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    # service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+
+    # GCP
+    # cloud.google.com/load-balancer-type: "External"
+
+    # Azure
+    # service.beta.kubernetes.io/azure-load-balancer-internal: "false"
+spec:
+  type: LoadBalancer
+  # External traffic policy to preserve client IP
+  externalTrafficPolicy: Local
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: 443
+      targetPort: https
+      protocol: TCP
+      name: https
+  selector:
+    app: nginx

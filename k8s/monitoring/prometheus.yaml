@@ -1,0 +1,156 @@
+---
+# ==========================================
+# ServiceMonitor - Auth Service
+# ==========================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: auth-service-monitor
+  namespace: sf1-ultimate
+  labels:
+    app: auth-service
+    prometheus: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      app: auth-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+
+---
+# ==========================================
+# ServiceMonitor - Price Service
+# ==========================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: price-service-monitor
+  namespace: sf1-ultimate
+  labels:
+    app: price-service
+    prometheus: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      app: price-service
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+
+---
+# ==========================================
+# PrometheusRule - Alerts
+# ==========================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: sf1-alerts
+  namespace: sf1-ultimate
+  labels:
+    prometheus: kube-prometheus
+spec:
+  groups:
+    - name: sf1-ultimate-alerts
+      interval: 30s
+      rules:
+        # High Error Rate
+        - alert: HighErrorRate
+          expr: |
+            rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High error rate detected"
+            description: "{{ $labels.service }} has error rate above 5% (current: {{ $value }})"
+
+        # High Response Time
+        - alert: HighResponseTime
+          expr: |
+            histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High response time detected"
+            description: "{{ $labels.service }} p95 response time is above 1s (current: {{ $value }}s)"
+
+        # Pod Down
+        - alert: PodDown
+          expr: |
+            kube_pod_status_phase{namespace="sf1-ultimate",phase!="Running"} > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pod is down"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is not running"
+
+        # High CPU Usage
+        - alert: HighCPUUsage
+          expr: |
+            rate(container_cpu_usage_seconds_total{namespace="sf1-ultimate"}[5m]) > 0.8
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High CPU usage"
+            description: "Container {{ $labels.container }} is using more than 80% CPU"
+
+        # High Memory Usage
+        - alert: HighMemoryUsage
+          expr: |
+            container_memory_usage_bytes{namespace="sf1-ultimate"} / container_spec_memory_limit_bytes{namespace="sf1-ultimate"} > 0.9
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High memory usage"
+            description: "Container {{ $labels.container }} is using more than 90% memory"
+
+        # Database Connection Pool Exhausted
+        - alert: DatabaseConnectionPoolExhausted
+          expr: |
+            database_connection_pool_active / database_connection_pool_max > 0.9
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Database connection pool exhausted"
+            description: "Database connection pool is above 90% capacity"
+
+        # Redis Memory High
+        - alert: RedisMemoryHigh
+          expr: |
+            redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Redis memory usage high"
+            description: "Redis is using more than 90% of available memory"
+
+---
+# ==========================================
+# PodMonitor - For direct pod monitoring
+# ==========================================
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: sf1-pod-monitor
+  namespace: sf1-ultimate
+  labels:
+    prometheus: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      tier: backend
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
