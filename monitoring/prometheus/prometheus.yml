@@ -47,41 +47,15 @@ scrape_configs:
     metrics_path: '/metrics'
     scrape_interval: 10s
 
-  - job_name: 'community-service'
-    static_configs:
-      - targets: ['community-service:3005']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
-
-  - job_name: 'notification-service'
-    static_configs:
-      - targets: ['notification-service:3006']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
-
-  - job_name: 'search-service'
-    static_configs:
-      - targets: ['search-service:3007']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
-
-  - job_name: 'media-service'
-    static_configs:
-      - targets: ['media-service:3008']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
-
-  - job_name: 'gamification-service'
-    static_configs:
-      - targets: ['gamification-service:3009']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
-
-  - job_name: 'ai-service'
-    static_configs:
-      - targets: ['ai-service:3010']
-    metrics_path: '/metrics'
-    scrape_interval: 10s
+  # Note: Additional microservices will be added as they are deployed
+  # Placeholder targets for future services:
+  # - learn-service:3005
+  # - chat-service:3006
+  # - notification-service:3007
+  # - payment-service:3008
+  # - analytics-service:3009
+  # - search-service:3010
+  # - admin-service:3011
 
   # ==========================================
   # INFRASTRUCTURE
@@ -106,3 +80,10 @@ scrape_configs:
   - job_name: 'mongodb-exporter'
     static_configs:
       - targets: ['mongodb-exporter:9216']
+
+  # API Gateway (Traefik)
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
