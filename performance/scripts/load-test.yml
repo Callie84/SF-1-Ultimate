@@ -1,0 +1,180 @@
+# ==========================================
+# Artillery Load Test Configuration
+# ==========================================
+# Realistic load testing for SF-1 Ultimate APIs
+#
+# Usage:
+#   npm install -g artillery
+#   artillery run performance/scripts/load-test.yml
+#   artillery run performance/scripts/load-test.yml --output report.json
+#   artillery report report.json
+# ==========================================
+
+config:
+  target: 'http://localhost:8080'
+  phases:
+    # Phase 1: Warm up (60s, 20 req/s)
+    - duration: 60
+      arrivalRate: 20
+      name: "Warm up - Cache priming"
+
+    # Phase 2: Ramp up (120s, 20→100 req/s)
+    - duration: 120
+      arrivalRate: 20
+      rampTo: 100
+      name: "Ramp up"
+
+    # Phase 3: Sustained load (180s, 100 req/s)
+    - duration: 180
+      arrivalRate: 100
+      name: "Sustained load"
+
+    # Phase 4: Spike test (60s, 200 req/s)
+    - duration: 60
+      arrivalRate: 200
+      name: "Spike test"
+
+    # Phase 5: Cool down (60s, 50 req/s)
+    - duration: 60
+      arrivalRate: 50
+      name: "Cool down"
+
+  # Performance thresholds
+  ensure:
+    # Response time targets
+    p95: 100  # 95th percentile < 100ms
+    p99: 200  # 99th percentile < 200ms
+
+    # Throughput
+    minRate: 50  # Minimum 50 req/s
+
+    # Error rate
+    maxErrorRate: 1  # Max 1% errors
+
+  # HTTP settings
+  http:
+    timeout: 10
+    pool: 50  # Connection pool size
+
+  # Plugins
+  plugins:
+    expect: {}
+    metrics-by-endpoint: {}
+
+# Variables
+variables:
+  # Test user credentials
+  testEmail: "loadtest@example.com"
+  testPassword: "LoadTest123!"
+
+# Scenarios (user flows)
+scenarios:
+  # ==========================================
+  # Scenario 1: Guest User (70% of traffic)
+  # ==========================================
+  - name: "Guest - Browse prices"
+    weight: 70
+    flow:
+      # View price list
+      - get:
+          url: "/api/prices/list?limit=50"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: data
+
+      # View specific price
+      - get:
+          url: "/api/prices/current/{{ $randomString() }}"
+          beforeRequest: "selectRandomSymbol"
+          expect:
+            - statusCode: [200, 404]  # 404 acceptable for random symbol
+
+      # View price history
+      - get:
+          url: "/api/prices/history/BTC?timeframe=7d"
+          expect:
+            - statusCode: 200
+            - hasProperty: data
+
+      # Check health
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+            - hasProperty: status
+
+  # ==========================================
+  # Scenario 2: Authenticated User (25% of traffic)
+  # ==========================================
+  - name: "User - Authenticated actions"
+    weight: 25
+    flow:
+      # Login
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "{{ testEmail }}"
+            password: "{{ testPassword }}"
+          capture:
+            - json: "$.accessToken"
+              as: "accessToken"
+          expect:
+            - statusCode: [200, 401]  # 401 if user doesn't exist
+
+      # View portfolio (if logged in)
+      - get:
+          url: "/api/user/portfolio"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          ifTrue: "accessToken"
+          expect:
+            - statusCode: [200, 401]
+
+      # View price list
+      - get:
+          url: "/api/prices/list?limit=100"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          ifTrue: "accessToken"
+
+  # ==========================================
+  # Scenario 3: API Scraping (5% of traffic, admin)
+  # ==========================================
+  - name: "Admin - Trigger scraping"
+    weight: 5
+    flow:
+      # Admin login
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPassword123!"
+          capture:
+            - json: "$.accessToken"
+              as: "adminToken"
+
+      # Trigger scraping
+      - post:
+          url: "/api/prices/admin/scrape"
+          headers:
+            Authorization: "Bearer {{ adminToken }}"
+          ifTrue: "adminToken"
+          json:
+            symbols: ["BTC", "ETH", "SOL"]
+          expect:
+            - statusCode: [200, 401, 403]
+
+# Custom functions
+processor: "./load-test-helpers.js"
+
+# Before/After hooks
+before:
+  flow:
+    - log: "Starting load test..."
+    - log: "Target: {{ $environment.target }}"
+
+after:
+  flow:
+    - log: "Load test complete"
+    - log: "Check report for results"
