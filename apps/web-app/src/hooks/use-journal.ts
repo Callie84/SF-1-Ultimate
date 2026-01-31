@@ -16,7 +16,8 @@ export function useGrows() {
   return useQuery({
     queryKey: journalKeys.grows(),
     queryFn: async () => {
-      const { data } = await api.get('/api/journal/grows');
+      // api-client returns data directly (response interceptor)
+      const data = await api.get('/api/journal/grows');
       return data;
     },
   });
@@ -27,20 +28,29 @@ export function useGrow(id: string) {
   return useQuery({
     queryKey: journalKeys.grow(id),
     queryFn: async () => {
-      const { data } = await api.get(`/api/journal/grows/${id}`);
+      const data = await api.get(`/api/journal/grows/${id}`);
       return data;
     },
     enabled: !!id,
   });
 }
 
-// Create grow
+// Create grow - uses backend schema (different from Grow type)
 export function useCreateGrow() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (growData: Partial<Grow>) => {
-      const { data } = await api.post('/api/journal/grows', growData);
+    mutationFn: async (growData: {
+      strainName: string;
+      breeder?: string;
+      type: 'feminized' | 'autoflower' | 'regular' | 'clone';
+      environment: 'indoor' | 'outdoor' | 'greenhouse';
+      medium?: string;
+      startDate: string;
+      isPublic?: boolean;
+      tags?: string[];
+    }) => {
+      const data = await api.post('/api/journal/grows', growData);
       return data;
     },
     onSuccess: () => {
@@ -55,7 +65,7 @@ export function useUpdateGrow(id: string) {
 
   return useMutation({
     mutationFn: async (growData: Partial<Grow>) => {
-      const { data } = await api.patch(`/api/journal/grows/${id}`, growData);
+      const data = await api.patch(`/api/journal/grows/${id}`, growData);
       return data;
     },
     onSuccess: () => {
@@ -84,7 +94,7 @@ export function useEntries(growId: string) {
   return useQuery({
     queryKey: journalKeys.entries(growId),
     queryFn: async () => {
-      const { data } = await api.get(`/api/journal/grows/${growId}/entries`);
+      const data = await api.get(`/api/journal/grows/${growId}/entries`);
       return data;
     },
     enabled: !!growId,
@@ -97,7 +107,7 @@ export function useCreateEntry(growId: string) {
 
   return useMutation({
     mutationFn: async (entryData: any) => {
-      const { data } = await api.post(`/api/journal/grows/${growId}/entries`, entryData);
+      const data = await api.post(`/api/journal/grows/${growId}/entries`, entryData);
       return data;
     },
     onSuccess: () => {
@@ -113,7 +123,7 @@ export function useUpdateEntry(id: string, growId: string) {
 
   return useMutation({
     mutationFn: async (entryData: any) => {
-      const { data } = await api.patch(`/api/journal/entries/${id}`, entryData);
+      const data = await api.patch(`/api/journal/entries/${id}`, entryData);
       return data;
     },
     onSuccess: () => {
@@ -143,7 +153,7 @@ export function useToggleReaction(entryId: string, growId: string) {
 
   return useMutation({
     mutationFn: async (type: 'LIKE' | 'LOVE' | 'FIRE' | 'CURIOUS') => {
-      const { data } = await api.post(`/api/journal/entries/${entryId}/reactions`, { type });
+      const data = await api.post(`/api/journal/entries/${entryId}/reactions`, { type });
       return data;
     },
     onSuccess: () => {
@@ -157,7 +167,7 @@ export function useComments(entryId: string) {
   return useQuery({
     queryKey: [...journalKeys.all, 'comments', entryId],
     queryFn: async () => {
-      const { data } = await api.get(`/api/journal/entries/${entryId}/comments`);
+      const data = await api.get(`/api/journal/entries/${entryId}/comments`);
       return data;
     },
     enabled: !!entryId,
@@ -170,7 +180,7 @@ export function useCreateComment(entryId: string, growId: string) {
 
   return useMutation({
     mutationFn: async (content: string) => {
-      const { data } = await api.post(`/api/journal/entries/${entryId}/comments`, { content });
+      const data = await api.post(`/api/journal/entries/${entryId}/comments`, { content });
       return data;
     },
     onSuccess: () => {

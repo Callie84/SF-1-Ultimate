@@ -1,0 +1,362 @@
+/**
+ * SF-1 Ultimate - Shared Auth Middleware
+ * =======================================
+ * 
+ * Datei: auth.middleware.ts
+ * Speicherort: /SF-1-Ultimate/shared/middleware/
+ * Verwendung: In ALLEN Services (search, scraper, visualization, etc.)
+ * 
+ * Diese Middleware verifiziert Authentication auf 2 Arten:
+ * 1. Vertraue Traefik X-User-* Headers (wenn Request von Traefik kommt)
+ * 2. Direkte JWT-Verifikation (für interne Service-to-Service Calls)
+ */
+
+import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction } from 'express';
+
+const JWT_SECRET = process.env.JWT_SECRET || '';
+
+if (!JWT_SECRET) {
+  console.warn('⚠️  WARNING: JWT_SECRET not set! Using insecure fallback.');
+}
+
+/**
+ * Extended Request Interface mit User-Daten
+ */
+export interface AuthRequest extends Request {
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+    premium: boolean;
+  };
+}
+
+/**
+ * JWT Payload Interface
+ */
+interface JWTPayload {
+  userId: string;
+  email: string;
+  role: string;
+  iat?: number;
+  exp?: number;
+}
+
+/**
+ * Haupt-Authentication Middleware
+ * 
+ * @param trustTraefik - Wenn true, vertraue X-User-* Headers von Traefik
+ *                       Wenn false, erzwinge immer direkte JWT-Verifikation
+ * 
+ * @example
+ * // In Express App:
+ * app.get('/api/search', authMiddleware(true), searchController.search);
+ * 
+ * // Oder als globale Middleware:
+ * app.use('/api/*', authMiddleware(true));
+ */
+export const authMiddleware = (trustTraefik: boolean = true) => {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      // OPTION 1: Vertraue Traefik Headers
+      // ===================================
+      // Wenn Request von Traefik kommt (erkennbar an X-Forwarded-For Header),
+      // dann hat Traefik bereits Auth-Service aufgerufen und X-User-* gesetzt
+      
+      if (trustTraefik && req.headers['x-forwarded-for']) {
+        const userId = req.headers['x-user-id'] as string;
+        const userRole = req.headers['x-user-role'] as string;
+        const userEmail = req.headers['x-user-email'] as string;
+
+        // Validierung der Header
+        if (!userId || userId.trim() === '') {
+          return res.status(401).json({ 
+            error: 'Missing user identification',
+            code: 'NO_USER_ID_HEADER'
+          });
+        }
+
+        // Setze User-Daten im Request
+        req.user = {
+          id: userId,
+          email: userEmail || '',
+          role: userRole || 'user'
+        };
+
+        // Log für Debugging (nur in Development)
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`✅ Auth (Traefik): User ${userId} (${userRole})`);
+         }
+
+        return next();
+      }
+
+      // OPTION 2: Direkte JWT-Verifikation
+      // ===================================
+      // Für direkte Service-Calls OHNE Traefik (z.B. Service-to-Service)
+      
+      const authHeader = req.headers.authorization;
+      
+      if (!authHeader) {
+        return res.status(401).json({ 
+          error: 'Missing Authorization header',
+          code: 'NO_AUTH_HEADER'
+        });
+      }
+
+      if (!authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ 
+          error: 'Invalid Authorization format. Expected: Bearer <token>',
+          code: 'INVALID_AUTH_FORMAT'
+        });
+      }
+
+      const token = authHeader.replace('Bearer ', '').trim();
+      
+      if (!token || token.length === 0) {
+        return res.status(401).json({ 
+          error: 'Empty token provided',
+          code: 'EMPTY_TOKEN'
+        });
+      }
+
+      // JWT verifizieren
+      let payload: JWTPayload;
+      
+      try {
+        payload = jwt.verify(token, JWT_SECRET) as JWTPayload;
+      } catch (jwtError) {
+        if (jwtError instanceof jwt.TokenExpiredError) {
+          return res.status(401).json({ 
+            error: 'Token expired',
+            code: 'TOKEN_EXPIRED'
+          });
+        }
+        
+        if (jwtError instanceof jwt.JsonWebTokenError) {
+          return res.status(401).json({ 
+            error: 'Invalid token',
+            code: 'INVALID_TOKEN'
+          });
+        }
+
+        throw jwtError; // Unbekannter Fehler
+      }
+
+      // Validierung des Payloads
+      if (!payload.userId || !payload.email) {
+        return res.status(401).json({ 
+          error: 'Invalid token payload',
+          code: 'INVALID_PAYLOAD'
+        });
+      }
+
+      // Setze User-Daten im Request
+      req.user = {
+        id: payload.userId,
+        email: payload.email,
+        role: payload.role || 'user'
+      };
+
+      // Log für Debugging (nur in Development)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`✅ Auth (JWT): User ${payload.userId} (${payload.role})`);
+      }
+
+      next();
+
+    } catch (error) {
+      console.error('Authentication failed:', error);
+      
+      // Detaillierte Fehler-Info (nur in Development)
+      if (process.env.NODE_ENV === 'development') {
+        return res.status(401).json({ 
+          error: 'Authentication failed',
+          code: 'AUTH_ERROR',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+
+      return res.status(401).json({ 
+        error: 'Authentication failed',
+        code: 'AUTH_ERROR'
+      });
+    }
+  };
+};
+
+/**
+ * Admin-Only Middleware
+ * 
+ * Prüft ob User Admin-Rolle hat. MUSS NACH authMiddleware verwendet werden!
+ * 
+ * @param trustTraefik - Wie in authMiddleware
+ * 
+ * @example
+ * // Einzelner Endpoint:
+ * app.post('/admin/scrape', adminMiddleware(true), adminController.scrape);
+ * 
+ * // Ganzer Router:
+ * const adminRouter = Router();
+ * adminRouter.use(adminMiddleware(true));
+ * adminRouter.post('/scrape', adminController.scrape);
+ * app.use('/admin', adminRouter);
+ */
+export const adminMiddleware = (trustTraefik: boolean = true) => {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    // Erst authMiddleware ausführen
+    await new Promise<void>((resolve, reject) => {
+      authMiddleware(trustTraefik)(req, res, (err?: any) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    }).catch(() => {
+      // authMiddleware hat bereits Response gesendet
+      return;
+    });
+
+    // Prüfe ob Response bereits gesendet wurde
+    if (res.headersSent) {
+      return;
+    }
+
+    // Admin-Check
+    if (!req.user) {
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        code: 'NOT_AUTHENTICATED'
+      });
+    }
+
+    if (req.user.role !== 'admin') {
+      console.warn(`⚠️  Access denied: User ${req.user.id} (${req.user.role}) tried to access admin endpoint`);
+      
+      return res.status(403).json({ 
+        error: 'Admin access required',
+        code: 'INSUFFICIENT_PERMISSIONS',
+        requiredRole: 'admin',
+        yourRole: req.user.role
+      });
+    }
+
+    // Log für Debugging (nur in Development)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ Admin Access: User ${req.user.id}`);
+    }
+
+    next();
+  };
+};
+
+/**
+ * Optional Middleware - Setzt User-Daten wenn vorhanden, aber blockiert nicht
+ * 
+ * Nützlich für Endpoints die sowohl mit als auch ohne Auth funktionieren sollen
+ * (z.B. Public Search mit optionalem User-Context für Personalisierung)
+ * 
+ * @example
+ * app.get('/api/search', optionalAuthMiddleware(true), searchController.search);
+ * // Im Controller:
+ * if (req.user) {
+ *   // Personalisierte Suche für eingeloggten User
+ * } else {
+ *   // Öffentliche Suche
+ * }
+ */
+export const optionalAuthMiddleware = (trustTraefik: boolean = true) => {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        authMiddleware(trustTraefik)(req, res, (err?: any) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    } catch (error) {
+      // Auth fehlgeschlagen, aber das ist OK für Optional Auth
+      // User bleibt undefined
+    }
+
+    next(); // Immer weiter, auch ohne User
+  };
+};
+
+/**
+ * Rate-Limiting Middleware (basierend auf User-ID oder IP)
+ * 
+ * Verhindert Abuse durch zu viele Requests
+ * 
+ * @param maxRequests - Max Anzahl Requests
+ * @param windowMs - Zeitfenster in Millisekunden
+ * 
+ * @example
+ * app.post('/api/scrape', 
+ *   authMiddleware(true),
+ *   rateLimitMiddleware(10, 60000), // 10 Requests pro Minute
+ *   scrapeController.scrape
+ * );
+ */
+const requestCounts = new Map<string, { count: number; resetAt: number }>();
+
+export const rateLimitMiddleware = (maxRequests: number, windowMs: number) => {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    // Identifier: User-ID (wenn eingeloggt) oder IP-Adresse
+    const identifier = req.user?.id || req.ip || 'unknown';
+    const now = Date.now();
+
+    // Hole oder erstelle Counter
+    let record = requestCounts.get(identifier);
+    
+    if (!record || now > record.resetAt) {
+      // Neues Zeitfenster
+      record = {
+        count: 0,
+        resetAt: now + windowMs
+      };
+      requestCounts.set(identifier, record);
+    }
+
+    // Increment Counter
+    record.count++;
+
+    // Check Limit
+    if (record.count > maxRequests) {
+      const retryAfter = Math.ceil((record.resetAt - now) / 1000);
+      
+      return res.status(429).json({
+        error: 'Too many requests',
+        code: 'RATE_LIMIT_EXCEEDED',
+        retryAfter,
+        limit: maxRequests,
+        window: windowMs / 1000
+      });
+    }
+
+    // Set Rate-Limit Headers
+    res.set('X-RateLimit-Limit', maxRequests.toString());
+    res.set('X-RateLimit-Remaining', (maxRequests - record.count).toString());
+    res.set('X-RateLimit-Reset', new Date(record.resetAt).toISOString());
+
+    next();
+  };
+};
+
+/**
+ * Cleanup alte Rate-Limit Records (optional, in Production mit Redis ersetzen)
+ */
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, record] of requestCounts.entries()) {
+    if (now > record.resetAt + 60000) { // 1min grace period
+      requestCounts.delete(key);
+    }
+  }
+}, 300000); // Cleanup alle 5 Minuten
+
+export default {
+  authMiddleware,
+  adminMiddleware,
+  optionalAuthMiddleware,
+  rateLimitMiddleware
+};

@@ -16,7 +16,7 @@ export function useCategories() {
   return useQuery({
     queryKey: communityKeys.categories(),
     queryFn: async () => {
-      const { data } = await api.get('/api/community/categories');
+      const data = await api.get('/api/community/categories');
       return data;
     },
   });
@@ -34,7 +34,7 @@ export function useThreads(categoryId?: string, filters?: any) {
           params.append(key, String(value));
         });
       }
-      const { data } = await api.get(`/api/community/threads?${params}`);
+      const data = await api.get(`/api/community/threads?${params}`);
       return data;
     },
   });
@@ -45,7 +45,7 @@ export function useThread(id: string) {
   return useQuery({
     queryKey: communityKeys.thread(id),
     queryFn: async () => {
-      const { data } = await api.get(`/api/community/threads/${id}`);
+      const data = await api.get(`/api/community/threads/${id}`);
       return data;
     },
     enabled: !!id,
@@ -58,7 +58,7 @@ export function useCreateThread() {
 
   return useMutation({
     mutationFn: async (threadData: Partial<Thread>) => {
-      const { data } = await api.post('/api/community/threads', threadData);
+      const data = await api.post('/api/community/threads', threadData);
       return data;
     },
     onSuccess: () => {
@@ -73,7 +73,7 @@ export function useUpdateThread(id: string) {
 
   return useMutation({
     mutationFn: async (threadData: Partial<Thread>) => {
-      const { data } = await api.patch(`/api/community/threads/${id}`, threadData);
+      const data = await api.patch(`/api/community/threads/${id}`, threadData);
       return data;
     },
     onSuccess: () => {
@@ -102,7 +102,7 @@ export function useReplies(threadId: string) {
   return useQuery({
     queryKey: communityKeys.replies(threadId),
     queryFn: async () => {
-      const { data } = await api.get(`/api/community/threads/${threadId}/replies`);
+      const data = await api.get(`/api/community/threads/${threadId}/replies`);
       return data;
     },
     enabled: !!threadId,
@@ -115,7 +115,7 @@ export function useCreateReply(threadId: string) {
 
   return useMutation({
     mutationFn: async (replyData: Partial<Reply>) => {
-      const { data } = await api.post(`/api/community/threads/${threadId}/replies`, replyData);
+      const data = await api.post(`/api/community/threads/${threadId}/replies`, replyData);
       return data;
     },
     onSuccess: () => {
@@ -131,7 +131,7 @@ export function useUpdateReply(id: string, threadId: string) {
 
   return useMutation({
     mutationFn: async (replyData: Partial<Reply>) => {
-      const { data } = await api.patch(`/api/community/replies/${id}`, replyData);
+      const data = await api.patch(`/api/community/replies/${id}`, replyData);
       return data;
     },
     onSuccess: () => {
@@ -160,7 +160,7 @@ export function useVoteThread(threadId: string) {
 
   return useMutation({
     mutationFn: async (type: 'UPVOTE' | 'DOWNVOTE') => {
-      const { data } = await api.post(`/api/community/threads/${threadId}/vote`, { type });
+      const data = await api.post(`/api/community/threads/${threadId}/vote`, { type });
       return data;
     },
     onSuccess: () => {
@@ -176,7 +176,7 @@ export function useVoteReply(replyId: string, threadId: string) {
 
   return useMutation({
     mutationFn: async (type: 'UPVOTE' | 'DOWNVOTE') => {
-      const { data } = await api.post(`/api/community/replies/${replyId}/vote`, { type });
+      const data = await api.post(`/api/community/replies/${replyId}/vote`, { type });
       return data;
     },
     onSuccess: () => {
@@ -191,7 +191,7 @@ export function useAcceptReply(threadId: string) {
 
   return useMutation({
     mutationFn: async (replyId: string) => {
-      const { data } = await api.post(`/api/community/replies/${replyId}/accept`);
+      const data = await api.post(`/api/community/replies/${replyId}/accept`);
       return data;
     },
     onSuccess: () => {

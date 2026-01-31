@@ -1,0 +1,454 @@
+[1mdiff --git a/docker-compose.yml b/docker-compose.yml[m
+[1mindex 24527c9..8b80438 100644[m
+[1m--- a/docker-compose.yml[m
+[1m+++ b/docker-compose.yml[m
+[36m@@ -1,10 +1,5 @@[m
+ version: '3.8'[m
+[31m-[m
+ services:[m
+[31m-  # ==========================================[m
+[31m-  # INFRASTRUCTURE[m
+[31m-  # ==========================================[m
+[31m-  [m
+   postgres:[m
+     image: postgres:15-alpine[m
+     container_name: sf1-postgres[m
+[36m@@ -14,17 +9,16 @@[m [mservices:[m
+       POSTGRES_USER: sf1_user[m
+       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}[m
+     volumes:[m
+[31m-      - postgres_data:/var/lib/postgresql/data[m
+[31m-    ports:[m
+[31m-      - "5432:5432"[m
+[32m+[m[32m    - postgres_data:/var/lib/postgresql/data[m
+     networks:[m
+[31m-      - sf1-network[m
+[32m+[m[32m    - sf1-network[m
+     healthcheck:[m
+[31m-      test: ["CMD-SHELL", "pg_isready -U sf1_user"][m
+[32m+[m[32m      test:[m
+[32m+[m[32m      - CMD-SHELL[m
+[32m+[m[32m      - pg_isready -U sf1_user[m
+       interval: 10s[m
+       timeout: 5s[m
+       retries: 5[m
+[31m-[m
+   mongodb:[m
+     image: mongo:7[m
+     container_name: sf1-mongodb[m
+[36m@@ -33,34 +27,35 @@[m [mservices:[m
+       MONGO_INITDB_ROOT_USERNAME: sf1_admin[m
+       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}[m
+     volumes:[m
+[31m-      - mongodb_data:/data/db[m
+[31m-    ports:[m
+[31m-      - "27017:27017"[m
+[32m+[m[32m    - mongodb_data:/data/db[m
+     networks:[m
+[31m-      - sf1-network[m
+[32m+[m[32m    - sf1-network[m
+     healthcheck:[m
+[31m-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"][m
+[32m+[m[32m      test:[m
+[32m+[m[32m      - CMD[m
+[32m+[m[32m      - mongosh[m
+[32m+[m[32m      - --eval[m
+[32m+[m[32m      - db.adminCommand('ping')[m
+       interval: 10s[m
+       timeout: 5s[m
+       retries: 5[m
+[31m-[m
+   redis:[m
+     image: redis:7-alpine[m
+     container_name: sf1-redis[m
+     restart: unless-stopped[m
+     command: redis-server --requirepass ${REDIS_PASSWORD}[m
+     volumes:[m
+[31m-      - redis_data:/data[m
+[31m-    ports:[m
+[31m-      - "6379:6379"[m
+[32m+[m[32m    - redis_data:/data[m
+     networks:[m
+[31m-      - sf1-network[m
+[32m+[m[32m    - sf1-network[m
+     healthcheck:[m
+[31m-      test: ["CMD", "redis-cli", "ping"][m
+[32m+[m[32m      test:[m
+[32m+[m[32m      - CMD[m
+[32m+[m[32m      - redis-cli[m
+[32m+[m[32m      - ping[m
+       interval: 10s[m
+       timeout: 5s[m
+       retries: 5[m
+[31m-[m
+   meilisearch:[m
+     image: getmeili/meilisearch:v1.5[m
+     container_name: sf1-meilisearch[m
+[36m@@ -69,47 +64,39 @@[m [mservices:[m
+       MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY}[m
+       MEILI_ENV: production[m
+     volumes:[m
+[31m-      - meilisearch_data:/meili_data[m
+[31m-    ports:[m
+[31m-      - "7700:7700"[m
+[32m+[m[32m    - meilisearch_data:/meili_data[m
+     networks:[m
+[31m-      - sf1-network[m
+[32m+[m[32m    - sf1-network[m
+     healthcheck:[m
+[31m-      test: ["CMD", "curl", "-f", "http://localhost:7700/health"][m
+[32m+[m[32m      test:[m
+[32m+[m[32m      - CMD[m
+[32m+[m[32m      - curl[m
+[32m+[m[32m      - -f[m
+[32m+[m[32m      - http://localhost:7700/health[m
+       interval: 10s[m
+       timeout: 5s[m
+       retries: 5[m
+[31m-[m
+[31m-  # ==========================================[m
+[31m-  # API GATEWAY[m
+[31m-  # ==========================================[m
+[31m-[m
+   api-gateway:[m
+     image: traefik:v2.10[m
+     container_name: sf1-api-gateway[m
+     restart: unless-stopped[m
+     command:[m
+[31m-      - "--api.insecure=true"[m
+[31m-      - "--providers.docker=true"[m
+[31m-      - "--providers.docker.exposedbydefault=false"[m
+[31m-      - "--entrypoints.web.address=:80"[m
+[31m-      - "--log.level=INFO"[m
+[32m+[m[32m    - --api.insecure=true[m
+[32m+[m[32m    - --providers.docker=true[m
+[32m+[m[32m    - --providers.docker.exposedbydefault=false[m
+[32m+[m[32m    - --entrypoints.web.address=:80[m
+[32m+[m[32m    - --log.level=INFO[m
+     ports:[m
+[31m-      - "80:80"[m
+[31m-      - "8080:8080"[m
+[32m+[m[32m    - 80:80[m
+[32m+[m[32m    - 8080:8080[m
+     volumes:[m
+[31m-      - /var/run/docker.sock:/var/run/docker.sock:ro[m
+[32m+[m[32m    - /var/run/docker.sock:/var/run/docker.sock:ro[m
+     networks:[m
+[31m-      - sf1-network[m
+[32m+[m[32m    - sf1-network[m
+     depends_on:[m
+[31m-      - auth-service[m
+[31m-      - price-service[m
+[31m-      - journal-service[m
+[31m-[m
+[31m-  # ==========================================[m
+[31m-  # MICROSERVICES[m
+[31m-  # ==========================================[m
+[31m-[m
+[32m+[m[32m    - auth-service[m
+[32m+[m[32m    - price-service[m
+[32m+[m[32m    - journal-service[m
+   auth-service:[m
+     image: node:20-alpine[m
+     container_name: sf1-auth-service[m
+[36m@@ -129,21 +116,20 @@[m [mservices:[m
+       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}[m
+       FRONTEND_URL: http://152.53.252.68:3000[m
+     volumes:[m
+[31m-      - ./apps/auth-service:/app[m
+[32m+[m[32m    - ./apps/auth-service:/app[m
+     ports:[m
+[31m-      - "3001:3001"[m
+[32m+[m[32m    - 3001:3001[m
+     networks:[m
+[31m-      - sf1-network[m
+[32m+[m[32m    - sf1-network[m
+     depends_on:[m
+       postgres:[m
+         condition: service_healthy[m
+       redis:[m
+         condition: service_healthy[m
+     labels:[m
+[31m-      - "traefik.enable=true"[m
+[31m-      - "traefik.http.routers.auth.rule=PathPrefix(`/api/auth`)"[m
+[31m-      - "traefik.http.services.auth.loadbalancer.server.port=3001"[m
+[31m-[m
+[32m+[m[32m    - traefik.enable=true[m
+[32m+[m[32m    - traefik.http.routers.auth.rule=PathPrefix(`/api/auth`)[m
+[32m+[m[32m    - traefik.http.services.auth.loadbalancer.server.port=3001[m
+   price-service:[m
+     image: node:20-alpine[m
+     container_name: sf1-price-service[m
+[36m@@ -155,23 +141,22 @@[m [mservices:[m
+       PORT: 3002[m
+       MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_prices?authSource=admin[m
+       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379[m
+[31m-      PLAYWRIGHT_HEADLESS: "true"[m
+[32m+[m[32m      PLAYWRIGHT_HEADLESS: 'true'[m
+     volumes:[m
+[31m-      - ./apps/price-service:/app[m
+[32m+[m[32m    - ./apps/price-service:/app[m
+     ports:[m
+[31m-      - "3002:3002"[m
+[32m+[m[32m    - 3002:3002[m
+     networks:[m
+[31m-      - sf1-network[m
+[32m+[m[32m    - sf1-network[m
+     depends_on:[m
+       mongodb:[m
+         condition: service_healthy[m
+       redis:[m
+         condition: service_healthy[m
+     labels:[m
+[31m-      - "traefik.enable=true"[m
+[31m-      - "traefik.http.routers.price.rule=PathPrefix(`/api/prices`)"[m
+[31m-      - "traefik.http.services.price.loadbalancer.server.port=3002"[m
+[31m-[m
+[32m+[m[32m    - traefik.enable=true[m
+[32m+[m[32m    - traefik.http.routers.price.rule=PathPrefix(`/api/prices`)[m
+[32m+[m[32m    - traefik.http.services.price.loadbalancer.server.port=3002[m
+   journal-service:[m
+     image: node:20-alpine[m
+     container_name: sf1-journal-service[m
+[36m@@ -188,21 +173,20 @@[m [mservices:[m
+       AWS_REGION: eu-central-1[m
+       S3_BUCKET: sf1-journal[m
+     volumes:[m
+[31m-      - ./apps/journal-service:/app[m
+[32m+[m[32m    - ./apps/journal-service:/app[m
+     ports:[m
+[31m-      - "3003:3003"[m
+[32m+[m[32m    - 3003:3003[m
+     networks:[m
+[31m-      - sf1-network[m
+[32m+[m[32m    - sf1-network[m
+     depends_on:[m
+       mongodb:[m
+         condition: service_healthy[m
+       redis:[m
+         condition: service_healthy[m
+     labels:[m
+[31m-      - "traefik.enable=true"[m
+[31m-      - "traefik.http.routers.journal.rule=PathPrefix(`/api/journals`)"[m
+[31m-      - "traefik.http.services.journal.loadbalancer.server.port=3003"[m
+[31m-[m
+[32m+[m[32m    - traefik.enable=true[m
+[32m+[m[32m    - traefik.http.routers.journal.rule=PathPrefix(`/api/journals`)[m
+[32m+[m[32m    - traefik.http.services.journal.loadbalancer.server.port=3003[m
+   tools-service:[m
+     image: node:20-alpine[m
+     container_name: sf1-tools-service[m
+[36m@@ -214,19 +198,18 @@[m [mservices:[m
+       PORT: 3004[m
+       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379[m
+     volumes:[m
+[31m-      - ./apps/tools-service:/app[m
+[32m+[m[32m    - ./apps/tools-service:/app[m
+     ports:[m
+[31m-      - "3004:3004"[m
+[32m+[m[32m    - 3004:3004[m
+     networks:[m
+[31m-      - sf1-network[m
+[32m+[m[32m    - sf1-network[m
+     depends_on:[m
+       redis:[m
+         condition: service_healthy[m
+     labels:[m
+[31m-      - "traefik.enable=true"[m
+[31m-      - "traefik.http.routers.tools.rule=PathPrefix(`/api/tools`)"[m
+[31m-      - "traefik.http.services.tools.loadbalancer.server.port=3004"[m
+[31m-[m
+[32m+[m[32m    - traefik.enable=true[m
+[32m+[m[32m    - traefik.http.routers.tools.rule=PathPrefix(`/api/tools`)[m
+[32m+[m[32m    - traefik.http.services.tools.loadbalancer.server.port=3004[m
+   community-service:[m
+     image: node:20-alpine[m
+     container_name: sf1-community-service[m
+[36m@@ -239,21 +222,20 @@[m [mservices:[m
+       MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_community?authSource=admin[m
+       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379[m
+     volumes:[m
+[31m-      - ./apps/community-service:/app[m
+[32m+[m[32m    - ./apps/community-service:/app[m
+     ports:[m
+[31m-      - "3005:3005"[m
+[32m+[m[32m    - 3005:3005[m
+     networks:[m
+[31m-      - sf1-network[m
+[32m+[m[32m    - sf1-network[m
+     depends_on:[m
+       mongodb:[m
+         condition: service_healthy[m
+       redis:[m
+         condition: service_healthy[m
+     labels:[m
+[31m-      - "traefik.enable=true"[m
+[31m-      - "traefik.http.routers.community.rule=PathPrefix(`/api/community`)"[m
+[31m-      - "traefik.http.services.community.loadbalancer.server.port=3005"[m
+[31m-[m
+[32m+[m[32m    - traefik.enable=true[m
+[32m+[m[32m    - traefik.http.routers.community.rule=PathPrefix(`/api/community`)[m
+[32m+[m[32m    - traefik.http.services.community.loadbalancer.server.port=3005[m
+   notification-service:[m
+     image: node:20-alpine[m
+     container_name: sf1-notification-service[m
+[36m@@ -269,23 +251,22 @@[m [mservices:[m
+       SMTP_PORT: ${SMTP_PORT}[m
+       SMTP_USER: ${SMTP_USER}[m
+       SMTP_PASS: ${SMTP_PASS}[m
+[31m-      SMTP_FROM: "SF-1 <noreply@seedfinderpro.de>"[m
+[32m+[m[32m      SMTP_FROM: SF-1 <noreply@seedfinderpro.de>[m
+     volumes:[m
+[31m-      - ./apps/notification-service:/app[m
+[32m+[m[32m    - ./apps/notification-service:/app[m
+     ports:[m
+[31m-      - "3006:3006"[m
+[32m+[m[32m    - 3006:3006[m
+     networks:[m
+[31m-      - sf1-network[m
+[32m+[m[32m    - sf1-network[m
+     depends_on:[m
+       mongodb:[m
+         condition: service_healthy[m
+       redis:[m
+         condition: service_healthy[m
+     labels:[m
+[31m-      - "traefik.enable=true"[m
+[31m-      - "traefik.http.routers.notification.rule=PathPrefix(`/api/notifications`)"[m
+[31m-      - "traefik.http.services.notification.loadbalancer.server.port=3006"[m
+[31m-[m
+[32m+[m[32m    - traefik.enable=true[m
+[32m+[m[32m    - traefik.http.routers.notification.rule=PathPrefix(`/api/notifications`)[m
+[32m+[m[32m    - traefik.http.services.notification.loadbalancer.server.port=3006[m
+   search-service:[m
+     image: node:20-alpine[m
+     container_name: sf1-search-service[m
+[36m@@ -300,11 +281,11 @@[m [mservices:[m
+       MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_search?authSource=admin[m
+       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379[m
+     volumes:[m
+[31m-      - ./apps/search-service:/app[m
+[32m+[m[32m    - ./apps/search-service:/app[m
+     ports:[m
+[31m-      - "3007:3007"[m
+[32m+[m[32m    - 3007:3007[m
+     networks:[m
+[31m-      - sf1-network[m
+[32m+[m[32m    - sf1-network[m
+     depends_on:[m
+       mongodb:[m
+         condition: service_healthy[m
+[36m@@ -313,10 +294,9 @@[m [mservices:[m
+       redis:[m
+         condition: service_healthy[m
+     labels:[m
+[31m-      - "traefik.enable=true"[m
+[31m-      - "traefik.http.routers.search.rule=PathPrefix(`/api/search`)"[m
+[31m-      - "traefik.http.services.search.loadbalancer.server.port=3007"[m
+[31m-[m
+[32m+[m[32m    - traefik.enable=true[m
+[32m+[m[32m    - traefik.http.routers.search.rule=PathPrefix(`/api/search`)[m
+[32m+[m[32m    - traefik.http.services.search.loadbalancer.server.port=3007[m
+   media-service:[m
+     image: node:20-alpine[m
+     container_name: sf1-media-service[m
+[36m@@ -333,21 +313,20 @@[m [mservices:[m
+       AWS_REGION: eu-central-1[m
+       S3_BUCKET: sf1-media[m
+     volumes:[m
+[31m-      - ./apps/media-service:/app[m
+[32m+[m[32m    - ./apps/media-service:/app[m
+     ports:[m
+[31m-      - "3008:3008"[m
+[32m+[m[32m    - 3008:3008[m
+     networks:[m
+[31m-      - sf1-network[m
+[32m+[m[32m    - sf1-network[m
+     depends_on:[m
+       mongodb:[m
+         condition: service_healthy[m
+       redis:[m
+         condition: service_healthy[m
+     labels:[m
+[31m-      - "traefik.enable=true"[m
+[31m-      - "traefik.http.routers.media.rule=PathPrefix(`/api/media`)"[m
+[31m-      - "traefik.http.services.media.loadbalancer.server.port=3008"[m
+[31m-[m
+[32m+[m[32m    - traefik.enable=true[m
+[32m+[m[32m    - traefik.http.routers.media.rule=PathPrefix(`/api/media`)[m
+[32m+[m[32m    - traefik.http.services.media.loadbalancer.server.port=3008[m
+   gamification-service:[m
+     image: node:20-alpine[m
+     container_name: sf1-gamification-service[m
+[36m@@ -360,21 +339,20 @@[m [mservices:[m
+       MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_gamification?authSource=admin[m
+       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379[m
+     volumes:[m
+[31m-      - ./apps/gamification-service:/app[m
+[32m+[m[32m    - ./apps/gamification-service:/app[m
+     ports:[m
+[31m-      - "3009:3009"[m
+[32m+[m[32m    - 3009:3009[m
+     networks:[m
+[31m-      - sf1-network[m
+[32m+[m[32m    - sf1-network[m
+     depends_on:[m
+       mongodb:[m
+         condition: service_healthy[m
+       redis:[m
+         condition: service_healthy[m
+     labels:[m
+[31m-      - "traefik.enable=true"[m
+[31m-      - "traefik.http.routers.gamification.rule=PathPrefix(`/api/gamification`)"[m
+[31m-      - "traefik.http.services.gamification.loadbalancer.server.port=3009"[m
+[31m-[m
+[32m+[m[32m    - traefik.enable=true[m
+[32m+[m[32m    - traefik.http.routers.gamification.rule=PathPrefix(`/api/gamification`)[m
+[32m+[m[32m    - traefik.http.services.gamification.loadbalancer.server.port=3009[m
+   ai-service:[m
+     image: node:20-alpine[m
+     container_name: sf1-ai-service[m
+[36m@@ -387,33 +365,23 @@[m [mservices:[m
+       OPENAI_API_KEY: ${OPENAI_API_KEY}[m
+       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379[m
+     volumes:[m
+[31m-      - ./apps/ai-service:/app[m
+[32m+[m[32m    - ./apps/ai-service:/app[m
+     ports:[m
+[31m-      - "3010:3010"[m
+[32m+[m[32m    - 3010:3010[m
+     networks:[m
+[31m-      - sf1-network[m
+[32m+[m[32m    - sf1-network[m
+     depends_on:[m
+       redis:[m
+         condition: service_healthy[m
+     labels:[m
+[31m-      - "traefik.enable=true"[m
+[31m-      - "traefik.http.routers.ai.rule=PathPrefix(`/api/ai`)"[m
+[31m-      - "traefik.http.services.ai.loadbalancer.server.port=3010"[m
+[31m-[m
+[31m-# ==========================================[m
+[31m-# NETWORKS[m
+[31m-# ==========================================[m
+[31m-[m
+[32m+[m[32m    - traefik.enable=true[m
+[32m+[m[32m    - traefik.http.routers.ai.rule=PathPrefix(`/api/ai`)[m
+[32m+[m[32m    - traefik.http.services.ai.loadbalancer.server.port=3010[m
+ networks:[m
+   sf1-network:[m
+     driver: bridge[m
+[31m-[m
+[31m-# ==========================================[m
+[31m-# VOLUMES[m
+[31m-# ==========================================[m
+[31m-[m
+ volumes:[m
+[31m-  postgres_data:[m
+[31m-  mongodb_data:[m
+[31m-  redis_data:[m
+[31m-  meilisearch_data:[m
+[32m+[m[32m  postgres_data: null[m
+[32m+[m[32m  mongodb_data: null[m
+[32m+[m[32m  redis_data: null[m
+[32m+[m[32m  meilisearch_data: null[m

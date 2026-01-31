@@ -29,6 +29,15 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api/gamification/profile', profileRoutes);
 
+// Shortcut routes (für Traefik PathPrefix)
+app.use('/api/leaderboard', (req, res) => {
+  res.redirect(307, `/api/gamification/profile/leaderboard${req.url === '/' ? '' : req.url}`);
+});
+
+app.use('/api/achievements', (req, res) => {
+  res.status(200).json({ message: 'Use /api/gamification/profile/:userId for achievements' });
+});
+
 // Error Handler
 app.use(errorHandler);
 

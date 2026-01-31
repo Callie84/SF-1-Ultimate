@@ -44,7 +44,7 @@ export class StatsService {
         this.estimateDaysToHarvest(grow, entries) : null
     };
     
-    await redis.setex(cacheKey, 300, JSON.stringify(stats));
+    await redis.setEx(cacheKey, 300, JSON.stringify(stats));
     
     return stats;
   }

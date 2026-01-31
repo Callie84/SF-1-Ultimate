@@ -25,7 +25,7 @@ export async function authMiddleware(
     const userPremium = req.headers['x-user-premium'] === 'true';
     
     if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
+       res.status(401).json({ error: 'Unauthorized' });
     }
     
     req.user = {

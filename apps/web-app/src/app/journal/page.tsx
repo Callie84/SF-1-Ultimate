@@ -3,83 +3,50 @@
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Calendar, Sprout, Eye, Heart, MessageSquare } from 'lucide-react';
+import { Plus, Calendar, Sprout, Eye, Heart, MessageSquare, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { formatRelativeTime } from '@/lib/utils';
+import { useGrows } from '@/hooks/use-journal';
 
-// TODO: Replace with real API data
-const mockGrows = [
-  {
-    id: '1',
-    title: 'Gorilla Glue #4 Indoor',
-    strain: { name: 'Gorilla Glue #4', type: 'HYBRID' },
-    growType: 'INDOOR',
-    medium: 'SOIL',
-    status: 'FLOWERING',
-    startDate: new Date('2024-09-15'),
-    stats: {
-      totalEntries: 12,
-      totalPhotos: 45,
-      totalComments: 8,
-      totalReactions: 23,
-      followers: 5
-    }
-  },
-  {
-    id: '2',
-    title: 'Northern Lights Autoflower',
-    strain: { name: 'Northern Lights Auto', type: 'INDICA' },
-    growType: 'INDOOR',
-    medium: 'COCO',
-    status: 'VEGETATIVE',
-    startDate: new Date('2024-10-01'),
-    stats: {
-      totalEntries: 8,
-      totalPhotos: 24,
-      totalComments: 3,
-      totalReactions: 12,
-      followers: 2
-    }
-  },
-  {
-    id: '3',
-    title: 'Blue Dream Outdoor Summer',
-    strain: { name: 'Blue Dream', type: 'SATIVA' },
-    growType: 'OUTDOOR',
-    medium: 'SOIL',
-    status: 'HARVESTED',
-    startDate: new Date('2024-05-01'),
-    harvestDate: new Date('2024-09-20'),
-    stats: {
-      totalEntries: 24,
-      totalPhotos: 96,
-      totalComments: 18,
-      totalReactions: 54,
-      followers: 12
-    }
-  }
-];
-
-const statusColors = {
+const statusColors: Record<string, string> = {
   PLANNING: 'bg-gray-500',
   GERMINATION: 'bg-yellow-500',
   SEEDLING: 'bg-lime-500',
   VEGETATIVE: 'bg-green-500',
   FLOWERING: 'bg-purple-500',
   DRYING: 'bg-orange-500',
-  CURING: 'bg-brown-500',
+  CURING: 'bg-amber-700',
   HARVESTED: 'bg-blue-500',
-  ABANDONED: 'bg-red-500'
+  ABANDONED: 'bg-red-500',
+  active: 'bg-green-500',
+  completed: 'bg-blue-500',
+  cancelled: 'bg-red-500'
 };
 
-const typeColors = {
+const typeColors: Record<string, string> = {
   SATIVA: 'text-orange-500',
   INDICA: 'text-purple-500',
   HYBRID: 'text-green-500',
-  RUDERALIS: 'text-blue-500'
+  RUDERALIS: 'text-blue-500',
+  feminized: 'text-pink-500',
+  autoflower: 'text-yellow-500',
+  regular: 'text-gray-500',
+  clone: 'text-cyan-500'
 };
 
 export default function JournalPage() {
+  const { data, isLoading, error } = useGrows();
+
+  const grows = data?.grows || [];
+
+  // Calculate stats from actual data
+  const activeGrows = grows.filter((g: any) =>
+    !['HARVESTED', 'ABANDONED', 'completed', 'cancelled'].includes(g.status)
+  ).length;
+  const totalEntries = grows.reduce((sum: number, g: any) => sum + (g.stats?.totalEntries || g.entryCount || 0), 0);
+  const totalFollowers = grows.reduce((sum: number, g: any) => sum + (g.stats?.followers || 0), 0);
+  const totalReactions = grows.reduce((sum: number, g: any) => sum + (g.stats?.totalReactions || 0), 0);
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -107,8 +74,8 @@ export default function JournalPage() {
               <Sprout className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">2</div>
-              <p className="text-xs text-muted-foreground">+1 dieser Monat</p>
+              <div className="text-2xl font-bold">{activeGrows}</div>
+              <p className="text-xs text-muted-foreground">von {grows.length} gesamt</p>
             </CardContent>
           </Card>
 
@@ -118,8 +85,8 @@ export default function JournalPage() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">44</div>
-              <p className="text-xs text-muted-foreground">+5 diese Woche</p>
+              <div className="text-2xl font-bold">{totalEntries}</div>
+              <p className="text-xs text-muted-foreground">Journal-Einträge</p>
             </CardContent>
           </Card>
 
@@ -129,8 +96,8 @@ export default function JournalPage() {
               <Eye className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">19</div>
-              <p className="text-xs text-muted-foreground">+3 diese Woche</p>
+              <div className="text-2xl font-bold">{totalFollowers}</div>
+              <p className="text-xs text-muted-foreground">folgen deinen Grows</p>
             </CardContent>
           </Card>
 
@@ -140,86 +107,114 @@ export default function JournalPage() {
               <Heart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">89</div>
-              <p className="text-xs text-muted-foreground">+12 diese Woche</p>
+              <div className="text-2xl font-bold">{totalReactions}</div>
+              <p className="text-xs text-muted-foreground">auf deine Einträge</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Grows Grid */}
-        <div>
-          <h2 className="mb-4 text-xl font-semibold">Meine Grows</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {mockGrows.map((grow) => (
-              <Card key={grow.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                {/* Grow Header with Image Placeholder */}
-                <div className="relative h-48 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                  <Sprout className="h-20 w-20 text-primary/40" />
-                  <div className={`absolute top-3 right-3 rounded-full px-3 py-1 text-xs font-medium text-white ${statusColors[grow.status as keyof typeof statusColors]}`}>
-                    {grow.status}
-                  </div>
-                </div>
-
-                <CardHeader>
-                  <CardTitle className="line-clamp-1">{grow.title}</CardTitle>
-                  <CardDescription className="flex items-center gap-2">
-                    <span className={`font-medium ${typeColors[grow.strain.type as keyof typeof typeColors]}`}>
-                      {grow.strain.name}
-                    </span>
-                    <span className="text-xs">• {grow.strain.type}</span>
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Art:</span>
-                      <span className="font-medium">{grow.growType}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Medium:</span>
-                      <span className="font-medium">{grow.medium}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Gestartet:</span>
-                      <span className="font-medium">{formatRelativeTime(grow.startDate)}</span>
-                    </div>
-                  </div>
-
-                  {/* Stats */}
-                  <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {grow.stats.totalEntries}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <MessageSquare className="h-3 w-3" />
-                      {grow.stats.totalComments}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Heart className="h-3 w-3" />
-                      {grow.stats.totalReactions}
-                    </div>
-                  </div>
-                </CardContent>
-
-                <CardFooter className="gap-2">
-                  <Button asChild className="flex-1">
-                    <Link href={`/journal/${grow.id}`}>
-                      Öffnen
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="icon">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Lade Grows...</span>
           </div>
-        </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <Card className="border-destructive">
+            <CardContent className="pt-6">
+              <p className="text-destructive">Fehler beim Laden: {(error as Error).message}</p>
+              <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+                Erneut versuchen
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Grows Grid */}
+        {!isLoading && !error && grows.length > 0 && (
+          <div>
+            <h2 className="mb-4 text-xl font-semibold">Meine Grows</h2>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {grows.map((grow: any) => (
+                <Card key={grow.id || grow._id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  {/* Grow Header with Image Placeholder */}
+                  <div className="relative h-48 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                    <Sprout className="h-20 w-20 text-primary/40" />
+                    <div className={`absolute top-3 right-3 rounded-full px-3 py-1 text-xs font-medium text-white ${statusColors[grow.status] || 'bg-gray-500'}`}>
+                      {grow.status}
+                    </div>
+                  </div>
+
+                  <CardHeader>
+                    <CardTitle className="line-clamp-1">
+                      {grow.strainName || grow.strain?.name || 'Unbenannter Grow'}
+                    </CardTitle>
+                    <CardDescription className="flex items-center gap-2">
+                      <span className={`font-medium ${typeColors[grow.type] || typeColors[grow.strain?.type] || 'text-gray-500'}`}>
+                        {grow.breeder || grow.strain?.breeder || 'Unbekannter Breeder'}
+                      </span>
+                      <span className="text-xs">• {grow.type || grow.strain?.type || 'N/A'}</span>
+                    </CardDescription>
+                  </CardHeader>
+
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Art:</span>
+                        <span className="font-medium">{grow.environment || grow.growType || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Medium:</span>
+                        <span className="font-medium">{grow.medium || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Gestartet:</span>
+                        <span className="font-medium">
+                          {grow.startDate ? formatRelativeTime(new Date(grow.startDate)) : 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {grow.stats?.totalEntries || grow.entryCount || 0}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <MessageSquare className="h-3 w-3" />
+                        {grow.stats?.totalComments || 0}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Heart className="h-3 w-3" />
+                        {grow.stats?.totalReactions || 0}
+                      </div>
+                    </div>
+                  </CardContent>
+
+                  <CardFooter className="gap-2">
+                    <Button asChild className="flex-1">
+                      <Link href={`/journal/${grow.id || grow._id}`}>
+                        Öffnen
+                      </Link>
+                    </Button>
+                    <Button variant="outline" size="icon" asChild>
+                      <Link href={`/journal/${grow.id || grow._id}/entry/new`}>
+                        <Plus className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Empty State (if no grows) */}
-        {mockGrows.length === 0 && (
+        {!isLoading && !error && grows.length === 0 && (
           <Card className="flex flex-col items-center justify-center py-16">
             <Sprout className="mb-4 h-16 w-16 text-muted-foreground" />
             <h3 className="mb-2 text-xl font-semibold">Noch keine Grows</h3>

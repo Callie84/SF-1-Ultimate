@@ -21,7 +21,8 @@ const scrapers = {
 const scraperQueue = new Queue('scraper-jobs', {
   connection: {
     host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379')
+    port: parseInt(process.env.REDIS_PORT || '6379'),
+    password: process.env.REDIS_PASSWORD
   }
 });
 
@@ -89,7 +90,8 @@ const worker = new Worker(
   {
     connection: {
       host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379')
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      password: process.env.REDIS_PASSWORD
     },
     concurrency: 1, // Process one scraping job at a time
     limiter: {

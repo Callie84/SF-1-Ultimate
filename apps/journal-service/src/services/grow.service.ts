@@ -179,7 +179,7 @@ export class GrowService {
   }
   
   private async publishEvent(type: string, data: any): Promise<void> {
-    await redis.lpush('queue:events', JSON.stringify({ type, data, timestamp: Date.now() }));
+    await redis.lPush('queue:events', JSON.stringify({ type, data, timestamp: Date.now() }));
   }
 }
 

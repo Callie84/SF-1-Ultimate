@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,26 +10,26 @@ import { toast } from 'sonner';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useCreateGrow } from '@/hooks/use-journal';
 
 const createGrowSchema = z.object({
-  title: z.string().min(3, 'Titel muss mindestens 3 Zeichen lang sein'),
-  description: z.string().optional(),
   strainName: z.string().min(2, 'Strain-Name erforderlich'),
-  strainBreeder: z.string().optional(),
-  strainType: z.enum(['SATIVA', 'INDICA', 'HYBRID', 'RUDERALIS']),
-  growType: z.enum(['INDOOR', 'OUTDOOR', 'GREENHOUSE']),
-  medium: z.enum(['SOIL', 'COCO', 'HYDRO', 'AERO', 'OTHER']),
+  breeder: z.string().optional(),
+  type: z.enum(['feminized', 'autoflower', 'regular', 'clone']),
+  environment: z.enum(['indoor', 'outdoor', 'greenhouse']),
+  medium: z.string().optional(),
   startDate: z.string().optional(),
   isPublic: z.boolean().default(true),
+  tags: z.array(z.string()).optional(),
 });
 
 type CreateGrowFormData = z.infer<typeof createGrowSchema>;
 
 export default function NewGrowPage() {
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const createGrow = useCreateGrow();
+  const isLoading = createGrow.isPending;
 
   const {
     register,
@@ -40,27 +39,30 @@ export default function NewGrowPage() {
     resolver: zodResolver(createGrowSchema),
     defaultValues: {
       isPublic: true,
+      type: 'feminized',
+      environment: 'indoor',
+      medium: 'soil',
       startDate: new Date().toISOString().split('T')[0],
     },
   });
 
   const onSubmit = async (data: CreateGrowFormData) => {
-    setIsLoading(true);
-
     try {
-      // TODO: API Call
-      console.log('Creating grow:', data);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      // Format startDate to ISO datetime
+      const payload = {
+        ...data,
+        startDate: data.startDate
+          ? new Date(data.startDate).toISOString()
+          : new Date().toISOString(),
+      };
+
+      const result = await createGrow.mutateAsync(payload);
       toast.success('Grow erfolgreich erstellt!');
-      router.push('/journal');
+      router.push(`/journal/${result.grow?.id || result.grow?._id || ''}`);
     } catch (error: any) {
       console.error('Create grow error:', error);
-      toast.error('Fehler beim Erstellen des Grows');
-    } finally {
-      setIsLoading(false);
+      const message = error?.response?.data?.error || 'Fehler beim Erstellen des Grows';
+      toast.error(message);
     }
   };
 
@@ -85,34 +87,6 @@ export default function NewGrowPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="title" className="text-sm font-medium">
-                  Titel *
-                </label>
-                <Input
-                  id="title"
-                  placeholder="z.B. Gorilla Glue #4 Indoor 2024"
-                  {...register('title')}
-                  disabled={isLoading}
-                />
-                {errors.title && (
-                  <p className="text-sm text-destructive">{errors.title.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="description" className="text-sm font-medium">
-                  Beschreibung
-                </label>
-                <Textarea
-                  id="description"
-                  placeholder="Beschreibe dein Setup, deine Ziele, etc..."
-                  rows={4}
-                  {...register('description')}
-                  disabled={isLoading}
-                />
-              </div>
-
               <div className="space-y-2">
                 <label htmlFor="startDate" className="text-sm font-medium">
                   Startdatum
@@ -153,32 +127,32 @@ export default function NewGrowPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="strainBreeder" className="text-sm font-medium">
+                  <label htmlFor="breeder" className="text-sm font-medium">
                     Breeder
                   </label>
                   <Input
-                    id="strainBreeder"
+                    id="breeder"
                     placeholder="z.B. GG Strains"
-                    {...register('strainBreeder')}
+                    {...register('breeder')}
                     disabled={isLoading}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="strainType" className="text-sm font-medium">
-                  Strain-Typ *
+                <label htmlFor="type" className="text-sm font-medium">
+                  Samen-Typ *
                 </label>
                 <select
-                  id="strainType"
+                  id="type"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  {...register('strainType')}
+                  {...register('type')}
                   disabled={isLoading}
                 >
-                  <option value="SATIVA">Sativa</option>
-                  <option value="INDICA">Indica</option>
-                  <option value="HYBRID">Hybrid</option>
-                  <option value="RUDERALIS">Ruderalis</option>
+                  <option value="feminized">Feminisiert</option>
+                  <option value="autoflower">Autoflower</option>
+                  <option value="regular">Regular</option>
+                  <option value="clone">Steckling</option>
                 </select>
               </div>
             </CardContent>
@@ -195,24 +169,24 @@ export default function NewGrowPage() {
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <label htmlFor="growType" className="text-sm font-medium">
+                  <label htmlFor="environment" className="text-sm font-medium">
                     Anbau-Art *
                   </label>
                   <select
-                    id="growType"
+                    id="environment"
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    {...register('growType')}
+                    {...register('environment')}
                     disabled={isLoading}
                   >
-                    <option value="INDOOR">Indoor</option>
-                    <option value="OUTDOOR">Outdoor</option>
-                    <option value="GREENHOUSE">Greenhouse</option>
+                    <option value="indoor">Indoor</option>
+                    <option value="outdoor">Outdoor</option>
+                    <option value="greenhouse">Greenhouse</option>
                   </select>
                 </div>
 
                 <div className="space-y-2">
                   <label htmlFor="medium" className="text-sm font-medium">
-                    Medium *
+                    Medium
                   </label>
                   <select
                     id="medium"
@@ -220,11 +194,11 @@ export default function NewGrowPage() {
                     {...register('medium')}
                     disabled={isLoading}
                   >
-                    <option value="SOIL">Soil (Erde)</option>
-                    <option value="COCO">Coco</option>
-                    <option value="HYDRO">Hydro</option>
-                    <option value="AERO">Aeroponics</option>
-                    <option value="OTHER">Andere</option>
+                    <option value="soil">Soil (Erde)</option>
+                    <option value="coco">Coco</option>
+                    <option value="hydro">Hydro</option>
+                    <option value="aero">Aeroponics</option>
+                    <option value="other">Andere</option>
                   </select>
                 </div>
               </div>

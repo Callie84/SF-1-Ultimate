@@ -281,6 +281,53 @@ router.post('/refresh', async (req: Request, res: Response) => {
 });
 
 /**
+ * @route   GET /api/auth/me
+ * @desc    Get current user profile
+ * @access  Private (requires valid token)
+ */
+router.get('/me', async (req: Request, res: Response) => {
+  try {
+    // Extract token from Authorization header
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+    }
+
+    const token = authHeader.replace('Bearer ', '').trim();
+
+    // Verify token
+    const payload = jwtService.verifyAccessToken(token);
+
+    if (!payload) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    // Get user from database
+    const user = await userService.findById(payload.userId);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    return res.status(200).json({
+      id: user.id,
+      email: user.email,
+      username: user.name || user.email.split('@')[0],
+      displayName: user.name,
+      role: user.role,
+      isVerified: user.emailVerified || false,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    });
+
+  } catch (error) {
+    console.error('Get user error:', error);
+    return res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+/**
  * @route   POST /api/auth/logout
  * @desc    Logout (invalidiert Tokens - wenn Token-Blacklist implementiert)
  * @access  Public
@@ -291,8 +338,8 @@ router.post('/logout', async (req: Request, res: Response) => {
     // const token = req.headers.authorization?.replace('Bearer ', '');
     // await redis.setex(`blacklist:${token}`, 900, 'true'); // 15min TTL
 
-    return res.status(200).json({ 
-      message: 'Logout successful' 
+    return res.status(200).json({
+      message: 'Logout successful'
     });
 
   } catch (error) {
