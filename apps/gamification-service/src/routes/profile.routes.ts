@@ -7,6 +7,37 @@ import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 const router = Router();
 
 /**
+ * GET /api/gamification/profile/leaderboard
+ * Global Leaderboard - MUSS VOR /:userId stehen!
+ */
+router.get('/leaderboard',
+  async (req, res, next) => {
+    try {
+      const metric = (req.query.metric as string) || 'xp';
+      const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
+
+      if (!['xp', 'reputation', 'level'].includes(metric)) {
+        return res.status(400).json({ error: 'Invalid metric' });
+      }
+
+      const topUsers = await profileService.getTopUsers({
+        metric: metric as any,
+        limit
+      });
+
+      res.json({
+        metric,
+        users: topUsers,
+        count: topUsers.length
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
  * GET /api/gamification/profile/:userId
  * User-Profil abrufen
  */
@@ -62,37 +93,6 @@ router.get('/:userId/summary',
         badgeCount: profile.badges.length,
         achievementCount: profile.achievements.length,
         globalRank: profile.globalRank
-      });
-      
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-/**
- * GET /api/gamification/leaderboard
- * Global Leaderboard
- */
-router.get('/leaderboard',
-  async (req, res, next) => {
-    try {
-      const metric = (req.query.metric as string) || 'xp';
-      const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
-      
-      if (!['xp', 'reputation', 'level'].includes(metric)) {
-        return res.status(400).json({ error: 'Invalid metric' });
-      }
-      
-      const topUsers = await profileService.getTopUsers({
-        metric: metric as any,
-        limit
-      });
-      
-      res.json({
-        metric,
-        users: topUsers,
-        count: topUsers.length
       });
       
     } catch (error) {

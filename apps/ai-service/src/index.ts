@@ -30,6 +30,17 @@ app.get('/health', async (req, res) => {
 // Routes
 app.use('/api/ai', aiRoutes);
 
+// API Health Check (für externe Checks)
+app.get('/api/ai/health', async (req, res) => {
+  const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+  res.json({
+    status: hasOpenAIKey ? 'healthy' : 'degraded',
+    service: 'ai-service',
+    openai: hasOpenAIKey,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   logger.error('Request error:', err);

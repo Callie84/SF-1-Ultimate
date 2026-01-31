@@ -3,119 +3,40 @@
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, MessageSquare, Users, TrendingUp, Pin, Lock } from 'lucide-react';
+import { Plus, MessageSquare, Users, TrendingUp, Pin, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { formatNumber } from '@/lib/utils';
+import { formatNumber, formatRelativeTime } from '@/lib/utils';
+import { useCategories, useThreads } from '@/hooks/use-community';
 
-// Mock Data - TODO: Replace with API
-const mockCategories = [
-  {
-    id: '1',
-    name: 'Anfänger-Fragen',
-    slug: 'beginners',
-    description: 'Stelle hier deine Fragen als Anfänger. Die Community hilft gerne!',
-    icon: '🌱',
-    color: 'bg-green-500',
-    stats: {
-      threads: 1234,
-      replies: 5678,
-    },
-    latestThread: {
-      title: 'Erste Indoor-Grow Setup Hilfe',
-      author: 'NewGrower123',
-      createdAt: new Date('2024-10-28'),
-    }
-  },
-  {
-    id: '2',
-    name: 'Grow-Techniken',
-    slug: 'techniques',
-    description: 'Diskutiere über verschiedene Anbaumethoden, LST, HST, SCROG und mehr',
-    icon: '🔧',
-    color: 'bg-blue-500',
-    stats: {
-      threads: 892,
-      replies: 4521,
-    },
-    latestThread: {
-      title: 'LST vs HST - Was ist besser?',
-      author: 'ProGrower',
-      createdAt: new Date('2024-10-27'),
-    }
-  },
-  {
-    id: '3',
-    name: 'Strain-Empfehlungen',
-    slug: 'strains',
-    description: 'Empfehlungen, Erfahrungen und Diskussionen über verschiedene Strains',
-    icon: '🌿',
-    color: 'bg-purple-500',
-    stats: {
-      threads: 2341,
-      replies: 9876,
-    },
-    latestThread: {
-      title: 'Bester Strain für Anfänger?',
-      author: 'StrainHunter',
-      createdAt: new Date('2024-10-28'),
-    }
-  },
-  {
-    id: '4',
-    name: 'Problemlösungen',
-    slug: 'problems',
-    description: 'Probleme mit deinen Pflanzen? Hier bekommst du schnelle Hilfe!',
-    icon: '🔬',
-    color: 'bg-red-500',
-    stats: {
-      threads: 1567,
-      replies: 6789,
-    },
-    latestThread: {
-      title: 'Gelbe Blätter - Was tun?',
-      author: 'HelpNeeded',
-      createdAt: new Date('2024-10-28'),
-    }
-  },
-  {
-    id: '5',
-    name: 'Equipment & Setup',
-    slug: 'equipment',
-    description: 'Lampen, Zelte, Lüftung, Töpfe - alles rund um Equipment',
-    icon: '💡',
-    color: 'bg-orange-500',
-    stats: {
-      threads: 987,
-      replies: 3456,
-    },
-    latestThread: {
-      title: 'LED vs HPS - 2024 Update',
-      author: 'TechGuy',
-      createdAt: new Date('2024-10-27'),
-    }
-  },
-  {
-    id: '6',
-    name: 'Harvest & Curing',
-    slug: 'harvest',
-    description: 'Alles über Ernte, Trocknung und Fermentation',
-    icon: '✂️',
-    color: 'bg-amber-500',
-    stats: {
-      threads: 654,
-      replies: 2345,
-    },
-    latestThread: {
-      title: 'Perfekter Ernte-Zeitpunkt?',
-      author: 'Harvester',
-      createdAt: new Date('2024-10-26'),
-    }
-  },
-];
+const categoryColors: Record<string, string> = {
+  beginners: 'bg-green-500',
+  techniques: 'bg-blue-500',
+  strains: 'bg-purple-500',
+  problems: 'bg-red-500',
+  equipment: 'bg-orange-500',
+  harvest: 'bg-amber-500',
+  general: 'bg-gray-500',
+};
+
+const categoryIcons: Record<string, string> = {
+  beginners: '🌱',
+  techniques: '🔧',
+  strains: '🌿',
+  problems: '🔬',
+  equipment: '💡',
+  harvest: '✂️',
+  general: '💬',
+};
 
 export default function CommunityPage() {
-  const totalThreads = mockCategories.reduce((acc, cat) => acc + cat.stats.threads, 0);
-  const totalReplies = mockCategories.reduce((acc, cat) => acc + cat.stats.replies, 0);
+  const { data: categoriesData, isLoading: categoriesLoading } = useCategories();
+  const { data: threadsData, isLoading: threadsLoading } = useThreads(undefined, { isPinned: true, limit: 5 });
+
+  const categories = categoriesData?.categories || [];
+  const pinnedThreads = threadsData?.threads?.filter((t: any) => t.isPinned) || [];
+
+  const totalThreads = categories.reduce((acc: number, cat: any) => acc + (cat.threadCount || 0), 0);
+  const totalPosts = categories.reduce((acc: number, cat: any) => acc + (cat.postCount || 0), 0);
 
   return (
     <DashboardLayout>
@@ -144,7 +65,9 @@ export default function CommunityPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{mockCategories.length}</div>
+              <div className="text-2xl font-bold">
+                {categoriesLoading ? '...' : categories.length}
+              </div>
               <p className="text-xs text-muted-foreground">Aktive Bereiche</p>
             </CardContent>
           </Card>
@@ -155,132 +78,128 @@ export default function CommunityPage() {
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatNumber(totalThreads)}</div>
+              <div className="text-2xl font-bold">
+                {categoriesLoading ? '...' : formatNumber(totalThreads)}
+              </div>
               <p className="text-xs text-muted-foreground">Gesamt-Diskussionen</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Antworten</CardTitle>
+              <CardTitle className="text-sm font-medium">Beiträge</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatNumber(totalReplies)}</div>
+              <div className="text-2xl font-bold">
+                {categoriesLoading ? '...' : formatNumber(totalPosts)}
+              </div>
               <p className="text-xs text-muted-foreground">Community Beiträge</p>
             </CardContent>
           </Card>
         </div>
 
+        {/* Loading State */}
+        {categoriesLoading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Lade Kategorien...</span>
+          </div>
+        )}
+
         {/* Categories */}
-        <div>
-          <h2 className="mb-4 text-xl font-semibold">Kategorien</h2>
-          <div className="space-y-4">
-            {mockCategories.map((category) => (
-              <Link key={category.id} href={`/community/${category.slug}`}>
-                <Card className="transition-colors hover:bg-accent cursor-pointer">
-                  <CardHeader>
-                    <div className="flex items-start gap-4">
-                      {/* Icon */}
-                      <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg ${category.color} text-white text-2xl`}>
-                        {category.icon}
-                      </div>
+        {!categoriesLoading && categories.length > 0 && (
+          <div>
+            <h2 className="mb-4 text-xl font-semibold">Kategorien</h2>
+            <div className="space-y-4">
+              {categories.map((category: any) => (
+                <Link key={category.id || category._id} href={`/community/${category.slug}`}>
+                  <Card className="transition-colors hover:bg-accent cursor-pointer">
+                    <CardHeader>
+                      <div className="flex items-start gap-4">
+                        {/* Icon */}
+                        <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg ${categoryColors[category.slug] || 'bg-gray-500'} text-white text-2xl`}>
+                          {category.icon || categoryIcons[category.slug] || '💬'}
+                        </div>
 
-                      {/* Content */}
+                        {/* Content */}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <CardTitle>{category.name}</CardTitle>
+                          </div>
+                          <CardDescription className="mt-1">
+                            {category.description}
+                          </CardDescription>
+
+                          {/* Stats */}
+                          <div className="mt-3 flex items-center gap-6 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <MessageSquare className="h-4 w-4" />
+                              <span>{formatNumber(category.threadCount || 0)} Threads</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Users className="h-4 w-4" />
+                              <span>{formatNumber(category.postCount || 0)} Beiträge</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty Categories */}
+        {!categoriesLoading && categories.length === 0 && (
+          <Card className="flex flex-col items-center justify-center py-12">
+            <MessageSquare className="mb-4 h-12 w-12 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Keine Kategorien vorhanden</h3>
+            <p className="text-muted-foreground">Kategorien werden vom Admin erstellt.</p>
+          </Card>
+        )}
+
+        {/* Pinned Threads */}
+        {!threadsLoading && pinnedThreads.length > 0 && (
+          <div>
+            <h2 className="mb-4 text-xl font-semibold">Angepinnte Threads</h2>
+            <div className="space-y-2">
+              {pinnedThreads.map((thread: any) => (
+                <Card key={thread.id || thread._id}>
+                  <CardHeader className="py-3">
+                    <div className="flex items-center gap-3">
+                      <Pin className="h-4 w-4 text-primary" />
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <CardTitle>{category.name}</CardTitle>
-                        </div>
-                        <CardDescription className="mt-1">
-                          {category.description}
-                        </CardDescription>
-
-                        {/* Stats */}
-                        <div className="mt-3 flex items-center gap-6 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <MessageSquare className="h-4 w-4" />
-                            <span>{formatNumber(category.stats.threads)} Threads</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Users className="h-4 w-4" />
-                            <span>{formatNumber(category.stats.replies)} Antworten</span>
-                          </div>
+                        <Link
+                          href={`/community/thread/${thread.id || thread._id}`}
+                          className="font-medium hover:underline"
+                        >
+                          📌 {thread.title}
+                        </Link>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          von {thread.user?.username || 'Unbekannt'} •{' '}
+                          {thread.createdAt ? formatRelativeTime(new Date(thread.createdAt)) : ''}
                         </div>
                       </div>
-
-                      {/* Latest Thread */}
-                      <div className="hidden md:block flex-shrink-0 w-64 text-sm">
-                        <div className="text-muted-foreground text-xs mb-1">Neuester Thread:</div>
-                        <div className="font-medium line-clamp-1">{category.latestThread.title}</div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          von {category.latestThread.author}
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <TrendingUp className="h-4 w-4" />
+                          <span>{thread.viewCount || 0}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <MessageSquare className="h-4 w-4" />
+                          <span>{thread.replyCount || 0}</span>
                         </div>
                       </div>
                     </div>
                   </CardHeader>
                 </Card>
-              </Link>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-
-        {/* Pinned Threads */}
-        <div>
-          <h2 className="mb-4 text-xl font-semibold">Angepinnte Threads</h2>
-          <div className="space-y-2">
-            <Card>
-              <CardHeader className="py-3">
-                <div className="flex items-center gap-3">
-                  <Pin className="h-4 w-4 text-primary" />
-                  <div className="flex-1">
-                    <Link href="/community/thread/1" className="font-medium hover:underline">
-                      📌 Forum-Regeln - Bitte lesen!
-                    </Link>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      von Admin • vor 30 Tagen
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <TrendingUp className="h-4 w-4" />
-                      <span>234</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <MessageSquare className="h-4 w-4" />
-                      <span>12</span>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-
-            <Card>
-              <CardHeader className="py-3">
-                <div className="flex items-center gap-3">
-                  <Pin className="h-4 w-4 text-primary" />
-                  <div className="flex-1">
-                    <Link href="/community/thread/2" className="font-medium hover:underline">
-                      📌 Willkommen in der SF-1 Community!
-                    </Link>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      von Admin • vor 45 Tagen
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <TrendingUp className="h-4 w-4" />
-                      <span>567</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <MessageSquare className="h-4 w-4" />
-                      <span>89</span>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-            </Card>
-          </div>
-        </div>
+        )}
       </div>
     </DashboardLayout>
   );

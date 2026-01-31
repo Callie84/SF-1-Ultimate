@@ -56,14 +56,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (credentials: LoginRequest) => {
     try {
       const data = await apiClient.post('/auth/login', credentials);
-      
-      // Store tokens
-      Cookies.set('sf1_access_token', data.tokens.accessToken, { expires: 7 });
-      Cookies.set('sf1_refresh_token', data.tokens.refreshToken, { expires: 30 });
-      
+
+      // Store tokens (handle both nested and flat response formats)
+      const accessToken = data.tokens?.accessToken || data.accessToken;
+      const refreshToken = data.tokens?.refreshToken || data.refreshToken;
+
+      Cookies.set('sf1_access_token', accessToken, { expires: 7 });
+      Cookies.set('sf1_refresh_token', refreshToken, { expires: 30 });
+
       // Update user state
       setUser(data.user);
-      
+
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (error) {
@@ -74,14 +77,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (data: RegisterRequest) => {
     try {
       const authData = await apiClient.post('/auth/register', data);
-      
-      // Store tokens
-      Cookies.set('sf1_access_token', authData.tokens.accessToken, { expires: 7 });
-      Cookies.set('sf1_refresh_token', authData.tokens.refreshToken, { expires: 30 });
-      
+
+      // Store tokens (handle both nested and flat response formats)
+      const accessToken = authData.tokens?.accessToken || authData.accessToken;
+      const refreshToken = authData.tokens?.refreshToken || authData.refreshToken;
+
+      Cookies.set('sf1_access_token', accessToken, { expires: 7 });
+      Cookies.set('sf1_refresh_token', refreshToken, { expires: 30 });
+
       // Update user state
       setUser(authData.user);
-      
+
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (error) {

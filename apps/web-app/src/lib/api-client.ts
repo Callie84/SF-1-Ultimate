@@ -1,11 +1,20 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, InternalAxiosRequestConfig, AxiosInstance, AxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 
-// API Base URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
+// API Base URL - use empty string for same-origin requests
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+
+// Custom API client type that returns data directly
+interface ApiClient {
+  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>;
+  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>;
+  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>;
+  patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>;
+  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>;
+}
 
 // Create axios instance
-export const api = axios.create({
+const axiosInstance = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -14,14 +23,14 @@ export const api = axios.create({
 });
 
 // Request interceptor - Add auth token
-api.interceptors.request.use(
+axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = Cookies.get('sf1_access_token');
-    
+
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     return config;
   },
   (error: AxiosError) => {
@@ -30,7 +39,7 @@ api.interceptors.request.use(
 );
 
 // Response interceptor - Handle auth errors
-api.interceptors.response.use(
+axiosInstance.interceptors.response.use(
   (response) => response.data, // ✅ Return only data, not full response
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
@@ -47,7 +56,7 @@ api.interceptors.response.use(
         }
 
         // Call refresh endpoint
-        const { data } = await axios.post(`${API_URL}/api/auth/refresh`, {
+        const { data } = await axios.post(`${API_URL}/auth/refresh`, {
           refreshToken,
         });
 
@@ -60,7 +69,7 @@ api.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
         }
         
-        return api(originalRequest);
+        return axiosInstance(originalRequest);
       } catch (refreshError) {
         // Refresh failed - logout user
         Cookies.remove('sf1_access_token');
@@ -74,7 +83,8 @@ api.interceptors.response.use(
   }
 );
 
-// ✅ FIX: Export both 'api' and 'apiClient' for compatibility
-export { api as apiClient };
+// Cast to ApiClient for proper typing (response interceptor returns data directly)
+export const api = axiosInstance as unknown as ApiClient;
+export const apiClient = api;
 
 export default api;

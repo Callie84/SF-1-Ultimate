@@ -47,7 +47,7 @@ export class FeedService {
     
     const result = { grows, total };
     
-    await redis.setex(cacheKey, 120, JSON.stringify(result));
+    await redis.setEx(cacheKey, 120, JSON.stringify(result));
     
     return result;
   }

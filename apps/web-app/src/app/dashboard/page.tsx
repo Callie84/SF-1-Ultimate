@@ -3,26 +3,62 @@
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  BookOpen, 
-  Plus, 
-  TrendingUp, 
-  Users, 
+import {
+  Plus,
+  TrendingUp,
+  Users,
   Award,
   Sprout,
   Calendar,
-  MessageSquare
+  MessageSquare,
+  Loader2
 } from 'lucide-react';
+import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
+import { useGrows } from '@/hooks/use-journal';
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { data, isLoading } = useGrows();
+
+  const grows = data?.grows || [];
+
+  // Calculate real stats
+  const activeGrows = grows.filter((g: any) =>
+    !['HARVESTED', 'ABANDONED', 'completed', 'cancelled'].includes(g.status)
+  ).length;
+  const totalEntries = grows.reduce((sum: number, g: any) =>
+    sum + (g.stats?.totalEntries || g.entryCount || 0), 0
+  );
+  const totalComments = grows.reduce((sum: number, g: any) =>
+    sum + (g.stats?.totalComments || 0), 0
+  );
 
   const stats = [
-    { name: 'Meine Grows', value: '3', icon: Sprout, change: '+1 diese Woche' },
-    { name: 'Journal Einträge', value: '24', icon: Calendar, change: '+5 diese Woche' },
-    { name: 'Community Beiträge', value: '12', icon: MessageSquare, change: '+2 heute' },
-    { name: 'Erreichte Level', value: '5', icon: Award, change: '450 XP bis Level 6' },
+    {
+      name: 'Meine Grows',
+      value: isLoading ? '...' : grows.length.toString(),
+      icon: Sprout,
+      change: `${activeGrows} aktiv`
+    },
+    {
+      name: 'Journal Einträge',
+      value: isLoading ? '...' : totalEntries.toString(),
+      icon: Calendar,
+      change: 'Gesamt'
+    },
+    {
+      name: 'Kommentare',
+      value: isLoading ? '...' : totalComments.toString(),
+      icon: MessageSquare,
+      change: 'Gesamt'
+    },
+    {
+      name: 'Level',
+      value: (user as any)?.level?.toString() || '1',
+      icon: Award,
+      change: `${(user as any)?.xp || 0} XP`
+    },
   ];
 
   const quickActions = [
@@ -55,7 +91,7 @@ export default function DashboardPage() {
         {/* Welcome Header */}
         <div>
           <h1 className="text-3xl font-bold">
-            Willkommen zurück, {user?.displayName || user?.username}! 👋
+            Willkommen zurück{user?.displayName || user?.username ? `, ${user?.displayName || user?.username}` : ''}!
           </h1>
           <p className="text-muted-foreground">
             Hier ist eine Übersicht deiner Growing-Aktivitäten
@@ -88,15 +124,17 @@ export default function DashboardPage() {
             {quickActions.map((action) => {
               const Icon = action.icon;
               return (
-                <Card key={action.title} className="cursor-pointer transition-colors hover:bg-accent">
-                  <CardHeader>
-                    <div className={`mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg ${action.color} text-white`}>
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <CardTitle>{action.title}</CardTitle>
-                    <CardDescription>{action.description}</CardDescription>
-                  </CardHeader>
-                </Card>
+                <Link key={action.title} href={action.href}>
+                  <Card className="cursor-pointer transition-colors hover:bg-accent h-full">
+                    <CardHeader>
+                      <div className={`mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg ${action.color} text-white`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <CardTitle>{action.title}</CardTitle>
+                      <CardDescription>{action.description}</CardDescription>
+                    </CardHeader>
+                  </Card>
+                </Link>
               );
             })}
           </div>
@@ -111,75 +149,100 @@ export default function DashboardPage() {
               <CardDescription>Deine aktiven Grow-Projekte</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded bg-primary/10">
-                      <Sprout className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <div className="font-medium">Gorilla Glue #4</div>
-                      <div className="text-sm text-muted-foreground">Tag 45 • Flowering</div>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="sm">Öffnen</Button>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
+              ) : (
+                <div className="space-y-4">
+                  {grows.slice(0, 3).map((grow: any) => (
+                    <div key={grow.id || grow._id} className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded bg-primary/10">
+                          <Sprout className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <div className="font-medium">
+                            {grow.strainName || grow.strain?.name || 'Unbenannt'}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {grow.environment || grow.growType || 'N/A'} • {grow.status}
+                          </div>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/journal/${grow.id || grow._id}`}>
+                          Öffnen
+                        </Link>
+                      </Button>
+                    </div>
+                  ))}
 
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded bg-primary/10">
-                      <Sprout className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <div className="font-medium">Northern Lights</div>
-                      <div className="text-sm text-muted-foreground">Tag 28 • Vegetative</div>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="sm">Öffnen</Button>
+                  {grows.length === 0 && (
+                    <p className="text-center text-muted-foreground py-4">
+                      Noch keine Grows vorhanden
+                    </p>
+                  )}
+
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link href="/journal/new">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Neuen Grow starten
+                    </Link>
+                  </Button>
                 </div>
-
-                <Button variant="outline" className="w-full">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Neuen Grow starten
-                </Button>
-              </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Recent Posts */}
+          {/* Tools & Resources */}
           <Card>
             <CardHeader>
-              <CardTitle>Community Feed</CardTitle>
-              <CardDescription>Neueste Beiträge aus der Community</CardDescription>
+              <CardTitle>Tools & Rechner</CardTitle>
+              <CardDescription>Nützliche Werkzeuge für deinen Grow</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex gap-3 rounded-lg border p-3">
+                <Link href="/tools/vpd" className="flex gap-3 rounded-lg border p-3 hover:bg-accent transition-colors">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-white text-sm font-medium">
+                    VP
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">VPD Rechner</div>
+                    <div className="text-sm text-muted-foreground">
+                      Vapor Pressure Deficit berechnen
+                    </div>
+                  </div>
+                </Link>
+
+                <Link href="/tools/dli" className="flex gap-3 rounded-lg border p-3 hover:bg-accent transition-colors">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-white text-sm font-medium">
+                    DL
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">DLI Rechner</div>
+                    <div className="text-sm text-muted-foreground">
+                      Daily Light Integral berechnen
+                    </div>
+                  </div>
+                </Link>
+
+                <Link href="/tools/ec" className="flex gap-3 rounded-lg border p-3 hover:bg-accent transition-colors">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white text-sm font-medium">
-                    JD
+                    EC
                   </div>
                   <div className="flex-1">
-                    <div className="font-medium">Erste Ernte nach 90 Tagen!</div>
+                    <div className="font-medium">EC/PPM Umrechner</div>
                     <div className="text-sm text-muted-foreground">
-                      John Doe • vor 2 Stunden
+                      Nährstoffwerte umrechnen
                     </div>
                   </div>
-                </div>
+                </Link>
 
-                <div className="flex gap-3 rounded-lg border p-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500 text-white text-sm font-medium">
-                    MS
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium">VPD richtig einstellen?</div>
-                    <div className="text-sm text-muted-foreground">
-                      Mike Smith • vor 5 Stunden
-                    </div>
-                  </div>
-                </div>
-
-                <Button variant="outline" className="w-full">
-                  Alle Beiträge ansehen
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/tools">
+                    Alle Tools ansehen
+                  </Link>
                 </Button>
               </div>
             </CardContent>

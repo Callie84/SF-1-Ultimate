@@ -1,0 +1,419 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # INFRASTRUCTURE
+  # ==========================================
+  
+  postgres:
+    image: postgres:15-alpine
+    container_name: sf1-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sf1_auth
+      POSTGRES_USER: sf1_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - sf1-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sf1_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:7
+    container_name: sf1-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: sf1_admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - sf1-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: sf1-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - sf1-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.5
+    container_name: sf1-meilisearch
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY}
+      MEILI_ENV: production
+    volumes:
+      - meilisearch_data:/meili_data
+    ports:
+      - "7700:7700"
+    networks:
+      - sf1-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # API GATEWAY
+  # ==========================================
+
+  api-gateway:
+    image: traefik:v2.10
+    container_name: sf1-api-gateway
+    restart: unless-stopped
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=INFO"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - sf1-network
+    depends_on:
+      - auth-service
+      - price-service
+      - journal-service
+
+  # ==========================================
+  # MICROSERVICES
+  # ==========================================
+
+  auth-service:
+    image: node:20-alpine
+    container_name: sf1-auth-service
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://sf1_user:${POSTGRES_PASSWORD}@postgres:5432/sf1_auth
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      FRONTEND_URL: http://152.53.252.68:3000
+    volumes:
+      - ./apps/auth-service:/app
+    ports:
+      - "3001:3001"
+    networks:
+      - sf1-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/api/auth`)"
+      - "traefik.http.services.auth.loadbalancer.server.port=3001"
+
+  price-service:
+    image: node:20-alpine
+    container_name: sf1-price-service
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_prices?authSource=admin
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      PLAYWRIGHT_HEADLESS: "true"
+    volumes:
+      - ./apps/price-service:/app
+    ports:
+      - "3002:3002"
+    networks:
+      - sf1-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.price.rule=PathPrefix(`/api/prices`)"
+      - "traefik.http.services.price.loadbalancer.server.port=3002"
+
+  journal-service:
+    image: node:20-alpine
+    container_name: sf1-journal-service
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_journals?authSource=admin
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: eu-central-1
+      S3_BUCKET: sf1-journal
+    volumes:
+      - ./apps/journal-service:/app
+    ports:
+      - "3003:3003"
+    networks:
+      - sf1-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.journal.rule=PathPrefix(`/api/journals`)"
+      - "traefik.http.services.journal.loadbalancer.server.port=3003"
+
+  tools-service:
+    image: node:20-alpine
+    container_name: sf1-tools-service
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      NODE_ENV: production
+      PORT: 3004
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    volumes:
+      - ./apps/tools-service:/app
+    ports:
+      - "3004:3004"
+    networks:
+      - sf1-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tools.rule=PathPrefix(`/api/tools`)"
+      - "traefik.http.services.tools.loadbalancer.server.port=3004"
+
+  community-service:
+    image: node:20-alpine
+    container_name: sf1-community-service
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      NODE_ENV: production
+      PORT: 3005
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_community?authSource=admin
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    volumes:
+      - ./apps/community-service:/app
+    ports:
+      - "3005:3005"
+    networks:
+      - sf1-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.community.rule=PathPrefix(`/api/community`)"
+      - "traefik.http.services.community.loadbalancer.server.port=3005"
+
+  notification-service:
+    image: node:20-alpine
+    container_name: sf1-notification-service
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      NODE_ENV: production
+      PORT: 3006
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_notifications?authSource=admin
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: "SF-1 <noreply@seedfinderpro.de>"
+    volumes:
+      - ./apps/notification-service:/app
+    ports:
+      - "3006:3006"
+    networks:
+      - sf1-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.notification.rule=PathPrefix(`/api/notifications`)"
+      - "traefik.http.services.notification.loadbalancer.server.port=3006"
+
+  search-service:
+    image: node:20-alpine
+    container_name: sf1-search-service
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      NODE_ENV: production
+      PORT: 3007
+      MEILISEARCH_HOST: http://meilisearch:7700
+      MEILISEARCH_KEY: ${MEILISEARCH_MASTER_KEY}
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_search?authSource=admin
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    volumes:
+      - ./apps/search-service:/app
+    ports:
+      - "3007:3007"
+    networks:
+      - sf1-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.search.rule=PathPrefix(`/api/search`)"
+      - "traefik.http.services.search.loadbalancer.server.port=3007"
+
+  media-service:
+    image: node:20-alpine
+    container_name: sf1-media-service
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      NODE_ENV: production
+      PORT: 3008
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_media?authSource=admin
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: eu-central-1
+      S3_BUCKET: sf1-media
+    volumes:
+      - ./apps/media-service:/app
+    ports:
+      - "3008:3008"
+    networks:
+      - sf1-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.media.rule=PathPrefix(`/api/media`)"
+      - "traefik.http.services.media.loadbalancer.server.port=3008"
+
+  gamification-service:
+    image: node:20-alpine
+    container_name: sf1-gamification-service
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      NODE_ENV: production
+      PORT: 3009
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_gamification?authSource=admin
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    volumes:
+      - ./apps/gamification-service:/app
+    ports:
+      - "3009:3009"
+    networks:
+      - sf1-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gamification.rule=PathPrefix(`/api/gamification`)"
+      - "traefik.http.services.gamification.loadbalancer.server.port=3009"
+
+  ai-service:
+    image: node:20-alpine
+    container_name: sf1-ai-service
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      NODE_ENV: production
+      PORT: 3010
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    volumes:
+      - ./apps/ai-service:/app
+    ports:
+      - "3010:3010"
+    networks:
+      - sf1-network
+    depends_on:
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ai.rule=PathPrefix(`/api/ai`)"
+      - "traefik.http.services.ai.loadbalancer.server.port=3010"
+
+# ==========================================
+# NETWORKS
+# ==========================================
+
+networks:
+  sf1-network:
+    driver: bridge
+
+# ==========================================
+# VOLUMES
+# ==========================================
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:
+  meilisearch_data:

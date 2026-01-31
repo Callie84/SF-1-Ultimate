@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { 
+import { useAuth } from '@/components/providers/auth-provider';
+import {
   LayoutDashboard,
   BookOpen,
   Users,
@@ -13,7 +14,8 @@ import {
   Calculator,
   Settings,
   Award,
-  Bell
+  Bell,
+  Shield
 } from 'lucide-react';
 
 const navigation = [
@@ -29,6 +31,7 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user } = useAuth();
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-card">
@@ -66,6 +69,24 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Admin Section */}
+      {(user?.role === 'ADMIN' || user?.role === 'MODERATOR') && (
+        <div className="border-t p-4">
+          <Link
+            href="/admin"
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              pathname?.startsWith('/admin')
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            )}
+          >
+            <Shield className="h-5 w-5" />
+            Admin
+          </Link>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="border-t p-4">

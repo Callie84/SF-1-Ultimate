@@ -29,7 +29,7 @@ export class EventProcessorService {
     while (true) {
       try {
         // BRPOP: Blockierend bis Item verfügbar
-        const item = await redis.brpop('queue:gamification', 5);
+        const item = await redis.brPop('queue:gamification', 5);
         
         if (!item) continue;
         

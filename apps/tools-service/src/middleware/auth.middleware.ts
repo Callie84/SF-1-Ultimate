@@ -28,6 +28,7 @@ export interface AuthRequest extends Request {
     id: string;
     email: string;
     role: string;
+    premium: boolean;
   };
 }
 
@@ -81,6 +82,8 @@ export const authMiddleware = (trustTraefik: boolean = true) => {
           id: userId,
           email: userEmail || '',
           role: userRole || 'user'
+          ,
+          premium: false || false
         };
 
         // Log für Debugging (nur in Development)
@@ -155,7 +158,8 @@ export const authMiddleware = (trustTraefik: boolean = true) => {
       req.user = {
         id: payload.userId,
         email: payload.email,
-        role: payload.role || 'user'
+        role: payload.role || 'user',
+        premium: false,
       };
 
       // Log für Debugging (nur in Development)
