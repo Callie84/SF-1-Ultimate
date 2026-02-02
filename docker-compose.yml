@@ -350,6 +350,7 @@ services:
       NODE_ENV: production
       MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_ai?authSource=admin&directConnection=true
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
     networks:
       - sf1-network
