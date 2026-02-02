@@ -13,9 +13,8 @@ const nextConfig = {
       },
     ],
   },
-  env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost',
-  },
+  // NEXT_PUBLIC_* Variablen werden automatisch von Next.js exponiert
+  // Leerer String = relative URLs (für Production)
 };
 
 module.exports = nextConfig;

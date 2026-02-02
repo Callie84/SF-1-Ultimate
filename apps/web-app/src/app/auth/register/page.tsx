@@ -69,7 +69,8 @@ export default function RegisterPage() {
   };
 
   const handleOAuthRegister = (provider: 'google' | 'discord') => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
+    // Leerer String = relative URL (aktueller Origin)
+    const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
     window.location.href = `${API_URL}/api/auth/${provider}`;
   };
 
