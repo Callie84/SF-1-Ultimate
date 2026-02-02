@@ -1,7 +1,7 @@
 // /apps/community-service/src/routes/categories.routes.ts
 import { Router } from 'express';
 import { Category } from '../models/Category.model';
-import { optionalAuthMiddleware, moderatorMiddleware } from '../middleware/auth';
+import { authMiddleware, optionalAuthMiddleware, moderatorMiddleware } from '../middleware/auth';
 
 const router = Router();
 
@@ -53,6 +53,7 @@ router.get('/:slug',
  * Kategorie erstellen (Mod-Only)
  */
 router.post('/',
+  authMiddleware,
   moderatorMiddleware,
   async (req, res, next) => {
     try {
