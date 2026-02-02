@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = async () => {
     try {
-      const data = await apiClient.get('/auth/me');
+      const data = await apiClient.get('/api/auth/me');
       setUser(data);
     } catch (error) {
       throw error;
@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (credentials: LoginRequest) => {
     try {
-      const data = await apiClient.post('/auth/login', credentials);
+      const data = await apiClient.post('/api/auth/login', credentials);
 
       // Store tokens (handle both nested and flat response formats)
       const accessToken = data.tokens?.accessToken || data.accessToken;
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (data: RegisterRequest) => {
     try {
-      const authData = await apiClient.post('/auth/register', data);
+      const authData = await apiClient.post('/api/auth/register', data);
 
       // Store tokens (handle both nested and flat response formats)
       const accessToken = authData.tokens?.accessToken || authData.accessToken;
@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await apiClient.post('/auth/logout');
+      await apiClient.post('/api/auth/logout');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
