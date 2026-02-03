@@ -7,6 +7,7 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { Button } from '@/components/ui/button';
 import { SearchBar } from '@/components/search/search-bar';
 import { NotificationsDropdown } from '@/components/layout/notifications-dropdown';
+import { MessageDropdown } from '@/components/messages/message-dropdown';
 import { getInitials } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -44,6 +45,9 @@ export function Header() {
           <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           <span className="sr-only">Toggle theme</span>
         </Button>
+
+        {/* Messages */}
+        <MessageDropdown />
 
         {/* Notifications */}
         <NotificationsDropdown />

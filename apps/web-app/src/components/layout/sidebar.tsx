@@ -15,13 +15,15 @@ import {
   Settings,
   Award,
   Bell,
-  Shield
+  Shield,
+  MessageSquare
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Mein Journal', href: '/journal', icon: BookOpen },
   { name: 'Community', href: '/community', icon: Users },
+  { name: 'Nachrichten', href: '/messages', icon: MessageSquare },
   { name: 'Preisvergleich', href: '/prices', icon: TrendingDown },
   { name: 'Suche', href: '/search', icon: Search },
   { name: 'AI Assistent', href: '/ai', icon: Brain },

@@ -1,6 +1,6 @@
 # SF-1 Ultimate - Claude Code Kontext
 
-**Letzte Aktualisierung:** 2026-02-03 (Session 5 - Feature 1)
+**Letzte Aktualisierung:** 2026-02-03 (Session 5 - Feature 2)
 **Projekt:** seedfinderpro.de - Cannabis Growing Community Platform
 
 ---
@@ -89,6 +89,46 @@ Eine Fullstack Cannabis-Community-Plattform mit:
 - Typen: comment, reply, reaction, follow, mention, price_alert, milestone, badge, system
 - Alle als gelesen markieren
 - Vollständige Benachrichtigungs-Seite unter `/notifications`
+
+---
+
+### Session 5 - Feature 2: Private Nachrichten (2026-02-03)
+
+**Backend (community-service):**
+- `apps/community-service/src/models/Conversation.model.ts` - Conversation Model (2 Participants, unreadCounts)
+- `apps/community-service/src/models/Message.model.ts` - Message Model (sender, receiver, content)
+- `apps/community-service/src/services/message.service.ts` - Business Logic
+- `apps/community-service/src/routes/messages.routes.ts` - REST API Endpoints
+- `apps/community-service/src/index.ts` - Route registriert
+
+**API Endpoints:**
+- `GET /api/community/messages/conversations` - Alle Konversationen
+- `GET /api/community/messages/unread-count` - Ungelesene Nachrichten Anzahl
+- `POST /api/community/messages/send` - Nachricht senden
+- `GET /api/community/messages/conversation/:id` - Nachrichten einer Konversation
+- `POST /api/community/messages/conversation/:id/read` - Als gelesen markieren
+- `DELETE /api/community/messages/conversation/:id` - Konversation löschen (soft)
+- `DELETE /api/community/messages/:id` - Nachricht löschen (soft)
+- `POST /api/community/messages/start/:userId` - Konversation starten
+
+**Frontend:**
+- `apps/web-app/src/hooks/use-messages.ts` - React Query Hooks
+- `apps/web-app/src/app/messages/page.tsx` - Nachrichten-Seite (Chat-Interface)
+- `apps/web-app/src/components/messages/message-dropdown.tsx` - Header Dropdown
+- `apps/web-app/src/components/ui/avatar.tsx` - Avatar UI Komponente
+- `apps/web-app/src/components/layout/header.tsx` - MessageDropdown hinzugefügt
+- `apps/web-app/src/components/layout/sidebar.tsx` - "Nachrichten" Link hinzugefügt
+
+**Features:**
+- Chat-Interface mit Konversations-Liste und Nachrichten-Ansicht
+- Unread-Counter Badge im Header
+- Nachrichten senden und empfangen
+- Als gelesen markieren
+- Konversationen löschen (soft delete per User)
+- Responsive Design (Mobile: Liste/Chat separat)
+- Suche in Konversationen
+
+**URL:** https://seedfinderpro.de/messages
 
 ---
 
@@ -256,11 +296,15 @@ function transformApiResponse(apiResponse) {
 ## Vorgeschlagene Erweiterungen (noch nicht implementiert)
 
 1. ~~**Analytics Dashboard**~~ ✅ Implementiert (Session 5)
-2. **Seedbank-Verwaltung** - Preise, Scraper-Status
-3. **AI-Service Monitoring** - Token-Verbrauch, Kosten
-4. **System-Logs** - Fehler, API-Calls, Security
-5. **Content-Management** - Banner, FAQ, Guides
-6. **Backup & Wartung** - DB-Backup, Cache, Reindex
+2. ~~**Benachrichtigungen**~~ ✅ Implementiert (Session 5 - Feature 1)
+3. ~~**Private Nachrichten**~~ ✅ Implementiert (Session 5 - Feature 2)
+4. **Follow-System** - Anderen Growern folgen
+5. **Strain-Vergleich** - Strains gegenüberstellen
+6. **Grow-Kalender/Erinnerungen** - Termine und Tasks
+7. **Ernte-Statistiken** - Detaillierte Auswertungen
+8. **Seedbank-Verwaltung** - Preise, Scraper-Status
+9. **AI-Service Monitoring** - Token-Verbrauch, Kosten
+10. **System-Logs** - Fehler, API-Calls, Security
 
 ---
 
@@ -282,6 +326,7 @@ function transformApiResponse(apiResponse) {
 │   │       │   ├── icon.svg                # Favicon (Session 4)
 │   │       │   ├── admin/analytics/page.tsx # Analytics Dashboard (NEU Session 5)
 │   │       │   ├── ai/page.tsx             # AI Tools Index (Session 4)
+│   │       │   ├── messages/page.tsx       # Private Messages (NEU Session 5)
 │   │       │   └── search/page.tsx         # Suche (gefixt Session 4)
 │   │       ├── components/analytics/       # Analytics-Komponenten (NEU Session 5)
 │   │       │   ├── stat-card.tsx
@@ -289,13 +334,24 @@ function transformApiResponse(apiResponse) {
 │   │       │   ├── top-content-table.tsx
 │   │       │   ├── popular-searches.tsx
 │   │       │   └── user-distribution.tsx
-│   │       └── hooks/use-analytics.ts      # Analytics React Query Hooks (NEU Session 5)
+│   │       ├── hooks/
+│   │       │   ├── use-analytics.ts        # Analytics React Query Hooks (NEU Session 5)
+│   │       │   └── use-messages.ts         # Messages React Query Hooks (NEU Session 5)
+│   │       └── components/messages/
+│   │           └── message-dropdown.tsx    # Header Dropdown (NEU Session 5)
 │   ├── auth-service/
 │   │   └── src/routes/analytics.routes.ts  # User-Analytics (NEU Session 5)
 │   ├── community-service/
-│   │   └── src/routes/
-│   │       ├── threads.routes.ts           # inkl. /replies Route (Session 4)
-│   │       └── analytics.routes.ts         # Community-Analytics (NEU Session 5)
+│   │   └── src/
+│   │       ├── models/
+│   │       │   ├── Conversation.model.ts   # Private Messages (NEU Session 5)
+│   │       │   └── Message.model.ts        # Private Messages (NEU Session 5)
+│   │       ├── services/
+│   │       │   └── message.service.ts      # Private Messages (NEU Session 5)
+│   │       └── routes/
+│   │           ├── threads.routes.ts       # inkl. /replies Route (Session 4)
+│   │           ├── messages.routes.ts      # Private Messages API (NEU Session 5)
+│   │           └── analytics.routes.ts     # Community-Analytics (NEU Session 5)
 │   ├── journal-service/
 │   │   └── src/routes/analytics.routes.ts  # Grow-Analytics (NEU Session 5)
 │   ├── gamification-service/
