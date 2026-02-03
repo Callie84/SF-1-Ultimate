@@ -10,6 +10,8 @@ import votesRoutes from './routes/votes.routes';
 import moderationRoutes from './routes/moderation.routes';
 import categoriesRoutes from './routes/categories.routes';
 import strainsRoutes from './routes/strains.routes';
+import analyticsRoutes from './routes/analytics.routes';
+import messagesRoutes from './routes/messages.routes';
 import { errorHandler } from './utils/errors';
 import { logger } from './utils/logger';
 
@@ -46,6 +48,8 @@ app.use('/api/community/votes', votesRoutes);
 app.use('/api/community/moderation', moderationRoutes);
 app.use('/api/community/categories', categoriesRoutes);
 app.use('/api/community/strains', strainsRoutes);
+app.use('/api/community/analytics', analyticsRoutes);
+app.use('/api/community/messages', messagesRoutes);
 
 // Error Handler
 app.use(errorHandler);
