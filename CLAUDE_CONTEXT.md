@@ -1,6 +1,6 @@
 # SF-1 Ultimate - Claude Code Kontext
 
-**Letzte Aktualisierung:** 2026-02-03 (Session 5)
+**Letzte Aktualisierung:** 2026-02-03 (Session 5 - Feature 1)
 **Projekt:** seedfinderpro.de - Cannabis Growing Community Platform
 
 ---
@@ -70,6 +70,27 @@ Eine Fullstack Cannabis-Community-Plattform mit:
 9. **Admin-Panel erweitert**:
    - Neue Strains-Verwaltung (`/admin/strains`)
    - UI-Komponenten: Badge, Table, Select, Dialog
+
+### Session 5 - Feature 1: Benachrichtigungen (2026-02-03)
+
+**Backend:**
+- `apps/notification-service/src/middleware/auth.ts` - JWT-Support hinzugefügt
+- `apps/notification-service/package.json` - jsonwebtoken Dependency
+- `docker-compose.yml` - JWT_SECRET für notification-service
+
+**Frontend:**
+- `apps/web-app/src/hooks/use-notifications.ts` - React Query Hooks
+- `apps/web-app/src/app/notifications/page.tsx` - Benachrichtigungs-Seite
+- `apps/web-app/src/components/layout/notifications-dropdown.tsx` - API-Pfade korrigiert
+
+**Features:**
+- Benachrichtigungs-Dropdown in Navigation (Bell-Icon)
+- Unread-Counter Badge
+- Typen: comment, reply, reaction, follow, mention, price_alert, milestone, badge, system
+- Alle als gelesen markieren
+- Vollständige Benachrichtigungs-Seite unter `/notifications`
+
+---
 
 ### Session 5 (2026-02-03) - Analytics Dashboard
 
