@@ -26,6 +26,15 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Health endpoint for Traefik routing
+app.get('/api/gamification/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: 'gamification-service',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Routes
 app.use('/api/gamification/profile', profileRoutes);
 

@@ -22,6 +22,7 @@ import {
   Loader2,
   Settings,
   Flag,
+  Leaf,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -338,6 +339,12 @@ export default function AdminDashboardPage() {
                 <Link href="/admin/categories">
                   <MessageSquare className="mr-2 h-4 w-4" />
                   Kategorien
+                </Link>
+              </Button>
+              <Button variant="outline" className="justify-start" asChild>
+                <Link href="/admin/strains">
+                  <Leaf className="mr-2 h-4 w-4" />
+                  Strains
                 </Link>
               </Button>
               <Button variant="outline" className="justify-start" asChild>

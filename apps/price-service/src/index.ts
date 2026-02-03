@@ -44,6 +44,19 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Health endpoint for Traefik routing
+app.get('/api/prices/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: 'price-service',
+    timestamp: new Date().toISOString(),
+    websocket: {
+      connections: websocketService.getConnectionsCount(),
+      subscribedSeeds: websocketService.getSubscribedSeedsCount()
+    }
+  });
+});
+
 // Queue stats endpoint
 app.get('/queue/stats', async (req, res) => {
   try {

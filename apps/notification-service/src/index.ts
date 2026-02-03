@@ -33,6 +33,15 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Health endpoint for Traefik routing
+app.get('/api/notifications/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: 'notification-service',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Routes
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/preferences', preferencesRoutes);
