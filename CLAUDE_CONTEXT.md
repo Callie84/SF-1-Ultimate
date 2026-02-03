@@ -1,6 +1,6 @@
 # SF-1 Ultimate - Claude Code Kontext
 
-**Letzte Aktualisierung:** 2026-02-03 (Session 5 - Feature 2)
+**Letzte Aktualisierung:** 2026-02-03 (Session 5 - Feature 3)
 **Projekt:** seedfinderpro.de - Cannabis Growing Community Platform
 
 ---
@@ -129,6 +129,48 @@ Eine Fullstack Cannabis-Community-Plattform mit:
 - Suche in Konversationen
 
 **URL:** https://seedfinderpro.de/messages
+
+---
+
+### Session 5 - Feature 3: Follow-System (2026-02-03)
+
+**Backend (community-service):**
+- `apps/community-service/src/models/Follow.model.ts` - Follow Model (follower, following)
+- `apps/community-service/src/services/follow.service.ts` - Business Logic
+- `apps/community-service/src/routes/follows.routes.ts` - REST API Endpoints
+- `apps/community-service/src/index.ts` - Route registriert
+
+**Backend (auth-service):**
+- `apps/auth-service/src/routes/auth.routes.ts` - `/users/:username` Endpoint hinzugefügt
+- `apps/auth-service/src/services/user.service.ts` - `findByUsername()` Methode hinzugefügt
+
+**API Endpoints:**
+- `POST /api/community/follows/:userId` - User folgen
+- `DELETE /api/community/follows/:userId` - User entfolgen
+- `GET /api/community/follows/check/:userId` - Follow-Status prüfen
+- `GET /api/community/follows/stats/:userId` - Follower/Following Counts
+- `GET /api/community/follows/followers/:userId` - Follower-Liste
+- `GET /api/community/follows/following/:userId` - Following-Liste
+- `GET /api/community/follows/suggestions` - Vorgeschlagene User
+- `GET /api/community/follows/mutual/:userId` - Gemeinsame Follower
+- `GET /api/auth/users/:username` - User-Profil öffentlich
+
+**Frontend:**
+- `apps/web-app/src/hooks/use-follows.ts` - React Query Hooks
+- `apps/web-app/src/components/follows/follow-button.tsx` - Follow/Unfollow Button
+- `apps/web-app/src/components/follows/follow-stats.tsx` - Follower/Following Anzeige
+- `apps/web-app/src/components/follows/followers-list.tsx` - Follower/Following Listen
+- `apps/web-app/src/components/ui/skeleton.tsx` - Skeleton Loader UI
+- `apps/web-app/src/app/profile/[username]/page.tsx` - Öffentliche Profilseite
+- `apps/web-app/src/app/profile/page.tsx` - FollowStats hinzugefügt
+
+**Features:**
+- Anderen Usern folgen/entfolgen
+- Follower/Following Counts auf Profil
+- Follow-Button mit Hover-Effekt ("Folgst du" -> "Entfolgen")
+- Öffentliche Profilseiten unter `/profile/[username]`
+- Vorschläge für User zum Folgen
+- Gemeinsame Follower anzeigen
 
 ---
 
@@ -298,7 +340,7 @@ function transformApiResponse(apiResponse) {
 1. ~~**Analytics Dashboard**~~ ✅ Implementiert (Session 5)
 2. ~~**Benachrichtigungen**~~ ✅ Implementiert (Session 5 - Feature 1)
 3. ~~**Private Nachrichten**~~ ✅ Implementiert (Session 5 - Feature 2)
-4. **Follow-System** - Anderen Growern folgen
+4. ~~**Follow-System**~~ ✅ Implementiert (Session 5 - Feature 3)
 5. **Strain-Vergleich** - Strains gegenüberstellen
 6. **Grow-Kalender/Erinnerungen** - Termine und Tasks
 7. **Ernte-Statistiken** - Detaillierte Auswertungen

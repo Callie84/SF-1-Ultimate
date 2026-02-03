@@ -65,6 +65,23 @@ export class UserService {
   }
 
   /**
+   * Findet User anhand Username
+   * @param username - Username
+   * @returns User oder null
+   */
+  async findByUsername(username: string): Promise<User | null> {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { username }
+      });
+      return user;
+    } catch (error) {
+      console.error('Error finding user by username:', error);
+      return null;
+    }
+  }
+
+  /**
    * Erstellt neuen User mit gehashtem Passwort
    * @param userData - User-Daten (email, password, name, role)
    * @returns Erstellter User

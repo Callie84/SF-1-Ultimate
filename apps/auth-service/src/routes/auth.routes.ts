@@ -328,6 +328,40 @@ router.get('/me', async (req: Request, res: Response) => {
 });
 
 /**
+ * @route   GET /api/auth/users/:username
+ * @desc    Get public user profile by username
+ * @access  Public
+ */
+router.get('/users/:username', async (req: Request, res: Response) => {
+  try {
+    const { username } = req.params;
+
+    // Find user by username (name field)
+    const user = await userService.findByUsername(username);
+
+    if (!user) {
+      return res.status(404).json({ error: 'Benutzer nicht gefunden' });
+    }
+
+    // Return only public profile data
+    return res.status(200).json({
+      id: user.id,
+      username: user.name || user.email.split('@')[0],
+      displayName: user.name,
+      bio: user.bio || null,
+      avatar: user.avatar || null,
+      role: user.role,
+      isVerified: user.emailVerified || false,
+      createdAt: user.createdAt,
+    });
+
+  } catch (error) {
+    console.error('Get user profile error:', error);
+    return res.status(500).json({ error: 'Fehler beim Laden des Profils' });
+  }
+});
+
+/**
  * @route   POST /api/auth/logout
  * @desc    Logout (invalidiert Tokens - wenn Token-Blacklist implementiert)
  * @access  Public
