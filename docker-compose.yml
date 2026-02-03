@@ -231,6 +231,7 @@ services:
       MEILISEARCH_HOST: http://meilisearch:7700
       MEILISEARCH_KEY: ${MEILISEARCH_MASTER_KEY}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
     networks:
       - sf1-network
     labels:
@@ -262,6 +263,7 @@ services:
       NODE_ENV: production
       MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_gamification?authSource=admin&directConnection=true
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
     networks:
       - sf1-network
     labels:
