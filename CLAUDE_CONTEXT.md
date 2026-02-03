@@ -264,6 +264,12 @@ curl https://seedfinderpro.de/api/[service]/health
 - JWT Secret: ${JWT_SECRET}
 - OpenAI: ${OPENAI_API_KEY}
 
+## GitHub
+
+- **Repository:** https://github.com/Callie84/SF-1-Ultimate
+- **Branch:** claude/review-server-sf1-h3kMz
+- **Token:** Im Git-Remote konfiguriert (gültig bis ~2026-02-10)
+
 ---
 
 ## Nächste Schritte
