@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useGrows } from '@/hooks/use-journal';
+import { FollowStats } from '@/components/follows/follow-stats';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import api from '@/lib/api-client';
@@ -168,6 +169,9 @@ export default function ProfilePage() {
                     {user.bio && (
                       <p className="text-muted-foreground">{user.bio}</p>
                     )}
+
+                    {/* Follow Stats */}
+                    <FollowStats userId={user.id} username={user.username} />
                   </>
                 )}
 

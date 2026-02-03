@@ -12,6 +12,7 @@ import categoriesRoutes from './routes/categories.routes';
 import strainsRoutes from './routes/strains.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import messagesRoutes from './routes/messages.routes';
+import followsRoutes from './routes/follows.routes';
 import { errorHandler } from './utils/errors';
 import { logger } from './utils/logger';
 
@@ -50,6 +51,7 @@ app.use('/api/community/categories', categoriesRoutes);
 app.use('/api/community/strains', strainsRoutes);
 app.use('/api/community/analytics', analyticsRoutes);
 app.use('/api/community/messages', messagesRoutes);
+app.use('/api/community/follows', followsRoutes);
 
 // Error Handler
 app.use(errorHandler);
