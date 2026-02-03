@@ -23,6 +23,7 @@ import {
   Settings,
   Flag,
   Leaf,
+  BarChart3,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -351,6 +352,12 @@ export default function AdminDashboardPage() {
                 <Link href="/admin/logs">
                   <FileText className="mr-2 h-4 w-4" />
                   System-Logs
+                </Link>
+              </Button>
+              <Button variant="outline" className="justify-start" asChild>
+                <Link href="/admin/analytics">
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  Analytics
                 </Link>
               </Button>
             </div>

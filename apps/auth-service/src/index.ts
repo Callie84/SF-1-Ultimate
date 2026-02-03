@@ -7,6 +7,7 @@ import { connectDatabase } from './config/database';
 import { connectRedis } from './config/redis';
 import { logger } from './utils/logger';
 import authRoutes from './routes/auth.routes';
+import analyticsRoutes from './routes/analytics.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,6 +32,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/auth/analytics', analyticsRoutes);
 
 // Start
 async function start() {

@@ -13,6 +13,31 @@ const router = Router();
 // ============================================
 
 /**
+ * GET /api/search/analytics
+ * Search Analytics (nur Admin)
+ */
+router.get('/analytics',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      // Admin-Check
+      if (req.user!.role !== 'ADMIN') {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
+      const popularSearches = await searchService.getPopularSearches(20);
+
+      res.json({
+        popularSearches,
+        totalSearches: popularSearches.reduce((sum, s) => sum + s.count, 0)
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
  * GET /api/search/history/recent
  * Recent Searches (muss VOR /:index stehen!)
  */
