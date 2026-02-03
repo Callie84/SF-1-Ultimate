@@ -8,6 +8,77 @@ import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 
 const router = Router();
 
+// ============================================
+// WICHTIG: Spezifische Routen VOR parametrisierten Routen!
+// ============================================
+
+/**
+ * GET /api/search/history/recent
+ * Recent Searches (muss VOR /:index stehen!)
+ */
+router.get('/history/recent',
+  optionalAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      const { limit } = req.query;
+
+      // Ohne Auth: leeres Array zurückgeben
+      if (!req.user) {
+        return res.json({ searches: [] });
+      }
+
+      const searches = await searchService.getRecentSearches(
+        req.user.id,
+        parseInt(limit as string) || 10
+      );
+
+      res.json({ searches });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * DELETE /api/search/history/recent
+ * Clear Recent Searches
+ */
+router.delete('/history/recent',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      await searchService.clearRecentSearches(req.user!.id);
+      res.json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/search/popular
+ * Popular Searches (muss VOR /:index stehen!)
+ */
+router.get('/popular',
+  async (req, res, next) => {
+    try {
+      const { limit } = req.query;
+
+      const searches = await searchService.getPopularSearches(
+        parseInt(limit as string) || 10
+      );
+
+      res.json({ searches });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ============================================
+// Parametrisierte Routen (NACH den spezifischen!)
+// ============================================
+
 /**
  * GET /api/search
  * Universal Search (alle Indexes)
@@ -17,20 +88,20 @@ router.get('/',
   async (req, res, next) => {
     try {
       const { q, limit } = req.query;
-      
+
       if (!q || typeof q !== 'string' || q.length < 2) {
         return res.status(400).json({ error: 'Query must be at least 2 characters' });
       }
-      
+
       const results = await searchService.searchAll(q, {
         limit: parseInt(limit as string) || 5
       });
-      
+
       // Track search (wenn eingeloggt)
       if (req.user) {
         await searchService.trackSearch(req.user.id, q, 'all');
       }
-      
+
       res.json(results);
     } catch (error) {
       next(error);
@@ -106,64 +177,6 @@ router.get('/:index/suggest',
       );
       
       res.json({ suggestions });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-/**
- * GET /api/search/history/recent
- * Recent Searches
- */
-router.get('/history/recent',
-  authMiddleware,
-  async (req, res, next) => {
-    try {
-      const { limit } = req.query;
-      
-      const searches = await searchService.getRecentSearches(
-        req.user!.id,
-        parseInt(limit as string) || 10
-      );
-      
-      res.json({ searches });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-/**
- * DELETE /api/search/history/recent
- * Clear Recent Searches
- */
-router.delete('/history/recent',
-  authMiddleware,
-  async (req, res, next) => {
-    try {
-      await searchService.clearRecentSearches(req.user!.id);
-      res.json({ success: true });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-/**
- * GET /api/search/popular
- * Popular Searches
- */
-router.get('/popular',
-  async (req, res, next) => {
-    try {
-      const { limit } = req.query;
-      
-      const searches = await searchService.getPopularSearches(
-        parseInt(limit as string) || 10
-      );
-      
-      res.json({ searches });
     } catch (error) {
       next(error);
     }

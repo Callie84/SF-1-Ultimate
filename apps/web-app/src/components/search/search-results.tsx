@@ -12,7 +12,7 @@ interface SearchResultsProps {
 }
 
 export function SearchResults({ results }: SearchResultsProps) {
-  if (results.length === 0) {
+  if (!results || results.length === 0) {
     return null;
   }
 

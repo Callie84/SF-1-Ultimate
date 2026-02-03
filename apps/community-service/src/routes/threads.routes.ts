@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { threadService } from '../services/thread.service';
+import { replyService } from '../services/reply.service';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 
@@ -47,7 +48,7 @@ router.get('/',
   async (req, res, next) => {
     try {
       const { categoryId, userId, sort, limit, skip, tag } = req.query;
-      
+
       const result = await threadService.getThreads({
         categoryId: categoryId as string,
         userId: userId as string,
@@ -56,7 +57,57 @@ router.get('/',
         skip: parseInt(skip as string) || 0,
         tag: tag as string
       });
-      
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/community/threads/search
+ * Volltext-Suche (muss VOR /:id stehen!)
+ */
+router.get('/search',
+  optionalAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      const { q, categoryId, limit, skip } = req.query;
+
+      if (!q || typeof q !== 'string') {
+        return res.status(400).json({ error: 'Query required' });
+      }
+
+      const result = await threadService.search(q, {
+        categoryId: categoryId as string,
+        limit: parseInt(limit as string) || 20,
+        skip: parseInt(skip as string) || 0
+      });
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/community/threads/:id/replies
+ * Alle Replies eines Threads
+ */
+router.get('/:id/replies',
+  optionalAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      const { sort, limit, skip } = req.query;
+
+      const result = await replyService.getByThread(req.params.id, {
+        sort: (sort as any) || 'best',
+        limit: parseInt(limit as string) || 50,
+        skip: parseInt(skip as string) || 0
+      });
+
       res.json(result);
     } catch (error) {
       next(error);
@@ -76,7 +127,7 @@ router.get('/:id',
         req.params.id,
         req.user?.id
       );
-      
+
       res.json({ thread });
     } catch (error) {
       next(error);
@@ -138,33 +189,6 @@ router.post('/:id/solve',
       );
       
       res.json({ success: true });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-/**
- * GET /api/community/threads/search
- * Volltext-Suche
- */
-router.get('/search',
-  optionalAuthMiddleware,
-  async (req, res, next) => {
-    try {
-      const { q, categoryId, limit, skip } = req.query;
-      
-      if (!q || typeof q !== 'string') {
-        return res.status(400).json({ error: 'Query required' });
-      }
-      
-      const result = await threadService.search(q, {
-        categoryId: categoryId as string,
-        limit: parseInt(limit as string) || 20,
-        skip: parseInt(skip as string) || 0
-      });
-      
-      res.json(result);
     } catch (error) {
       next(error);
     }

@@ -8,7 +8,117 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SearchFilters } from '@/components/search/search-filters';
 import { SearchResults } from '@/components/search/search-results';
-import type { SearchResponse, SearchFilters as SearchFiltersType } from '@/types/search';
+import type { SearchResponse, SearchResult, SearchFilters as SearchFiltersType } from '@/types/search';
+
+// API Response Type (was die API tatsächlich zurückgibt)
+interface ApiSearchResult {
+  hits: any[];
+  totalHits: number;
+  processingTimeMs: number;
+  query: string;
+  limit: number;
+  offset: number;
+}
+
+interface ApiSearchResponse {
+  strains?: ApiSearchResult;
+  threads?: ApiSearchResult;
+  grows?: ApiSearchResult;
+  users?: ApiSearchResult;
+}
+
+// Transform API response to frontend format
+function transformApiResponse(apiResponse: ApiSearchResponse, searchQuery: string): SearchResponse {
+  const results: SearchResult[] = [];
+  let totalHits = 0;
+  let totalTime = 0;
+
+  // Strains transformieren
+  if (apiResponse.strains?.hits) {
+    totalHits += apiResponse.strains.totalHits;
+    totalTime += apiResponse.strains.processingTimeMs;
+    apiResponse.strains.hits.forEach((hit: any) => {
+      results.push({
+        id: hit.id || hit._id,
+        type: 'STRAIN',
+        title: hit.name,
+        description: hit.description?.substring(0, 200),
+        imageUrl: hit.imageUrl,
+        url: `/strains/${hit.slug || hit.id}`,
+        metadata: { thc: hit.thc, cbd: hit.cbd, type: hit.type },
+        score: 1,
+      });
+    });
+  }
+
+  // Threads transformieren
+  if (apiResponse.threads?.hits) {
+    totalHits += apiResponse.threads.totalHits;
+    totalTime += apiResponse.threads.processingTimeMs;
+    apiResponse.threads.hits.forEach((hit: any) => {
+      results.push({
+        id: hit.id || hit._id,
+        type: 'THREAD',
+        title: hit.title,
+        description: hit.content?.substring(0, 200),
+        url: `/community/thread/${hit.id || hit._id}`,
+        metadata: { replies: hit.replyCount, views: hit.viewCount },
+        score: 1,
+      });
+    });
+  }
+
+  // Grows transformieren
+  if (apiResponse.grows?.hits) {
+    totalHits += apiResponse.grows.totalHits;
+    totalTime += apiResponse.grows.processingTimeMs;
+    apiResponse.grows.hits.forEach((hit: any) => {
+      results.push({
+        id: hit.id || hit._id,
+        type: 'GROW',
+        title: hit.title || hit.name,
+        description: hit.description?.substring(0, 200),
+        imageUrl: hit.coverImage,
+        url: `/journal/${hit.id || hit._id}`,
+        metadata: { strain: hit.strain },
+        score: 1,
+      });
+    });
+  }
+
+  // Users transformieren
+  if (apiResponse.users?.hits) {
+    totalHits += apiResponse.users.totalHits;
+    totalTime += apiResponse.users.processingTimeMs;
+    apiResponse.users.hits.forEach((hit: any) => {
+      results.push({
+        id: hit.id || hit._id,
+        type: 'USER',
+        title: hit.username || hit.name,
+        description: hit.bio?.substring(0, 200),
+        imageUrl: hit.avatar,
+        url: `/profile/${hit.username || hit.id}`,
+        metadata: { level: hit.level },
+        score: 1,
+      });
+    });
+  }
+
+  return {
+    results,
+    total: totalHits,
+    query: searchQuery,
+    took: totalTime,
+    facets: {
+      types: {
+        STRAIN: apiResponse.strains?.totalHits || 0,
+        THREAD: apiResponse.threads?.totalHits || 0,
+        GROW: apiResponse.grows?.totalHits || 0,
+        USER: apiResponse.users?.totalHits || 0,
+      }
+    }
+  };
+}
 
 function SearchPageContent() {
   const router = useRouter();
@@ -30,27 +140,14 @@ function SearchPageContent() {
       // Build query params
       const params = new URLSearchParams({
         q: searchQuery,
-        page: currentPage.toString(),
         limit: '20',
-        sort: sortBy,
       });
 
-      // Add filters
-      if (currentFilters.type?.length) {
-        params.append('type', currentFilters.type.join(','));
-      }
-      if (currentFilters.category?.length) {
-        params.append('category', currentFilters.category.join(','));
-      }
-      if (currentFilters.dateRange?.from) {
-        params.append('dateFrom', currentFilters.dateRange.from);
-      }
-      if (currentFilters.dateRange?.to) {
-        params.append('dateTo', currentFilters.dateRange.to);
-      }
+      const response: ApiSearchResponse = await apiClient.get(`/search?${params.toString()}`);
 
-      const response = await apiClient.get(`/search?${params.toString()}`);
-      setResults(response);
+      // Transform API response to expected format
+      const transformedResults = transformApiResponse(response, searchQuery);
+      setResults(transformedResults);
     } catch (error) {
       console.error('Search failed:', error);
       setResults(null);
@@ -98,7 +195,7 @@ function SearchPageContent() {
     performSearch(query, filters, 1);
   };
 
-  const totalPages = results ? Math.ceil(results.total / 20) : 0;
+  const totalPages = results?.total ? Math.ceil(results.total / 20) : 0;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -140,12 +237,12 @@ function SearchPageContent() {
           </form>
 
           {/* Results Info */}
-          {results && (
+          {results && typeof results.total === 'number' && (
             <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
               <div>
                 <span className="font-medium text-foreground">{results.total.toLocaleString()}</span> Ergebnisse
-                für <span className="font-medium text-foreground">"{results.query}"</span>
-                <span className="ml-2">({results.took}ms)</span>
+                für <span className="font-medium text-foreground">"{results.query || query}"</span>
+                {results.took && <span className="ml-2">({results.took}ms)</span>}
               </div>
               
               {/* Sort Options */}
@@ -193,7 +290,7 @@ function SearchPageContent() {
               </div>
             ) : results ? (
               <>
-                <SearchResults results={results.results} />
+                <SearchResults results={results.results || []} />
 
                 {/* Pagination */}
                 {totalPages > 1 && (

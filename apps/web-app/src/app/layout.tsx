@@ -12,6 +12,11 @@ export const metadata: Metadata = {
   title: 'SF-1 Ultimate | Cannabis Growing Platform',
   description: 'Grow smarter with AI-powered plant diagnosis, price comparison, and community support',
   keywords: ['cannabis', 'growing', 'seeds', 'cultivation', 'AI diagnosis'],
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
 };
 
 export default function RootLayout({
