@@ -28,6 +28,15 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Health endpoint for Traefik routing
+app.get('/api/media/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: 'media-service',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Routes
 app.use('/api/media', uploadRoutes);
 app.use('/api/media/files', filesRoutes);

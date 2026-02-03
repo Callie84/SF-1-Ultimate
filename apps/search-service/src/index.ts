@@ -18,8 +18,21 @@ app.use(express.json({ limit: '10mb' }));
 // Health Check
 app.get('/health', async (req, res) => {
   const meilisearchHealthy = await checkHealth();
-  
-  res.json({ 
+
+  res.json({
+    status: meilisearchHealthy ? 'healthy' : 'degraded',
+    service: 'search-service',
+    meilisearch: meilisearchHealthy,
+    redis: redis.status === 'ready',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Health endpoint for Traefik routing
+app.get('/api/search/health', async (req, res) => {
+  const meilisearchHealthy = await checkHealth();
+
+  res.json({
     status: meilisearchHealthy ? 'healthy' : 'degraded',
     service: 'search-service',
     meilisearch: meilisearchHealthy,

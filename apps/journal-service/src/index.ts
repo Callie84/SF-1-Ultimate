@@ -18,7 +18,16 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/health', (req, res) => {
-  res.json({ 
+  res.json({
+    status: 'healthy',
+    service: 'journal-service',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Health endpoint for Traefik routing
+app.get('/api/journal/health', (req, res) => {
+  res.json({
     status: 'healthy',
     service: 'journal-service',
     timestamp: new Date().toISOString()

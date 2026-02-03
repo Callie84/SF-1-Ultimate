@@ -9,6 +9,7 @@ import repliesRoutes from './routes/replies.routes';
 import votesRoutes from './routes/votes.routes';
 import moderationRoutes from './routes/moderation.routes';
 import categoriesRoutes from './routes/categories.routes';
+import strainsRoutes from './routes/strains.routes';
 import { errorHandler } from './utils/errors';
 import { logger } from './utils/logger';
 
@@ -22,7 +23,16 @@ app.use(express.json({ limit: '1mb' }));
 
 // Health Check
 app.get('/health', (req, res) => {
-  res.json({ 
+  res.json({
+    status: 'healthy',
+    service: 'community-service',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Health endpoint for Traefik routing
+app.get('/api/community/health', (req, res) => {
+  res.json({
     status: 'healthy',
     service: 'community-service',
     timestamp: new Date().toISOString()
@@ -35,6 +45,7 @@ app.use('/api/community/replies', repliesRoutes);
 app.use('/api/community/votes', votesRoutes);
 app.use('/api/community/moderation', moderationRoutes);
 app.use('/api/community/categories', categoriesRoutes);
+app.use('/api/community/strains', strainsRoutes);
 
 // Error Handler
 app.use(errorHandler);
