@@ -16,7 +16,8 @@ import {
   Award,
   Bell,
   Shield,
-  MessageSquare
+  MessageSquare,
+  Leaf
 } from 'lucide-react';
 
 const navigation = [
@@ -24,6 +25,7 @@ const navigation = [
   { name: 'Mein Journal', href: '/journal', icon: BookOpen },
   { name: 'Community', href: '/community', icon: Users },
   { name: 'Nachrichten', href: '/messages', icon: MessageSquare },
+  { name: 'Strains', href: '/strains', icon: Leaf },
   { name: 'Preisvergleich', href: '/prices', icon: TrendingDown },
   { name: 'Suche', href: '/search', icon: Search },
   { name: 'AI Assistent', href: '/ai', icon: Brain },

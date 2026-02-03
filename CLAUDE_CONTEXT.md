@@ -1,6 +1,6 @@
 # SF-1 Ultimate - Claude Code Kontext
 
-**Letzte Aktualisierung:** 2026-02-03 (Session 5 - Feature 3)
+**Letzte Aktualisierung:** 2026-02-04 (Session 5 - Feature 4)
 **Projekt:** seedfinderpro.de - Cannabis Growing Community Platform
 
 ---
@@ -174,6 +174,33 @@ Eine Fullstack Cannabis-Community-Plattform mit:
 
 ---
 
+### Session 5 - Feature 4: Strain-Vergleich (2026-02-04)
+
+**Frontend:**
+- `apps/web-app/src/hooks/use-strains.ts` - React Query Hooks für Strains
+- `apps/web-app/src/app/strains/page.tsx` - Strain-Datenbank Übersicht
+- `apps/web-app/src/app/strains/compare/page.tsx` - Strain-Vergleichsseite
+- `apps/web-app/src/components/layout/sidebar.tsx` - "Strains" Link hinzugefügt
+
+**Features:**
+- Strain-Datenbank mit Suche und Filter (Type: Indica/Sativa/Hybrid/Autoflower)
+- Paginierte Strain-Liste mit Karten-Ansicht
+- Bis zu 4 Strains zum Vergleich auswählen
+- Side-by-Side Vergleichskarten mit:
+  - THC/CBD Werte
+  - Genetik
+  - Effekte
+  - Aromen/Flavors
+- Vergleichstabelle für schnellen Überblick
+- Deep-Links für Vergleiche via URL-Parameter
+
+**URLs:**
+- https://seedfinderpro.de/strains - Strain-Datenbank
+- https://seedfinderpro.de/strains/compare - Vergleichsseite
+- https://seedfinderpro.de/strains/compare?ids=id1,id2 - Direkter Vergleich
+
+---
+
 ### Session 5 (2026-02-03) - Analytics Dashboard
 
 #### 1. Backend Analytics Endpoints erstellt
@@ -341,7 +368,7 @@ function transformApiResponse(apiResponse) {
 2. ~~**Benachrichtigungen**~~ ✅ Implementiert (Session 5 - Feature 1)
 3. ~~**Private Nachrichten**~~ ✅ Implementiert (Session 5 - Feature 2)
 4. ~~**Follow-System**~~ ✅ Implementiert (Session 5 - Feature 3)
-5. **Strain-Vergleich** - Strains gegenüberstellen
+5. ~~**Strain-Vergleich**~~ ✅ Implementiert (Session 5 - Feature 4)
 6. **Grow-Kalender/Erinnerungen** - Termine und Tasks
 7. **Ernte-Statistiken** - Detaillierte Auswertungen
 8. **Seedbank-Verwaltung** - Preise, Scraper-Status
