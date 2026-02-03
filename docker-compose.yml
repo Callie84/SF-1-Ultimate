@@ -407,6 +407,7 @@ services:
       NODE_ENV: production
       MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_notification?authSource=admin&directConnection=true
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
     networks:
       - sf1-network
     labels:

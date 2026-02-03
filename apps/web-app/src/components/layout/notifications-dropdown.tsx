@@ -38,7 +38,7 @@ export function NotificationsDropdown() {
   const loadNotifications = async () => {
     setIsLoading(true);
     try {
-      const response = await apiClient.get('/notifications?limit=10');
+      const response = await apiClient.get('/api/notifications?limit=10');
       setNotifications(
         response.notifications.map((n: any) => ({
           ...n,
@@ -54,7 +54,7 @@ export function NotificationsDropdown() {
 
   const markAsRead = async (id: string) => {
     try {
-      await apiClient.patch(`/notifications/${id}/read`);
+      await apiClient.patch(`/api/notifications/${id}/read`);
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
@@ -65,7 +65,7 @@ export function NotificationsDropdown() {
 
   const markAllAsRead = async () => {
     try {
-      await apiClient.post('/notifications/read-all');
+      await apiClient.post('/api/notifications/read-all');
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (error) {
       console.error('Failed to mark all as read:', error);
