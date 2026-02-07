@@ -41,6 +41,7 @@ dist/
 
 *.log
 logs/
+!**/admin/logs/
 *.log.*
 
 # ==========================================
@@ -133,7 +134,7 @@ secrets/
 *.BACKUP*
 *.COMPROMISED*
 
-# Environment Variables (enthält Secrets!)
+# Environment Variables (enthï¿½lt Secrets!)
 .env
 .env.*
 !.env.template

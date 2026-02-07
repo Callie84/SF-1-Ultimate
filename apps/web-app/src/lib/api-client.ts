@@ -71,11 +71,10 @@ axiosInstance.interceptors.response.use(
         
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        // Refresh failed - logout user
+        // Refresh failed - clear tokens but don't redirect (let pages handle auth errors)
         Cookies.remove('sf1_access_token');
         Cookies.remove('sf1_refresh_token');
-        window.location.href = '/auth/login';
-        return Promise.reject(refreshError);
+        return Promise.reject(error);
       }
     }
 

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, TrendingDown, TrendingUp, ExternalLink, Filter } from 'lucide-react';
+import { Search, TrendingDown, TrendingUp, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { apiClient } from '@/lib/api-client';
+import { cn } from '@/lib/utils';
 
 interface PriceData {
   strainName: string;
@@ -26,8 +27,8 @@ export default function PricesPage() {
     if (!query.trim()) return;
     setIsLoading(true);
     try {
-      const response = await apiClient.get(`/prices/search?q=${encodeURIComponent(query)}`);
-      setResults(response.prices || []);
+      const response = await apiClient.get(`/api/prices/search?q=${encodeURIComponent(query)}`);
+      setResults(response.prices || response.seeds || []);
     } catch (error) {
       console.error('Price search failed:', error);
     } finally {
@@ -48,164 +49,164 @@ export default function PricesPage() {
   const mostExpensive = sortedResults[sortedResults.length - 1];
 
   return (
-    <div className="container mx-auto px-6 py-10">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-block icon-emboss p-8 rounded-2xl mb-5 bg-gradient-to-br from-green-500 to-emerald-500">
-            <Search className="w-16 h-16 text-white" />
-          </div>
-          <h1 className="text-6xl font-black text-cannabis mb-3">Preisvergleich</h1>
-          <p className="text-2xl text-emerald-200 font-bold">
-            Finde die besten Preise für deine Lieblings-Strains
-          </p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <div className="flex items-center gap-3 mb-2">
+          <TrendingDown className="h-6 w-6 text-primary" />
+          <h1 className="text-2xl font-bold">Preisvergleich</h1>
         </div>
+        <p className="text-muted-foreground">
+          Finde die besten Preise fur deine Lieblings-Strains
+        </p>
+      </div>
 
-        {/* Search */}
-        <div className="neo-deep rounded-2xl p-8 mb-8">
-          <div className="flex gap-4">
+      {/* Search */}
+      <div className="rounded-xl border bg-card p-6">
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               placeholder="Suche nach Strain... (z.B. 'Northern Lights')"
-              className="flex-1 input-inset rounded-xl px-6 py-4 text-white text-xl"
+              className="pl-10"
               disabled={isLoading}
             />
-            <button
-              onClick={handleSearch}
-              disabled={!query.trim() || isLoading}
-              className="bubble-soft px-10 py-4 rounded-xl font-black text-white text-xl"
-            >
-              {isLoading ? 'Suche...' : 'Suchen'}
-            </button>
           </div>
+          <Button
+            onClick={handleSearch}
+            disabled={!query.trim() || isLoading}
+          >
+            {isLoading ? 'Suche...' : 'Suchen'}
+          </Button>
         </div>
-
-        {/* Results */}
-        {results.length > 0 && (
-          <>
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="neo-deep rounded-2xl p-6 text-center">
-                <div className="text-4xl font-black text-cannabis mb-2">
-                  {results.length}
-                </div>
-                <div className="text-lg text-emerald-200 font-bold">Angebote gefunden</div>
-              </div>
-              {cheapest && (
-                <div className="neo-deep rounded-2xl p-6 text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <TrendingDown className="w-6 h-6 text-green-400" />
-                    <div className="text-4xl font-black text-green-400">
-                      €{(cheapest.price / cheapest.seedCount).toFixed(2)}
-                    </div>
-                  </div>
-                  <div className="text-lg text-emerald-200 font-bold">Günstigster Preis/Seed</div>
-                </div>
-              )}
-              {mostExpensive && (
-                <div className="neo-deep rounded-2xl p-6 text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <TrendingUp className="w-6 h-6 text-red-400" />
-                    <div className="text-4xl font-black text-red-400">
-                      €{(mostExpensive.price / mostExpensive.seedCount).toFixed(2)}
-                    </div>
-                  </div>
-                  <div className="text-lg text-emerald-200 font-bold">Teuerster Preis/Seed</div>
-                </div>
-              )}
-            </div>
-
-            {/* Sort */}
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-black text-cannabis">Alle Angebote</h3>
-              <div className="flex gap-3">
-                <Button
-                  variant={sortBy === 'price' ? 'default' : 'outline'}
-                  onClick={() => setSortBy('price')}
-                  className="font-bold"
-                >
-                  Nach Preis
-                </Button>
-                <Button
-                  variant={sortBy === 'seedbank' ? 'default' : 'outline'}
-                  onClick={() => setSortBy('seedbank')}
-                  className="font-bold"
-                >
-                  Nach Seedbank
-                </Button>
-              </div>
-            </div>
-
-            {/* Price Cards */}
-            <div className="space-y-4">
-              {sortedResults.map((price, index) => (
-                <div key={index} className="neo-deep rounded-2xl p-6 hover:scale-105 transition">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h4 className="text-2xl font-black text-cannabis mb-2">{price.seedbank}</h4>
-                      <p className="text-lg text-emerald-100 font-medium mb-2">
-                        {price.strainName}
-                      </p>
-                      <div className="flex items-center gap-4">
-                        <span className="badge-3d px-4 py-1 text-base text-white font-bold">
-                          {price.seedCount} Seeds
-                        </span>
-                        {price.inStock ? (
-                          <span className="text-green-400 font-bold">✓ Verfügbar</span>
-                        ) : (
-                          <span className="text-red-400 font-bold">✗ Ausverkauft</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-5xl font-black text-cannabis mb-2">
-                        €{price.price.toFixed(2)}
-                      </div>
-                      <div className="text-lg text-emerald-200 font-bold mb-3">
-                        €{(price.price / price.seedCount).toFixed(2)}/Seed
-                      </div>
-                      <a
-                        href={price.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 bubble-soft px-6 py-3 rounded-xl font-bold text-white"
-                      >
-                        Zum Shop
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* Empty State */}
-        {!isLoading && results.length === 0 && query && (
-          <div className="neo-deep rounded-2xl p-12 text-center">
-            <Search className="w-16 h-16 text-white/30 mx-auto mb-4" />
-            <h3 className="text-2xl font-black text-white mb-2">Keine Ergebnisse</h3>
-            <p className="text-lg text-emerald-200 font-medium">
-              Versuche es mit einem anderen Strain-Namen
-            </p>
-          </div>
-        )}
-
-        {/* Initial State */}
-        {results.length === 0 && !query && (
-          <div className="neo-deep rounded-2xl p-12 text-center">
-            <Search className="w-16 h-16 text-white/30 mx-auto mb-4" />
-            <h3 className="text-2xl font-black text-white mb-2">Starte deine Suche</h3>
-            <p className="text-lg text-emerald-200 font-medium">
-              Gib einen Strain-Namen ein, um Preise zu vergleichen
-            </p>
-          </div>
-        )}
       </div>
+
+      {/* Results */}
+      {results.length > 0 && (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-xl border bg-card p-4 text-center">
+              <div className="text-2xl font-bold text-primary mb-1">
+                {results.length}
+              </div>
+              <div className="text-sm text-muted-foreground">Angebote gefunden</div>
+            </div>
+            {cheapest && (
+              <div className="rounded-xl border bg-card p-4 text-center">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <TrendingDown className="h-4 w-4 text-green-500" />
+                  <span className="text-2xl font-bold text-green-500">
+                    €{(cheapest.price / cheapest.seedCount).toFixed(2)}
+                  </span>
+                </div>
+                <div className="text-sm text-muted-foreground">Gunstigster Preis/Seed</div>
+              </div>
+            )}
+            {mostExpensive && (
+              <div className="rounded-xl border bg-card p-4 text-center">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <TrendingUp className="h-4 w-4 text-red-500" />
+                  <span className="text-2xl font-bold text-red-500">
+                    €{(mostExpensive.price / mostExpensive.seedCount).toFixed(2)}
+                  </span>
+                </div>
+                <div className="text-sm text-muted-foreground">Teuerster Preis/Seed</div>
+              </div>
+            )}
+          </div>
+
+          {/* Sort */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Alle Angebote</h3>
+            <div className="flex gap-2">
+              <Button
+                variant={sortBy === 'price' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSortBy('price')}
+              >
+                Nach Preis
+              </Button>
+              <Button
+                variant={sortBy === 'seedbank' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSortBy('seedbank')}
+              >
+                Nach Seedbank
+              </Button>
+            </div>
+          </div>
+
+          {/* Price Cards */}
+          <div className="space-y-3">
+            {sortedResults.map((price, index) => (
+              <div key={index} className="rounded-xl border bg-card p-4 hover:border-primary/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold mb-1">{price.seedbank}</h4>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {price.strainName}
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                        {price.seedCount} Seeds
+                      </span>
+                      {price.inStock ? (
+                        <span className="text-xs font-medium text-green-500">✓ Verfugbar</span>
+                      ) : (
+                        <span className="text-xs font-medium text-red-500">✗ Ausverkauft</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0 ml-4">
+                    <div className="text-2xl font-bold mb-0.5">
+                      €{price.price.toFixed(2)}
+                    </div>
+                    <div className="text-sm text-muted-foreground mb-2">
+                      €{(price.price / price.seedCount).toFixed(2)}/Seed
+                    </div>
+                    <a
+                      href={price.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                    >
+                      Zum Shop
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && results.length === 0 && query && (
+        <div className="rounded-xl border bg-card p-12 text-center">
+          <Search className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+          <h3 className="font-semibold mb-1">Keine Ergebnisse</h3>
+          <p className="text-sm text-muted-foreground">
+            Versuche es mit einem anderen Strain-Namen
+          </p>
+        </div>
+      )}
+
+      {/* Initial State */}
+      {results.length === 0 && !query && (
+        <div className="rounded-xl border bg-card p-12 text-center">
+          <Search className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+          <h3 className="font-semibold mb-1">Starte deine Suche</h3>
+          <p className="text-sm text-muted-foreground">
+            Gib einen Strain-Namen ein, um Preise zu vergleichen
+          </p>
+        </div>
+      )}
     </div>
   );
 }

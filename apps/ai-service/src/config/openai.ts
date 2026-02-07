@@ -13,12 +13,11 @@ export const openai = new OpenAI({
 });
 
 /**
- * AI-Modelle
+ * AI-Modelle (aktualisiert 2026)
  */
 export const MODELS = {
-  GPT4_TURBO: 'gpt-4-turbo-preview',
-  GPT4_VISION: 'gpt-4-vision-preview',
-  GPT35_TURBO: 'gpt-3.5-turbo',
+  GPT4O: 'gpt-4o',
+  GPT4O_MINI: 'gpt-4o-mini',
   DALL_E_3: 'dall-e-3'
 } as const;
 
@@ -69,16 +68,14 @@ export const SYSTEM_PROMPTS = {
  * Token-Limits
  */
 export const TOKEN_LIMITS = {
-  GPT4_TURBO: 128000,
-  GPT4_VISION: 128000,
-  GPT35_TURBO: 16000
+  GPT4O: 128000,
+  GPT4O_MINI: 128000
 };
 
 /**
  * Cost Tracking (USD pro 1k Tokens)
  */
 export const COSTS = {
-  GPT4_TURBO: { input: 0.01, output: 0.03 },
-  GPT4_VISION: { input: 0.01, output: 0.03 },
-  GPT35_TURBO: { input: 0.0005, output: 0.0015 }
+  GPT4O: { input: 0.0025, output: 0.01 },
+  GPT4O_MINI: { input: 0.00015, output: 0.0006 }
 };

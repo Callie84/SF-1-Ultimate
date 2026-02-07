@@ -206,6 +206,69 @@ export function useLockThread() {
   });
 }
 
+// Get all threads (admin only)
+export function useAdminThreads(filters?: { page?: number; limit?: number; search?: string; status?: string }) {
+  return useQuery({
+    queryKey: adminKeys.threads(filters),
+    queryFn: async () => {
+      try {
+        const params = new URLSearchParams();
+        if (filters?.page) params.append('page', String(filters.page));
+        if (filters?.limit) params.append('limit', String(filters.limit));
+        if (filters?.search) params.append('search', filters.search);
+        if (filters?.status) params.append('status', filters.status);
+
+        const data = await api.get(`/api/admin/threads?${params}`);
+        return data;
+      } catch (error) {
+        return { threads: [], total: 0, page: 1, totalPages: 1 };
+      }
+    },
+  });
+}
+
+// Get all grows (admin only)
+export function useAdminGrows(filters?: { page?: number; limit?: number; search?: string; status?: string }) {
+  return useQuery({
+    queryKey: [...adminKeys.all, 'grows', filters] as const,
+    queryFn: async () => {
+      try {
+        const params = new URLSearchParams();
+        if (filters?.page) params.append('page', String(filters.page));
+        if (filters?.limit) params.append('limit', String(filters.limit));
+        if (filters?.search) params.append('search', filters.search);
+        if (filters?.status) params.append('status', filters.status);
+
+        const data = await api.get(`/api/admin/grows?${params}`);
+        return data;
+      } catch (error) {
+        return { grows: [], total: 0, page: 1, totalPages: 1 };
+      }
+    },
+  });
+}
+
+// Get system logs (admin only)
+export function useAdminLogs(filters?: { page?: number; limit?: number; level?: string; service?: string }) {
+  return useQuery({
+    queryKey: [...adminKeys.all, 'logs', filters] as const,
+    queryFn: async () => {
+      try {
+        const params = new URLSearchParams();
+        if (filters?.page) params.append('page', String(filters.page));
+        if (filters?.limit) params.append('limit', String(filters.limit));
+        if (filters?.level) params.append('level', filters.level);
+        if (filters?.service) params.append('service', filters.service);
+
+        const data = await api.get(`/api/admin/logs?${params}`);
+        return data;
+      } catch (error) {
+        return { logs: [], total: 0, page: 1, totalPages: 1 };
+      }
+    },
+  });
+}
+
 // Create category
 export function useCreateCategory() {
   const queryClient = useQueryClient();

@@ -8,7 +8,7 @@ export interface AdvisorInput {
     experienceLevel?: 'beginner' | 'intermediate' | 'expert';
     growType?: 'indoor' | 'outdoor' | 'greenhouse';
     budget?: 'low' | 'medium' | 'high';
-    goals?: string[]; // e.g., ['high-yield', 'potency', 'fast-harvest']
+    goals?: string[];
     equipment?: string[];
   };
   conversationHistory?: Array<{
@@ -17,64 +17,169 @@ export interface AdvisorInput {
   }>;
 }
 
-export interface AdvisorResponse {
-  answer: string;
-  recommendations?: string[];
-  links?: Array<{
-    title: string;
-    url: string;
+/** Format das das Frontend erwartet */
+export interface AdvisorResult {
+  strainRecommendations: Array<{
+    name: string;
+    genetics: string;
+    thc: string;
+    flowering: string;
+    difficulty: string;
+    reason: string;
   }>;
-  confidence: number; // 0-1
+  setupAdvice: string[];
+  timeline: Array<{
+    week: number;
+    phase: string;
+    tasks: string[];
+  }>;
+  tips: string[];
 }
+
+const ADVISOR_JSON_PROMPT = `
+Antworte IMMER im folgenden JSON-Format (keine anderen Texte drumherum):
+{
+  "strainRecommendations": [
+    {
+      "name": "Strain Name",
+      "genetics": "Indica/Sativa/Hybrid + Prozent",
+      "thc": "THC-Gehalt z.B. 18-22%",
+      "flowering": "Blütezeit z.B. 8-9 Wochen",
+      "difficulty": "Leicht/Mittel/Schwer",
+      "reason": "Warum dieser Strain passt"
+    }
+  ],
+  "setupAdvice": [
+    "Setup-Empfehlung 1",
+    "Setup-Empfehlung 2"
+  ],
+  "timeline": [
+    {
+      "week": 1,
+      "phase": "Keimung",
+      "tasks": ["Aufgabe 1", "Aufgabe 2"]
+    }
+  ],
+  "tips": [
+    "Pro-Tipp 1",
+    "Pro-Tipp 2"
+  ]
+}
+
+Regeln:
+- Empfehle 3-5 Strains
+- Gib 3-5 Setup-Empfehlungen
+- Erstelle eine realistische Timeline (Keimung, Sämling, Vegetation, Blüte, Ernte)
+- Gib 3-5 Pro-Tipps
+`;
 
 export class AdvisorService {
   /**
-   * Personalisierte Grow-Beratung
+   * Personalisierter Grow-Plan (neues Format für Frontend)
    */
-  async getAdvice(input: AdvisorInput): Promise<AdvisorResponse> {
+  async getGrowPlan(data: {
+    experience: string;
+    goal: string;
+    growType: string;
+    medium: string;
+  }): Promise<AdvisorResult> {
+    try {
+      logger.info('[Advisor] Creating grow plan for:', data);
+
+      const prompt = `
+        Erstelle einen personalisierten Grow-Plan basierend auf:
+
+        - Erfahrung: ${data.experience}
+        - Ziel: ${data.goal}
+        - Grow-Typ: ${data.growType}
+        - Medium: ${data.medium}
+
+        Berücksichtige das Erfahrungslevel bei allen Empfehlungen.
+      `;
+
+      const response = await openai.chat.completions.create({
+        model: MODELS.GPT4O,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPTS.ADVISOR + '\n\n' + ADVISOR_JSON_PROMPT },
+          { role: 'user', content: prompt }
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 3000,
+        temperature: 0.7
+      });
+
+      const content = response.choices[0].message.content || '{}';
+
+      try {
+        const parsed = JSON.parse(content);
+        return this.validateAdvisorResult(parsed);
+      } catch (parseError) {
+        logger.error('[Advisor] JSON parse failed:', parseError);
+        return {
+          strainRecommendations: [],
+          setupAdvice: ['Es gab ein Problem bei der Analyse. Bitte versuche es erneut.'],
+          timeline: [],
+          tips: []
+        };
+      }
+
+    } catch (error) {
+      logger.error('[Advisor] Grow plan failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Personalisierte Grow-Beratung (legacy/allgemein)
+   */
+  async getAdvice(input: AdvisorInput): Promise<AdvisorResult> {
     try {
       logger.info('[Advisor] Processing question:', input.question);
-      
+
       const contextPrompt = this.buildContextPrompt(input);
-      
+
       const messages: any[] = [
-        { role: 'system', content: SYSTEM_PROMPTS.ADVISOR }
+        { role: 'system', content: SYSTEM_PROMPTS.ADVISOR + '\n\n' + ADVISOR_JSON_PROMPT }
       ];
-      
-      // Conversation History hinzufügen (falls vorhanden)
+
       if (input.conversationHistory) {
         messages.push(...input.conversationHistory);
       }
-      
-      // Aktuelle Frage
+
       messages.push({
         role: 'user',
         content: `${contextPrompt}\n\nFrage: ${input.question}`
       });
-      
+
       const response = await openai.chat.completions.create({
-        model: MODELS.GPT4_TURBO,
+        model: MODELS.GPT4O,
         messages,
-        max_tokens: 2000,
-        temperature: 0.7 // Höher für kreativere Antworten
+        response_format: { type: 'json_object' },
+        max_tokens: 3000,
+        temperature: 0.7
       });
-      
-      const answer = response.choices[0].message.content || '';
-      
-      logger.info('[Advisor] Answer generated');
-      
-      return {
-        answer,
-        confidence: 0.85, // TODO: Berechnen basierend auf Response
-        recommendations: this.extractRecommendations(answer)
-      };
-      
+
+      const content = response.choices[0].message.content || '{}';
+
+      try {
+        const parsed = JSON.parse(content);
+        return this.validateAdvisorResult(parsed);
+      } catch (parseError) {
+        logger.error('[Advisor] JSON parse failed:', parseError);
+        return {
+          strainRecommendations: [],
+          setupAdvice: [content],
+          timeline: [],
+          tips: []
+        };
+      }
+
     } catch (error) {
       logger.error('[Advisor] Failed:', error);
       throw error;
     }
   }
-  
+
   /**
    * Strain-Empfehlung
    */
@@ -94,12 +199,12 @@ export class AdvisorService {
     try {
       const prompt = `
         Empfiehl mir 3-5 Cannabis-Strains basierend auf:
-        
+
         - Erfahrung: ${criteria.experienceLevel}
         - Grow-Typ: ${criteria.growType}
         - Ziele: ${criteria.goals.join(', ')}
         ${criteria.budget ? `- Budget: ${criteria.budget}` : ''}
-        
+
         Format (JSON):
         {
           "strains": [
@@ -112,9 +217,9 @@ export class AdvisorService {
           ]
         }
       `;
-      
+
       const response = await openai.chat.completions.create({
-        model: MODELS.GPT4_TURBO,
+        model: MODELS.GPT4O,
         messages: [
           { role: 'system', content: SYSTEM_PROMPTS.ADVISOR },
           { role: 'user', content: prompt }
@@ -123,18 +228,18 @@ export class AdvisorService {
         max_tokens: 1500,
         temperature: 0.8
       });
-      
+
       const content = response.choices[0].message.content || '{}';
       const result = JSON.parse(content);
-      
+
       return result;
-      
+
     } catch (error) {
       logger.error('[Advisor] Strain recommendation failed:', error);
       throw error;
     }
   }
-  
+
   /**
    * Setup-Optimierung
    */
@@ -152,43 +257,70 @@ export class AdvisorService {
       priority: 'low' | 'medium' | 'high';
       estimatedCost?: string;
     }>;
-    score: number; // 0-100
+    score: number;
   }> {
     try {
       const prompt = `
         Analysiere dieses Grow-Setup und gib Verbesserungsvorschläge:
-        
+
         ${Object.entries(currentSetup).map(([k, v]) => `- ${k}: ${v}`).join('\n')}
-        
-        Bitte bewerte das Setup (0-100 Punkte) und gib konkrete Verbesserungsvorschläge
-        nach Priorität (low/medium/high).
+
+        Antworte im JSON-Format:
+        {
+          "analysis": "Gesamtbewertung des Setups",
+          "improvements": [
+            {
+              "category": "Kategorie (z.B. Beleuchtung, Belüftung)",
+              "suggestion": "Konkreter Vorschlag",
+              "priority": "low|medium|high",
+              "estimatedCost": "Geschätzte Kosten (optional)"
+            }
+          ],
+          "score": 75
+        }
       `;
-      
+
       const response = await openai.chat.completions.create({
-        model: MODELS.GPT4_TURBO,
+        model: MODELS.GPT4O,
         messages: [
           { role: 'system', content: SYSTEM_PROMPTS.ADVISOR },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 1500,
+        response_format: { type: 'json_object' },
+        max_tokens: 2000,
         temperature: 0.6
       });
-      
-      const content = response.choices[0].message.content || '';
-      
-      // Parse response (simplified)
-      return {
-        analysis: content,
-        improvements: this.extractImprovements(content),
-        score: this.extractScore(content)
-      };
-      
+
+      const content = response.choices[0].message.content || '{}';
+
+      try {
+        const parsed = JSON.parse(content);
+        return {
+          analysis: String(parsed.analysis || ''),
+          improvements: Array.isArray(parsed.improvements)
+            ? parsed.improvements.map((item: any) => ({
+                category: String(item.category || ''),
+                suggestion: String(item.suggestion || ''),
+                priority: ['low', 'medium', 'high'].includes(item.priority) ? item.priority : 'medium',
+                estimatedCost: item.estimatedCost ? String(item.estimatedCost) : undefined
+              }))
+            : [],
+          score: typeof parsed.score === 'number' ? parsed.score : 75
+        };
+      } catch (parseError) {
+        return {
+          analysis: content,
+          improvements: [],
+          score: 75
+        };
+      }
+
     } catch (error) {
       logger.error('[Advisor] Setup optimization failed:', error);
       throw error;
     }
   }
-  
+
   /**
    * Harvest-Timing-Advice
    */
@@ -205,17 +337,23 @@ export class AdvisorService {
     trichomeAnalysis?: string;
   }> {
     try {
-      let prompt = `
+      const prompt = `
         Beurteile die Erntereife dieser Cannabis-Pflanze:
-        
+
         - Strain: ${input.strain}
         - Woche in Blüte: ${input.weekInFlower}
         ${input.trichomeColor ? `- Trichome-Farbe: ${input.trichomeColor}` : ''}
         ${input.pistilColor ? `- Pistil-Farbe: ${input.pistilColor}` : ''}
-        
-        Ist die Pflanze bereit zur Ernte? Wenn nein, wie viele Tage noch?
+
+        Antworte im JSON-Format:
+        {
+          "readyToHarvest": true/false,
+          "recommendation": "Detaillierte Empfehlung",
+          "estimatedDaysRemaining": 14,
+          "trichomeAnalysis": "Analyse der Trichome"
+        }
       `;
-      
+
       const messages: any[] = [
         { role: 'system', content: SYSTEM_PROMPTS.ADVISOR },
         {
@@ -229,37 +367,81 @@ export class AdvisorService {
           ] : prompt
         }
       ];
-      
+
       const response = await openai.chat.completions.create({
-        model: input.images ? MODELS.GPT4_VISION : MODELS.GPT4_TURBO,
+        model: MODELS.GPT4O,
         messages,
-        max_tokens: 1000,
+        response_format: { type: 'json_object' },
+        max_tokens: 1500,
         temperature: 0.4
       });
-      
-      const content = response.choices[0].message.content || '';
-      
-      return {
-        readyToHarvest: content.toLowerCase().includes('bereit') || content.toLowerCase().includes('ernten'),
-        recommendation: content,
-        estimatedDaysRemaining: this.extractDaysRemaining(content)
-      };
-      
+
+      const content = response.choices[0].message.content || '{}';
+
+      try {
+        const parsed = JSON.parse(content);
+        return {
+          readyToHarvest: !!parsed.readyToHarvest,
+          recommendation: String(parsed.recommendation || ''),
+          estimatedDaysRemaining: typeof parsed.estimatedDaysRemaining === 'number'
+            ? parsed.estimatedDaysRemaining
+            : undefined,
+          trichomeAnalysis: parsed.trichomeAnalysis ? String(parsed.trichomeAnalysis) : undefined
+        };
+      } catch {
+        return {
+          readyToHarvest: false,
+          recommendation: content,
+          estimatedDaysRemaining: undefined
+        };
+      }
+
     } catch (error) {
       logger.error('[Advisor] Harvest advice failed:', error);
       throw error;
     }
   }
-  
+
+  /**
+   * Validate AdvisorResult
+   */
+  private validateAdvisorResult(parsed: any): AdvisorResult {
+    return {
+      strainRecommendations: Array.isArray(parsed.strainRecommendations)
+        ? parsed.strainRecommendations.map((s: any) => ({
+            name: String(s.name || ''),
+            genetics: String(s.genetics || ''),
+            thc: String(s.thc || ''),
+            flowering: String(s.flowering || ''),
+            difficulty: String(s.difficulty || ''),
+            reason: String(s.reason || '')
+          }))
+        : [],
+      setupAdvice: Array.isArray(parsed.setupAdvice)
+        ? parsed.setupAdvice.map(String)
+        : [],
+      timeline: Array.isArray(parsed.timeline)
+        ? parsed.timeline.map((t: any) => ({
+            week: typeof t.week === 'number' ? t.week : 0,
+            phase: String(t.phase || ''),
+            tasks: Array.isArray(t.tasks) ? t.tasks.map(String) : []
+          }))
+        : [],
+      tips: Array.isArray(parsed.tips)
+        ? parsed.tips.map(String)
+        : []
+    };
+  }
+
   /**
    * Context-Prompt erstellen
    */
   private buildContextPrompt(input: AdvisorInput): string {
     if (!input.userContext) return '';
-    
+
     let context = 'User-Kontext:\n';
     const ctx = input.userContext;
-    
+
     if (ctx.experienceLevel) {
       context += `- Erfahrung: ${ctx.experienceLevel}\n`;
     }
@@ -275,44 +457,8 @@ export class AdvisorService {
     if (ctx.equipment && ctx.equipment.length > 0) {
       context += `- Equipment: ${ctx.equipment.join(', ')}\n`;
     }
-    
+
     return context;
-  }
-  
-  private extractRecommendations(text: string): string[] {
-    const lines = text.split('\n');
-    const recommendations: string[] = [];
-    
-    for (const line of lines) {
-      if (line.match(/^[-•]\s+/) || line.match(/^\d+\.\s+/)) {
-        recommendations.push(line.replace(/^[-•]\s+|\d+\.\s+/, '').trim());
-      }
-    }
-    
-    return recommendations.slice(0, 5); // Max 5
-  }
-  
-  private extractImprovements(text: string): Array<any> {
-    // Simplified extraction
-    return [];
-  }
-  
-  private extractScore(text: string): number {
-    const match = text.match(/(\d+)\s*(\/100|punkte|points)/i);
-    return match ? parseInt(match[1]) : 75;
-  }
-  
-  private extractDaysRemaining(text: string): number | undefined {
-    const match = text.match(/(\d+)\s*(tage|days|wochen|weeks)/i);
-    if (!match) return undefined;
-    
-    const value = parseInt(match[1]);
-    const unit = match[2].toLowerCase();
-    
-    if (unit.includes('woche') || unit.includes('week')) {
-      return value * 7;
-    }
-    return value;
   }
 }
 

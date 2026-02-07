@@ -1,6 +1,6 @@
 # SF-1 Ultimate - Claude Code Kontext
 
-**Letzte Aktualisierung:** 2026-02-04 (Session 5 - Feature 4)
+**Letzte Aktualisierung:** 2026-02-07 (Session 7 - System-Benchmark & Fixes)
 **Projekt:** seedfinderpro.de - Cannabis Growing Community Platform
 
 ---
@@ -297,11 +297,15 @@ Eine Fullstack Cannabis-Community-Plattform mit:
 | Seite | Funktion |
 |-------|----------|
 | `/admin` | Dashboard, System-Status |
-| `/admin/analytics` | **NEU** Analytics Dashboard (User, Content, Trends) |
+| `/admin/analytics` | Analytics Dashboard (User, Content, Trends) |
 | `/admin/users` | Benutzer verwalten, Rollen, Bannen |
 | `/admin/moderation` | Gemeldete Inhalte prüfen |
 | `/admin/categories` | Forum-Kategorien |
 | `/admin/strains` | Strain-Datenbank (184 Einträge) |
+| `/admin/threads` | **NEU** Thread-Verwaltung (Suche, Anpinnen, Sperren, Löschen) |
+| `/admin/grows` | **NEU** Grow-Verwaltung (Suche, Status-Filter, Löschen) |
+| `/admin/logs` | **NEU** System-Logs (Level/Service-Filter, Aktualisieren) |
+| `/admin/settings` | Admin-Einstellungen |
 
 ---
 
@@ -369,11 +373,11 @@ function transformApiResponse(apiResponse) {
 3. ~~**Private Nachrichten**~~ ✅ Implementiert (Session 5 - Feature 2)
 4. ~~**Follow-System**~~ ✅ Implementiert (Session 5 - Feature 3)
 5. ~~**Strain-Vergleich**~~ ✅ Implementiert (Session 5 - Feature 4)
-6. **Grow-Kalender/Erinnerungen** - Termine und Tasks
-7. **Ernte-Statistiken** - Detaillierte Auswertungen
-8. **Seedbank-Verwaltung** - Preise, Scraper-Status
-9. **AI-Service Monitoring** - Token-Verbrauch, Kosten
-10. **System-Logs** - Fehler, API-Calls, Security
+6. ~~**System-Logs**~~ ✅ Implementiert (Session 7 - Admin Logs Page)
+7. **Grow-Kalender/Erinnerungen** - Termine und Tasks
+8. **Ernte-Statistiken** - Detaillierte Auswertungen
+9. **Seedbank-Verwaltung** - Preise, Scraper-Status
+10. **AI-Service Monitoring** - Token-Verbrauch, Kosten
 
 ---
 
@@ -476,14 +480,167 @@ curl https://seedfinderpro.de/api/[service]/health
 
 ---
 
+### Session 6 - AI-Service Komplett-Fix (2026-02-06)
+
+**Problem:** AI-Service Backend lieferte andere Response-Formate als Frontend erwartet.
+
+**Gefixt:**
+
+1. **OpenAI Modelle aktualisiert** (`config/openai.ts`)
+   - `gpt-4-vision-preview` / `gpt-4-turbo-preview` -> `gpt-4o` / `gpt-4o-mini`
+   - Veraltete Modellnamen funktionierten nicht mehr
+
+2. **Diagnose: Frontend-Backend Mismatch gefixt** (`services/diagnosis.service.ts`, `routes/ai.routes.ts`)
+   - Frontend sendet `description`, Backend akzeptiert jetzt beides (`description` + `symptoms`)
+   - Backend gibt jetzt `{ diagnoses: [{ problem, confidence (0-1), description, causes[], solutions[], severity }] }` zurück
+   - Regex-Parsing ersetzt durch `response_format: { type: 'json_object' }` (structured output)
+   - Fallback bei Parse-Fehler
+
+3. **Chat: Response-Format gefixt** (`services/chat.service.ts`)
+   - Alt: `{ response, sessionId }`
+   - Neu: `{ content, messageId, timestamp, sessionId }` (wie Frontend erwartet)
+   - Session-TTL: 1h -> 24h
+   - Redis SET-Index für schnellere User-Session-Suche
+   - Messages haben jetzt `id` Feld
+
+4. **Chat Sessions Endpoint gefixt** (`routes/ai.routes.ts`)
+   - Alt: `{ session: { messages: [...] } }` (gewrappt)
+   - Neu: `{ id, messages, createdAt, updatedAt }` (direkt, wie Frontend erwartet)
+
+5. **Advisor: Komplett überarbeitet** (`services/advisor.service.ts`, `routes/ai.routes.ts`)
+   - Neue `getGrowPlan()` Methode für Frontend-Format (`{ experience, goal, growType, medium }`)
+   - Returns: `{ strainRecommendations[], setupAdvice[], timeline[], tips[] }`
+   - `extractImprovements()` (war leer) -> JSON structured output
+   - `/advice` Route akzeptiert jetzt beide Formate (neues Frontend + legacy)
+   - Alle Advisor-Endpoints nutzen JSON structured output
+
+6. **Rate-Limiting implementiert** (`middleware/rate-limit.ts`)
+   - Redis-basiertes Sliding-Window Rate-Limiting
+   - 10 Requests/Minute pro User
+   - Rate-Limit Headers (X-RateLimit-Limit, X-RateLimit-Remaining)
+   - Fail-open bei Redis-Fehler
+
+**Geänderte Dateien:**
+- `apps/ai-service/src/config/openai.ts` - Modelle aktualisiert
+- `apps/ai-service/src/services/diagnosis.service.ts` - JSON structured output
+- `apps/ai-service/src/services/advisor.service.ts` - Neues Format + JSON output
+- `apps/ai-service/src/services/chat.service.ts` - Korrektes Response-Format
+- `apps/ai-service/src/routes/ai.routes.ts` - Alle Fixes integriert
+- `apps/ai-service/src/middleware/rate-limit.ts` - NEU: Rate-Limiting
+
+---
+
+### Session 7 - Admin-Seiten, Statische Seiten, System-Benchmark (2026-02-07)
+
+**Admin-Seiten erstellt (3 fehlende Seiten die 404 gaben):**
+
+1. **`/admin/threads`** - Thread-Verwaltung
+   - `apps/web-app/src/app/admin/threads/page.tsx` - NEU
+   - Suche, Status-Filter, Anpinnen, Sperren, Löschen
+   - Hooks: `useAdminThreads()` in `use-admin.ts`
+
+2. **`/admin/grows`** - Grow-Verwaltung
+   - `apps/web-app/src/app/admin/grows/page.tsx` - NEU
+   - Suche, Status-Filter (active/completed/abandoned), Löschen
+   - Hooks: `useAdminGrows()` in `use-admin.ts`
+
+3. **`/admin/logs`** - System-Logs
+   - `apps/web-app/src/app/admin/logs/page.tsx` - NEU
+   - Level-Filter (info/warn/error), Service-Filter, Aktualisieren
+   - Hooks: `useAdminLogs()` in `use-admin.ts`
+
+**Notification Dropdown ans Theme angepasst:**
+- Header nutzt jetzt `NotificationDropdown` aus `components/notifications/notification-dropdown.tsx`
+- Alte `NotificationsDropdown` (hardcoded Farben, neo-deep) ersetzt durch saubere shadcn/ui-Variante
+- `apps/web-app/src/components/layout/header.tsx` - Import geändert
+
+**Statische Seiten erstellt (4 fehlende Seiten die aus Footer/Register verlinkt waren):**
+- `apps/web-app/src/app/about/page.tsx` - Über uns Seite
+- `apps/web-app/src/app/privacy/page.tsx` - Datenschutzerklärung
+- `apps/web-app/src/app/terms/page.tsx` - Nutzungsbedingungen
+- `apps/web-app/src/app/contact/page.tsx` - Kontaktformular
+
+**HTTP→HTTPS Redirect gefixt:**
+- `docker-compose.yml` - Traefik `entrypoints.web.http.redirections` hinzugefügt
+- HTTP Requests werden jetzt per 301 auf HTTPS weitergeleitet
+
+**System-Benchmark Ergebnis (2026-02-07):**
+- 16/16 Docker Container: ✅ Alle laufen
+- 10/10 Backend Services: ✅ Alle healthy
+- 42/42 Frontend Routen: ✅ Keine 404s
+- 12/12 API Endpoints: ✅ Alle erreichbar
+- SSL/HTTPS: ✅ Aktiv + HTTP→HTTPS Redirect (301)
+- Response Times: 27-54ms
+
+**Geänderte Dateien:**
+- `apps/web-app/src/hooks/use-admin.ts` - 3 neue Hooks (useAdminThreads, useAdminGrows, useAdminLogs)
+- `apps/web-app/src/components/layout/header.tsx` - NotificationDropdown Import
+- `docker-compose.yml` - HTTP→HTTPS Redirect für Traefik
+
+---
+
+## Alle Frontend-Routen (42 Seiten, Stand 2026-02-07)
+
+| Route | Seite |
+|-------|-------|
+| `/` | Redirect → `/landing` oder `/dashboard` |
+| `/landing` | Landing Page |
+| `/auth/login` | Login |
+| `/auth/register` | Registrierung |
+| `/dashboard` | User Dashboard |
+| `/profile` | Eigenes Profil |
+| `/profile/[username]` | Öffentliches Profil |
+| `/settings` | Einstellungen (alle Tabs auf einer Seite) |
+| `/community` | Forum-Übersicht |
+| `/community/new` | Neuer Thread |
+| `/community/[slug]` | Kategorie |
+| `/community/thread/[id]` | Thread-Ansicht |
+| `/journal` | Journal-Übersicht |
+| `/journal/new` | Neues Journal |
+| `/journal/[id]` | Journal-Detail |
+| `/journal/[id]/entry/new` | Neuer Eintrag |
+| `/messages` | Private Nachrichten |
+| `/notifications` | Benachrichtigungen |
+| `/search` | Volltextsuche |
+| `/prices` | Preisvergleich |
+| `/strains` | Strain-Datenbank |
+| `/strains/compare` | Strain-Vergleich |
+| `/tools` | Rechner-Übersicht |
+| `/tools/vpd` | VPD-Rechner |
+| `/tools/co2` | CO2-Rechner |
+| `/tools/dli` | DLI-Rechner |
+| `/tools/ec` | EC-Rechner |
+| `/tools/power` | Stromkosten-Rechner |
+| `/tools/ppfd` | PPFD-Rechner |
+| `/ai` | AI-Assistent Übersicht |
+| `/ai/chat` | AI-Chat |
+| `/ai/advisor` | Grow-Berater |
+| `/ai/diagnose` | Pflanzen-Diagnose |
+| `/admin` | Admin-Dashboard |
+| `/admin/users` | Benutzer-Verwaltung |
+| `/admin/categories` | Kategorien-Verwaltung |
+| `/admin/settings` | Admin-Einstellungen |
+| `/admin/analytics` | Analytics Dashboard |
+| `/admin/threads` | Thread-Verwaltung |
+| `/admin/grows` | Grow-Verwaltung |
+| `/admin/logs` | System-Logs |
+| `/admin/moderation` | Meldungen/Reports |
+| `/admin/strains` | Strain-Verwaltung |
+| `/about` | Über uns |
+| `/privacy` | Datenschutz |
+| `/terms` | Nutzungsbedingungen |
+| `/contact` | Kontakt |
+
+---
+
 ## Nächste Schritte
 
 Beim Fortsetzen kannst du sagen:
 - "Füge Seedbank-Verwaltung hinzu"
-- "Implementiere System-Logs Seite"
 - "AI-Service Monitoring Dashboard"
 - "Content-Management für Banner/FAQ"
 - "Backup & Wartungs-Tools"
+- "Grow-Kalender implementieren"
 - "Zeige mir den aktuellen Status"
 
 ---
