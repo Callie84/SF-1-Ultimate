@@ -115,30 +115,30 @@ export default function PPFDCalculatorPage() {
               PPFD (Photosynthetic Photon Flux Density) misst die Anzahl der photosynthetisch aktiven 
               Photonen, die pro Sekunde auf einen Quadratmeter treffen.
             </p>
-            <div className="strain-card-3d rounded-xl p-6">
-              <h4 className="font-black text-white text-xl mb-3">Optimale PPFD-Werte:</h4>
+            <div className="rounded-lg border p-6">
+              <h4 className="font-medium text-foreground mb-3">Optimale PPFD-Werte:</h4>
               <ul className="space-y-2">
                 <li className="flex items-start gap-3">
-                  <span className="text-purple-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Setzlinge:</strong> 200 - 400 µmol/m²/s</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Setzlinge:</strong> 200 - 400 µmol/m²/s</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-purple-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Vegetativ:</strong> 400 - 600 µmol/m²/s</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Vegetativ:</strong> 400 - 600 µmol/m²/s</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-purple-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Blüte:</strong> 600 - 1000 µmol/m²/s</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Blüte:</strong> 600 - 1000 µmol/m²/s</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-purple-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Mit CO₂:</strong> 1000 - 1500 µmol/m²/s</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Mit CO₂:</strong> 1000 - 1500 µmol/m²/s</span>
                 </li>
               </ul>
             </div>
             <p>
-              <strong className="text-cannabis">Wichtig:</strong> Dies ist eine Schätzung! 
-              Echte PPFD-Werte variieren je nach Reflektor, Abstand und Lampen-Qualität. 
+              <strong className="text-foreground">Wichtig:</strong> Dies ist eine Schätzung!
+              Echte PPFD-Werte variieren je nach Reflektor, Abstand und Lampen-Qualität.
               Für präzise Messungen verwende ein PAR-Meter.
             </p>
           </div>

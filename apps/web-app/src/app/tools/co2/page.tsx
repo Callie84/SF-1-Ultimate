@@ -118,33 +118,33 @@ export default function CO2CalculatorPage() {
               CO₂-Supplementierung kann deine Erträge um 20-30% steigern, wenn alle anderen Faktoren 
               (Licht, Nährstoffe, Temperatur) optimal sind.
             </p>
-            <div className="strain-card-3d rounded-xl p-6">
-              <h4 className="font-black text-white text-xl mb-3">Optimale CO₂-Werte:</h4>
+            <div className="rounded-lg border p-6">
+              <h4 className="font-medium text-foreground mb-3">Optimale CO₂-Werte:</h4>
               <ul className="space-y-2">
                 <li className="flex items-start gap-3">
-                  <span className="text-cyan-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Ambient (Außenluft):</strong> 400 ppm</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Ambient (Außenluft):</strong> 400 ppm</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-cyan-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Vegetativ:</strong> 800 - 1200 ppm</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Vegetativ:</strong> 800 - 1200 ppm</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-cyan-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Blüte (optimal):</strong> 1200 - 1500 ppm</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Blüte (optimal):</strong> 1200 - 1500 ppm</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-cyan-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Maximum:</strong> 1500 ppm (mehr ist schädlich!)</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Maximum:</strong> 1500 ppm (mehr ist schädlich!)</span>
                 </li>
               </ul>
             </div>
             <p>
-              <strong className="text-cannabis">Wichtig:</strong> CO₂ nur während der Beleuchtungsphase 
+              <strong className="text-foreground">Wichtig:</strong> CO₂ nur während der Beleuchtungsphase
               einsetzen! Nachts wird kein CO₂ benötigt.
             </p>
             <p>
-              <strong className="text-cannabis">Tipp:</strong> Bei geschlossenem Raum (Luftwechsel = 0) 
+              <strong className="text-foreground">Tipp:</strong> Bei geschlossenem Raum (Luftwechsel = 0)
               brauchst du nur die initiale Füllung. Bei Luftwechsel musst du kontinuierlich nachfüllen.
             </p>
           </div>

@@ -39,14 +39,14 @@ export default function StrainsPage() {
   const router = useRouter();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [type, setType] = useState<string>('');
+  const [type, setType] = useState<string>('all');
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
 
   const { data, isLoading } = useStrains({
     page,
     limit: 20,
     search: search || undefined,
-    type: type || undefined,
+    type: type === 'all' ? undefined : type || undefined,
   });
 
   const strains = data?.strains || [];
@@ -123,7 +123,7 @@ export default function StrainsPage() {
                   <SelectValue placeholder="Alle Typen" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Alle Typen</SelectItem>
+                  <SelectItem value="all">Alle Typen</SelectItem>
                   <SelectItem value="indica">Indica</SelectItem>
                   <SelectItem value="sativa">Sativa</SelectItem>
                   <SelectItem value="hybrid">Hybrid</SelectItem>

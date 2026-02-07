@@ -18,113 +18,126 @@ interface DiagnosisResultsProps {
 }
 
 export function DiagnosisResults({ results, onReset }: DiagnosisResultsProps) {
-  const getSeverityColor = (severity: string) => {
+  const getSeverityStyle = (severity: string) => {
     switch (severity) {
       case 'high':
-        return 'text-red-400';
+        return { text: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20', badge: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' };
       case 'medium':
-        return 'text-yellow-400';
+        return { text: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', badge: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' };
       case 'low':
-        return 'text-green-400';
+        return { text: 'text-green-500', bg: 'bg-green-500/10', border: 'border-green-500/20', badge: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' };
       default:
-        return 'text-gray-400';
+        return { text: 'text-muted-foreground', bg: 'bg-muted', border: 'border-border', badge: 'bg-muted text-muted-foreground' };
     }
   };
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'high':
-        return <AlertTriangle className="w-8 h-8" />;
+        return <AlertTriangle className="h-5 w-5" />;
       case 'medium':
-        return <Info className="w-8 h-8" />;
+        return <Info className="h-5 w-5" />;
       case 'low':
-        return <CheckCircle className="w-8 h-8" />;
+        return <CheckCircle className="h-5 w-5" />;
       default:
         return null;
+    }
+  };
+
+  const getSeverityLabel = (severity: string) => {
+    switch (severity) {
+      case 'high': return 'Hoch';
+      case 'medium': return 'Mittel';
+      case 'low': return 'Niedrig';
+      default: return severity;
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="neo-deep rounded-2xl p-8 text-center">
-        <h2 className="text-4xl font-black text-cannabis mb-3">Diagnose-Ergebnis</h2>
-        <p className="text-xl text-emerald-200 font-bold">
+      <div className="rounded-xl border bg-card p-6 text-center">
+        <h2 className="text-xl font-bold mb-1">Diagnose-Ergebnis</h2>
+        <p className="text-sm text-muted-foreground">
           {results.length} {results.length === 1 ? 'Problem' : 'Probleme'} erkannt
         </p>
       </div>
 
       {/* Results */}
-      {results.map((result, index) => (
-        <div key={index} className="neo-deep rounded-2xl p-8 space-y-6">
-          {/* Problem Header */}
-          <div className="flex items-start gap-6">
-            <div className={cn('icon-emboss p-6 rounded-xl', getSeverityColor(result.severity))}>
-              {getSeverityIcon(result.severity)}
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-3">
-                <h3 className="text-3xl font-black text-cannabis">{result.problem}</h3>
-                <span className="badge-3d px-4 py-1 text-base text-white font-bold rounded-full">
-                  {Math.round(result.confidence * 100)}% sicher
-                </span>
+      {results.map((result, index) => {
+        const style = getSeverityStyle(result.severity);
+        return (
+          <div key={index} className="rounded-xl border bg-card p-6 space-y-5">
+            {/* Problem Header */}
+            <div className="flex items-start gap-4">
+              <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg flex-shrink-0', style.bg, style.text)}>
+                {getSeverityIcon(result.severity)}
               </div>
-              <p className="text-xl text-emerald-100 font-medium leading-relaxed">
-                {result.description}
-              </p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-2">
+                  <h3 className="text-lg font-semibold">{result.problem}</h3>
+                  <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', style.badge)}>
+                    {getSeverityLabel(result.severity)}
+                  </span>
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                    {Math.round(result.confidence * 100)}% sicher
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {result.description}
+                </p>
+              </div>
             </div>
+
+            {/* Causes */}
+            {result.causes.length > 0 && (
+              <div className="rounded-lg border p-4">
+                <h4 className="font-medium mb-3 text-sm flex items-center gap-2">
+                  <span>🔍</span>
+                  Mogliche Ursachen
+                </h4>
+                <ul className="space-y-2">
+                  {result.causes.map((cause, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm">
+                      <span className="text-primary mt-0.5">•</span>
+                      <span className="text-muted-foreground">{cause}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Solutions */}
+            {result.solutions.length > 0 && (
+              <div className="rounded-lg border p-4">
+                <h4 className="font-medium mb-3 text-sm flex items-center gap-2">
+                  <span>💡</span>
+                  Losungen
+                </h4>
+                <ol className="space-y-2">
+                  {result.solutions.map((solution, i) => (
+                    <li key={i} className="flex items-start gap-3 text-sm">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-medium flex-shrink-0">
+                        {i + 1}
+                      </span>
+                      <span className="text-muted-foreground pt-0.5">{solution}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
           </div>
-
-          {/* Causes */}
-          {result.causes.length > 0 && (
-            <div className="strain-card-3d rounded-xl p-6">
-              <h4 className="font-black text-white text-2xl mb-4 flex items-center gap-2">
-                <span className="text-2xl">🔍</span>
-                Mögliche Ursachen
-              </h4>
-              <ul className="space-y-3">
-                {result.causes.map((cause, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <span className="text-emerald-400 text-xl mt-1">•</span>
-                    <span className="text-white text-lg font-medium flex-1">{cause}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Solutions */}
-          {result.solutions.length > 0 && (
-            <div className="strain-card-3d rounded-xl p-6">
-              <h4 className="font-black text-white text-2xl mb-4 flex items-center gap-2">
-                <span className="text-2xl">💡</span>
-                Lösungen
-              </h4>
-              <ol className="space-y-4">
-                {result.solutions.map((solution, i) => (
-                  <li key={i} className="flex items-start gap-4">
-                    <span className="badge-3d w-8 h-8 flex items-center justify-center font-black text-white flex-shrink-0">
-                      {i + 1}
-                    </span>
-                    <span className="text-white text-lg font-medium flex-1 pt-1">{solution}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
-        </div>
-      ))}
+        );
+      })}
 
       {/* Actions */}
-      <div className="flex gap-4">
-        <button
-          onClick={onReset}
-          className="flex-1 bubble-soft px-10 py-6 rounded-xl font-black text-white text-xl flex items-center justify-center gap-3"
-        >
-          <RefreshCw className="w-6 h-6" />
-          Neue Diagnose
-        </button>
-      </div>
+      <button
+        onClick={onReset}
+        className="w-full rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+      >
+        <RefreshCw className="h-4 w-4" />
+        Neue Diagnose
+      </button>
     </div>
   );
 }

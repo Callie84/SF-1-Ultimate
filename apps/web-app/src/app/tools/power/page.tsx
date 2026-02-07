@@ -97,37 +97,37 @@ export default function PowerCalculatorPage() {
               Dieser Rechner berechnet deinen gesamten Stromverbrauch und die Kosten für deinen Grow. 
               Die Lampen laufen nur während der Photoperiode, während Lüfter & Co. 24h laufen.
             </p>
-            <div className="strain-card-3d rounded-xl p-6">
-              <h4 className="font-black text-white text-xl mb-3">Beispiel-Rechnung:</h4>
+            <div className="rounded-lg border p-6">
+              <h4 className="font-medium text-foreground mb-3">Beispiel-Rechnung:</h4>
               <ul className="space-y-2 text-sm">
                 <li className="flex items-start gap-3">
-                  <span className="text-emerald-400 text-xl">•</span>
+                  <span className="text-primary">•</span>
                   <span>
-                    <strong className="text-cannabis">300W LED × 18h</strong> = 5.4 kWh/Tag (nur Lampe)
+                    <strong className="text-foreground">300W LED × 18h</strong> = 5.4 kWh/Tag (nur Lampe)
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-emerald-400 text-xl">•</span>
+                  <span className="text-primary">•</span>
                   <span>
-                    <strong className="text-cannabis">100W Equipment × 24h</strong> = 2.4 kWh/Tag (Lüfter etc.)
+                    <strong className="text-foreground">100W Equipment × 24h</strong> = 2.4 kWh/Tag (Lüfter etc.)
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-emerald-400 text-xl">•</span>
+                  <span className="text-primary">•</span>
                   <span>
-                    <strong className="text-cannabis">Gesamt:</strong> 7.8 kWh/Tag
+                    <strong className="text-foreground">Gesamt:</strong> 7.8 kWh/Tag
                   </span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-emerald-400 text-xl">•</span>
+                  <span className="text-primary">•</span>
                   <span>
-                    <strong className="text-cannabis">Bei 0.35€/kWh:</strong> 2.73€/Tag = ~82€/Monat
+                    <strong className="text-foreground">Bei 0.35€/kWh:</strong> 2.73€/Tag = ~82€/Monat
                   </span>
                 </li>
               </ul>
             </div>
             <p>
-              <strong className="text-cannabis">Spartipp:</strong> LED-Lampen sind teurer in der Anschaffung, 
+              <strong className="text-foreground">Spartipp:</strong> LED-Lampen sind teurer in der Anschaffung,
               sparen aber langfristig durch höhere Effizienz viel Strom!
             </p>
           </div>

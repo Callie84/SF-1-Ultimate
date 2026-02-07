@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { AdvisorForm } from '@/components/ai/advisor-form';
 import { AdvisorResults } from '@/components/ai/advisor-results';
 import { apiClient } from '@/lib/api-client';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Lightbulb } from 'lucide-react';
 
 interface AdvisorData {
   experience: 'beginner' | 'intermediate' | 'expert';
@@ -40,44 +40,51 @@ export default function AdvisorPage() {
     setResults(null);
 
     try {
-      const response = await apiClient.post('/ai/advice', data);
+      const response = await apiClient.post('/api/ai/advice', data);
       setResults(response);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Advisor request failed:', error);
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
+        setResults({
+          strainRecommendations: [],
+          setupAdvice: ['Du musst eingeloggt sein, um den Advisor zu nutzen. Bitte melde dich an unter /auth/login.'],
+          timeline: [],
+          tips: [],
+        });
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="container mx-auto px-6 py-10">
-      <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-10">
-          <div className="inline-block icon-emboss p-8 rounded-2xl mb-5">
-            <span className="text-7xl">🎯</span>
-          </div>
-          <h1 className="text-6xl font-black text-cannabis mb-3">Grow Advisor</h1>
-          <p className="text-2xl text-emerald-200 font-bold">
-            Personalisierte Empfehlungen für deinen perfekten Grow
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <div className="flex items-center gap-3 mb-2">
+          <Lightbulb className="h-6 w-6 text-primary" />
+          <h1 className="text-2xl font-bold">Grow Advisor</h1>
+        </div>
+        <p className="text-muted-foreground">
+          Personalisierte Empfehlungen für deinen perfekten Grow. Strain-Auswahl, Setup und Timeline.
+        </p>
+      </div>
+
+      {!results ? (
+        <AdvisorForm onSubmit={handleSubmit} isLoading={isLoading} />
+      ) : (
+        <AdvisorResults results={results} onReset={() => setResults(null)} />
+      )}
+
+      {isLoading && (
+        <div className="rounded-xl border bg-card p-8 text-center">
+          <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto mb-3" />
+          <h3 className="text-lg font-semibold mb-1">Erstelle deinen Plan...</h3>
+          <p className="text-sm text-muted-foreground">
+            Die AI analysiert deine Angaben und erstellt personalisierte Empfehlungen
           </p>
         </div>
-
-        {!results ? (
-          <AdvisorForm onSubmit={handleSubmit} isLoading={isLoading} />
-        ) : (
-          <AdvisorResults results={results} onReset={() => setResults(null)} />
-        )}
-
-        {isLoading && (
-          <div className="neo-deep rounded-2xl p-10 text-center">
-            <Loader2 className="w-16 h-16 text-emerald-400 animate-spin mx-auto mb-4" />
-            <h3 className="text-2xl font-black text-white mb-2">Erstelle deinen Plan...</h3>
-            <p className="text-lg text-emerald-200 font-medium">
-              Die AI analysiert deine Angaben und erstellt personalisierte Empfehlungen
-            </p>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

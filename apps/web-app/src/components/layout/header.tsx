@@ -6,7 +6,7 @@ import { useTheme } from 'next-themes';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Button } from '@/components/ui/button';
 import { SearchBar } from '@/components/search/search-bar';
-import { NotificationsDropdown } from '@/components/layout/notifications-dropdown';
+import { NotificationDropdown } from '@/components/notifications/notification-dropdown';
 import { MessageDropdown } from '@/components/messages/message-dropdown';
 import { getInitials } from '@/lib/utils';
 import {
@@ -50,7 +50,7 @@ export function Header() {
         <MessageDropdown />
 
         {/* Notifications */}
-        <NotificationsDropdown />
+        <NotificationDropdown />
 
         {/* User Menu */}
         <DropdownMenu>

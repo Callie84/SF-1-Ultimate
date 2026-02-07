@@ -1,9 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Info } from 'lucide-react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { Info } from 'lucide-react';
 
 interface CalculatorField {
   name: string;
@@ -67,106 +65,93 @@ export function Calculator({
   const status = result !== null && getStatus ? getStatus(result as any) : null;
 
   return (
-    <div className="container mx-auto px-6 py-10">
-      <div className="max-w-4xl mx-auto">
-        {/* Back Button */}
-        <Link href="/tools">
-          <Button variant="ghost" className="mb-6">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Zurück zu Tools
-          </Button>
-        </Link>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold mb-1">{title}</h1>
+        <p className="text-muted-foreground">{description}</p>
+      </div>
 
-        {/* Header */}
-        <div className="text-center mb-10">
-          <div className={`inline-block icon-emboss p-8 rounded-2xl mb-5 bg-gradient-to-br ${gradient}`}>
-            {icon}
-          </div>
-          <h1 className="text-6xl font-black text-cannabis mb-3">{title}</h1>
-          <p className="text-2xl text-emerald-200 font-bold">{description}</p>
-        </div>
-
-        {/* Calculator */}
-        <div className="neo-deep rounded-2xl p-8 mb-6">
-          <div className="space-y-6">
-            {fields.map((field) => (
-              <div key={field.name}>
-                <label className="block text-xl text-emerald-300 mb-3 font-bold">
-                  {field.label} {field.unit && `(${field.unit})`}
-                </label>
-                {field.type === 'number' ? (
-                  <input
-                    type="number"
-                    value={values[field.name]}
-                    onChange={(e) =>
-                      setValues({ ...values, [field.name]: Number(e.target.value) })
-                    }
-                    className="w-full input-inset rounded-xl px-6 py-4 text-white text-xl font-medium focus:outline-none"
-                    min={field.min}
-                    max={field.max}
-                    step={field.step || 1}
-                  />
-                ) : (
-                  <select
-                    value={values[field.name]}
-                    onChange={(e) => setValues({ ...values, [field.name]: e.target.value })}
-                    className="w-full input-inset rounded-xl px-6 py-4 text-white text-xl font-medium focus:outline-none cursor-pointer"
-                  >
-                    {field.options?.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {field.help && (
-                  <p className="text-sm text-white/60 mt-2 font-medium">{field.help}</p>
-                )}
-              </div>
-            ))}
-
-            {/* Calculate Button */}
-            <button
-              onClick={handleCalculate}
-              className="w-full bubble-soft px-10 py-6 rounded-xl font-black text-white text-2xl"
-            >
-              Berechnen
-            </button>
-          </div>
-        </div>
-
-        {/* Result */}
-        {result !== null && (
-          <div className="neo-deep rounded-2xl p-8 mb-6">
-            <h3 className="text-3xl font-black text-cannabis mb-6">Ergebnis</h3>
-            <div className="strain-card-3d rounded-xl p-8 text-center">
-              <div className="text-7xl font-black text-cannabis mb-4">
-                {typeof result === 'number' ? result.toFixed(2) : result} {resultUnit}
-              </div>
-              <div className="text-2xl font-black text-emerald-300 mb-2">
-                {resultLabel}
-              </div>
-              {status && (
-                <>
-                  <div className={`text-3xl font-black ${status.color} mb-3 mt-6`}>
-                    {status.text}
-                  </div>
-                  <p className="text-xl text-emerald-100 font-medium">{status.desc}</p>
-                </>
+      {/* Calculator */}
+      <div className="rounded-xl border bg-card p-6">
+        <div className="space-y-4">
+          {fields.map((field) => (
+            <div key={field.name}>
+              <label className="block text-sm font-medium mb-2 text-muted-foreground">
+                {field.label} {field.unit && `(${field.unit})`}
+              </label>
+              {field.type === 'number' ? (
+                <input
+                  type="number"
+                  value={values[field.name]}
+                  onChange={(e) =>
+                    setValues({ ...values, [field.name]: Number(e.target.value) })
+                  }
+                  className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  min={field.min}
+                  max={field.max}
+                  step={field.step || 1}
+                />
+              ) : (
+                <select
+                  value={values[field.name]}
+                  onChange={(e) => setValues({ ...values, [field.name]: e.target.value })}
+                  className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
+                >
+                  {field.options?.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {field.help && (
+                <p className="text-xs text-muted-foreground mt-1.5">{field.help}</p>
               )}
             </div>
-          </div>
-        )}
+          ))}
 
-        {/* Info */}
-        <div className="neo-deep rounded-2xl p-8">
-          <h3 className="text-2xl font-black text-cannabis mb-4 flex items-center gap-3">
-            <Info className="w-7 h-7" />
-            {info.title}
-          </h3>
-          <div className="text-lg text-emerald-100 font-medium leading-relaxed">
-            {info.content}
+          {/* Calculate Button */}
+          <button
+            onClick={handleCalculate}
+            className="w-full rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Berechnen
+          </button>
+        </div>
+      </div>
+
+      {/* Result */}
+      {result !== null && (
+        <div className="rounded-xl border bg-card p-6">
+          <h3 className="font-semibold mb-4">Ergebnis</h3>
+          <div className="rounded-lg border p-6 text-center">
+            <div className="text-3xl font-bold text-primary mb-1">
+              {typeof result === 'number' ? result.toFixed(2) : result} {resultUnit}
+            </div>
+            <div className="text-sm font-medium text-muted-foreground mb-2">
+              {resultLabel}
+            </div>
+            {status && (
+              <>
+                <div className={`text-lg font-bold ${status.color} mt-3`}>
+                  {status.text}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">{status.desc}</p>
+              </>
+            )}
           </div>
+        </div>
+      )}
+
+      {/* Info */}
+      <div className="rounded-xl border bg-card p-6">
+        <h3 className="font-semibold mb-3 flex items-center gap-2">
+          <Info className="h-5 w-5 text-primary" />
+          {info.title}
+        </h3>
+        <div className="text-sm text-muted-foreground leading-relaxed">
+          {info.content}
         </div>
       </div>
     </div>

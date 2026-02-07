@@ -6,6 +6,7 @@ import { connectMongoDB } from './config/mongodb';
 import { connectRedis } from './config/redis';
 import { eventProcessorService } from './services/event-processor.service';
 import profileRoutes from './routes/profile.routes';
+import analyticsRoutes from './routes/analytics.routes';
 import { errorHandler } from './utils/errors';
 import { logger } from './utils/logger';
 
@@ -37,6 +38,7 @@ app.get('/api/gamification/health', (req, res) => {
 
 // Routes
 app.use('/api/gamification/profile', profileRoutes);
+app.use('/api/gamification/analytics', analyticsRoutes);
 
 // Shortcut routes (für Traefik PathPrefix)
 app.use('/api/leaderboard', (req, res) => {

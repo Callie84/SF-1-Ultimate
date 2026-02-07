@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ChatMessages } from '@/components/ai/chat-messages';
 import { ChatInput } from '@/components/ai/chat-input';
-import { ChatSessions } from '@/components/ai/chat-sessions';
 import { apiClient } from '@/lib/api-client';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus, MessageSquare, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Message {
   id: string;
@@ -25,16 +25,25 @@ export default function AiChatPage() {
     {
       id: '1',
       role: 'assistant',
-      content: 'Hey! 👋 Ich bin dein SF-1 AI Assistant. Stell mir Fragen zu Cannabis-Anbau, Strains, Problemen oder was auch immer du wissen möchtest!',
+      content: 'Hey! Ich bin dein SF-1 AI Assistant. Stell mir Fragen zu Cannabis-Anbau, Strains, Problemen oder was auch immer du wissen möchtest!',
       timestamp: new Date(),
     },
   ]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showSessions, setShowSessions] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSendMessage = async (content: string) => {
-    // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
@@ -45,42 +54,41 @@ export default function AiChatPage() {
     setIsLoading(true);
 
     try {
-      // Call AI API
-      const response = await apiClient.post('/ai/chat', {
+      const response = await apiClient.post('/api/ai/chat', {
         sessionId: currentSessionId,
         message: content,
       });
 
-      // Add AI response
       const aiMessage: Message = {
-        id: response.messageId,
+        id: response.messageId || Date.now().toString(),
         role: 'assistant',
-        content: response.content,
-        timestamp: new Date(response.timestamp),
+        content: response.content || response.response || '',
+        timestamp: new Date(response.timestamp || Date.now()),
       };
       setMessages((prev) => [...prev, aiMessage]);
 
-      // Update session
-      if (!currentSessionId) {
+      if (!currentSessionId && response.sessionId) {
         setCurrentSessionId(response.sessionId);
         setSessions((prev) => [
           {
             id: response.sessionId,
-            title: content.slice(0, 50) + '...',
+            title: content.slice(0, 50) + (content.length > 50 ? '...' : ''),
             lastMessage: new Date(),
           },
           ...prev,
         ]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to send message:', error);
-      // Add error message
+      const isAuthError = error?.response?.status === 401 || error?.response?.status === 403;
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now().toString(),
           role: 'assistant',
-          content: 'Entschuldigung, es gab einen Fehler. Bitte versuche es erneut.',
+          content: isAuthError
+            ? 'Du musst eingeloggt sein, um den AI-Chat zu nutzen. Bitte melde dich an unter [Login](/auth/login).'
+            : 'Entschuldigung, es gab einen Fehler. Bitte versuche es erneut.',
           timestamp: new Date(),
         },
       ]);
@@ -104,14 +112,20 @@ export default function AiChatPage() {
   const handleLoadSession = async (sessionId: string) => {
     setIsLoading(true);
     try {
-      const response = await apiClient.get(`/ai/chat/sessions/${sessionId}`);
+      const response = await apiClient.get(`/api/ai/chat/sessions/${sessionId}`);
       setCurrentSessionId(sessionId);
-      setMessages(
-        response.messages.map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp),
-        }))
-      );
+      const msgs = (response.messages || []).map((msg: any) => ({
+        ...msg,
+        id: msg.id || Date.now().toString(),
+        timestamp: new Date(msg.timestamp),
+      }));
+      setMessages(msgs.length > 0 ? msgs : [{
+        id: '1',
+        role: 'assistant' as const,
+        content: 'Session geladen. Wie kann ich dir weiterhelfen?',
+        timestamp: new Date(),
+      }]);
+      setShowSessions(false);
     } catch (error) {
       console.error('Failed to load session:', error);
     } finally {
@@ -120,53 +134,93 @@ export default function AiChatPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] gap-4">
-      {/* Sessions Sidebar */}
-      <aside className="w-80 flex-shrink-0">
-        <ChatSessions
-          sessions={sessions}
-          currentSessionId={currentSessionId}
-          onNewSession={handleNewSession}
-          onSelectSession={handleLoadSession}
-        />
-      </aside>
-
-      {/* Main Chat */}
-      <main className="flex-1 flex flex-col min-w-0 neo-deep rounded-3xl overflow-hidden">
-        {/* Header */}
-        <div className="cannabis-gradient-dark p-6 border-b border-white/10 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="avatar-cannabis w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-black text-gray-900">
-                🌿
-              </div>
-              <div>
-                <h1 className="text-cannabis text-3xl font-black">SF-1 AI Assistant</h1>
-                <p className="text-emerald-300 text-lg font-bold flex items-center gap-2">
-                  <span className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></span>
-                  Online & Ready
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleNewSession}
-              className="neo-deep px-6 py-3 rounded-xl text-white font-bold text-base hover:scale-105 transition"
-            >
-              New Session
-            </button>
+    <div className="flex flex-col h-[calc(100vh-8rem)]">
+      {/* Chat Header */}
+      <div className="flex items-center justify-between pb-4 border-b mb-4 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
+            AI
+          </div>
+          <div>
+            <h1 className="text-lg font-bold">AI Chat</h1>
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+              Online
+            </p>
           </div>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6" style={{ background: 'linear-gradient(135deg, #051510, #0a2a1f)' }}>
-          <ChatMessages messages={messages} isLoading={isLoading} />
-        </div>
+        <div className="flex items-center gap-2">
+          {/* Sessions Toggle */}
+          <button
+            onClick={() => setShowSessions(!showSessions)}
+            className={cn(
+              'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              showSessions ? 'bg-primary text-primary-foreground' : 'bg-accent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <MessageSquare className="h-4 w-4" />
+            Sessions
+            {showSessions ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </button>
 
-        {/* Input */}
-        <div className="cannabis-gradient-dark p-6 flex-shrink-0">
-          <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
+          {/* New Session */}
+          <button
+            onClick={handleNewSession}
+            className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Neu
+          </button>
         </div>
-      </main>
+      </div>
+
+      {/* Sessions Dropdown */}
+      {showSessions && (
+        <div className="border rounded-lg bg-card p-4 mb-4 flex-shrink-0">
+          <h3 className="text-sm font-semibold mb-3">Bisherige Sessions</h3>
+          {sessions.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-2">Noch keine Sessions vorhanden.</p>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {sessions.map((session) => (
+                <button
+                  key={session.id}
+                  onClick={() => handleLoadSession(session.id)}
+                  className={cn(
+                    'w-full text-left rounded-lg px-3 py-2 text-sm transition-colors flex items-center justify-between',
+                    currentSessionId === session.id
+                      ? 'bg-primary/10 text-primary border border-primary/20'
+                      : 'hover:bg-accent'
+                  )}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <MessageSquare className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                    <span className="truncate">{session.title}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                    {new Date(session.lastMessage).toLocaleDateString('de-DE', {
+                      day: '2-digit',
+                      month: '2-digit',
+                    })}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Messages Area */}
+      <div className="flex-1 overflow-y-auto rounded-xl border bg-card p-4 mb-4">
+        <ChatMessages messages={messages} isLoading={isLoading} />
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="flex-shrink-0">
+        <ChatInput onSendMessage={handleSendMessage} disabled={isLoading} />
+      </div>
     </div>
   );
 }

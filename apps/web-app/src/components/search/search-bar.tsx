@@ -31,8 +31,8 @@ export function SearchBar({ className }: SearchBarProps) {
     const loadSearchData = async () => {
       try {
         const [recent, popular] = await Promise.all([
-          apiClient.get('/search/history/recent'),
-          apiClient.get('/search/popular')
+          apiClient.get('/api/search/history/recent'),
+          apiClient.get('/api/search/popular')
         ]);
         setRecentSearches(recent.searches || []);
         setPopularSearches(popular.searches || []);
@@ -55,7 +55,7 @@ export function SearchBar({ className }: SearchBarProps) {
       setIsLoading(true);
       try {
         const response = await apiClient.get(
-          `/search/strains/suggest?q=${encodeURIComponent(debouncedQuery)}&limit=5`
+          `/api/search/strains/suggest?q=${encodeURIComponent(debouncedQuery)}&limit=5`
         );
         setSuggestions(response.results || []);
       } catch (error) {

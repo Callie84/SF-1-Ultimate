@@ -8,6 +8,7 @@ import entriesRoutes from './routes/entries.routes';
 import photosRoutes from './routes/photos.routes';
 import socialRoutes from './routes/social.routes';
 import feedRoutes from './routes/feed.routes';
+import analyticsRoutes from './routes/analytics.routes';
 import { logger } from './utils/logger';
 
 const app = express();
@@ -39,6 +40,7 @@ app.use('/api/journal/grows', entriesRoutes);
 app.use('/api/journal/entries', photosRoutes);
 app.use('/api/journal/grows', socialRoutes);
 app.use('/api/journal/feed', feedRoutes);
+app.use('/api/journal/analytics', analyticsRoutes);
 
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   logger.error('Unhandled error:', err);

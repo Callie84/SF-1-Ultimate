@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useRef, ChangeEvent } from 'react';
-import { Upload, X, Zap } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Upload, X, Zap, ImagePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DiagnosisFormProps {
@@ -36,7 +35,7 @@ export function DiagnosisForm({ onDiagnose, onQuickDiagnose, isLoading }: Diagno
       file.type.startsWith('image/')
     );
     if (files.length > 0) {
-      setImages((prev) => [...prev, ...files].slice(0, 5)); // Max 5 images
+      setImages((prev) => [...prev, ...files].slice(0, 5));
     }
   };
 
@@ -69,9 +68,9 @@ export function DiagnosisForm({ onDiagnose, onQuickDiagnose, isLoading }: Diagno
   return (
     <div className="space-y-6">
       {/* Image Upload */}
-      <div className="neo-deep rounded-2xl p-8">
-        <h3 className="font-black text-white mb-4 flex items-center gap-2 text-xl">
-          <span className="text-2xl">📸</span>
+      <div className="rounded-xl border bg-card p-6">
+        <h3 className="font-semibold mb-4 flex items-center gap-2">
+          <Upload className="h-5 w-5 text-primary" />
           Bilder hochladen (Optional)
         </h3>
 
@@ -83,8 +82,10 @@ export function DiagnosisForm({ onDiagnose, onQuickDiagnose, isLoading }: Diagno
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
             className={cn(
-              'upload-zone rounded-2xl p-16 text-center cursor-pointer transition',
-              dragActive && 'border-emerald-500 bg-emerald-500/10'
+              'rounded-xl border-2 border-dashed p-12 text-center cursor-pointer transition-colors',
+              dragActive
+                ? 'border-primary bg-primary/5'
+                : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/50'
             )}
           >
             <input
@@ -95,41 +96,41 @@ export function DiagnosisForm({ onDiagnose, onQuickDiagnose, isLoading }: Diagno
               onChange={handleFileChange}
               className="hidden"
             />
-            <div className="mb-6">
-              <div className="inline-block icon-emboss p-8 rounded-xl">
-                <Upload className="w-16 h-16 text-gray-900" />
+            <div className="mb-4">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-xl bg-primary/10">
+                <ImagePlus className="h-8 w-8 text-primary" />
               </div>
             </div>
-            <h4 className="text-2xl font-black text-white mb-3">Fotos hochladen</h4>
-            <p className="text-xl text-emerald-200 mb-5 font-medium">
+            <h4 className="text-lg font-semibold mb-1">Fotos hochladen</h4>
+            <p className="text-sm text-muted-foreground mb-2">
               Klicken oder Drag & Drop
             </p>
-            <p className="text-lg text-white/60 font-medium">
-              PNG, JPG bis 10MB • Max. 5 Bilder
+            <p className="text-xs text-muted-foreground">
+              PNG, JPG bis 10MB - Max. 5 Bilder
             </p>
           </div>
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {images.map((image, index) => (
-                <div key={index} className="relative neo-deep rounded-xl p-2 group">
+                <div key={index} className="relative rounded-xl border bg-accent/50 p-1.5 group">
                   <img
                     src={URL.createObjectURL(image)}
                     alt={`Upload ${index + 1}`}
-                    className="w-full h-40 object-cover rounded-lg"
+                    className="w-full h-36 object-cover rounded-lg"
                   />
                   <button
                     onClick={() => removeImage(index)}
-                    className="absolute top-4 right-4 bg-red-500 hover:bg-red-600 p-2 rounded-full opacity-0 group-hover:opacity-100 transition"
+                    className="absolute top-3 right-3 bg-destructive hover:bg-destructive/90 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition"
                   >
-                    <X className="w-4 h-4 text-white" />
+                    <X className="w-3.5 h-3.5 text-destructive-foreground" />
                   </button>
                 </div>
               ))}
               {images.length < 5 && (
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="neo-deep rounded-xl p-2 h-48 flex flex-col items-center justify-center hover:scale-105 transition"
+                  className="rounded-xl border-2 border-dashed border-muted-foreground/25 p-1.5 h-[162px] flex flex-col items-center justify-center hover:border-primary/50 hover:bg-accent/50 transition-colors"
                 >
                   <input
                     ref={fileInputRef}
@@ -139,8 +140,8 @@ export function DiagnosisForm({ onDiagnose, onQuickDiagnose, isLoading }: Diagno
                     onChange={handleFileChange}
                     className="hidden"
                   />
-                  <Upload className="w-12 h-12 text-emerald-400 mb-2" />
-                  <span className="text-sm text-white font-medium">Weitere hinzufügen</span>
+                  <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                  <span className="text-sm text-muted-foreground">Weitere hinzufugen</span>
                 </button>
               )}
             </div>
@@ -149,41 +150,41 @@ export function DiagnosisForm({ onDiagnose, onQuickDiagnose, isLoading }: Diagno
       </div>
 
       {/* Description */}
-      <div className="neo-deep rounded-2xl p-8">
-        <h3 className="font-black text-white mb-4 flex items-center gap-2 text-xl">
-          <span className="text-2xl">📝</span>
+      <div className="rounded-xl border bg-card p-6">
+        <h3 className="font-semibold mb-4 flex items-center gap-2">
+          <span className="text-lg">📝</span>
           Beschreibung (Optional)
         </h3>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Beschreibe das Problem: z.B. 'gelbe Blätter an unteren Zweigen', 'braune Flecken auf Blättern'..."
-          className="w-full input-inset rounded-xl px-6 py-5 text-white text-lg placeholder-white/50 font-medium focus:outline-none min-h-[150px] resize-none"
+          placeholder="Beschreibe das Problem: z.B. 'gelbe Blatter an unteren Zweigen', 'braune Flecken auf Blattern'..."
+          className="w-full rounded-lg border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring min-h-[120px] resize-none"
           disabled={isLoading}
         />
       </div>
 
       {/* Actions */}
-      <div className="flex gap-4">
+      <div className="flex gap-3">
         <button
           onClick={handleSubmit}
           disabled={isLoading || (images.length === 0 && !description.trim())}
           className={cn(
-            'flex-1 bubble-soft px-10 py-6 rounded-xl font-black text-white text-xl transition',
+            'flex-1 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90',
             (isLoading || (images.length === 0 && !description.trim())) &&
               'opacity-50 cursor-not-allowed'
           )}
         >
-          🔬 Vollständige Diagnose
+          Vollstandige Diagnose
         </button>
 
         {images.length === 0 && description.trim() && (
           <button
             onClick={handleQuickSubmit}
             disabled={isLoading}
-            className="neo-deep px-10 py-6 rounded-xl font-bold text-white text-lg hover:scale-105 transition flex items-center gap-2"
+            className="rounded-lg border bg-card px-6 py-3 text-sm font-medium hover:bg-accent transition-colors flex items-center gap-2"
           >
-            <Zap className="w-5 h-5" />
+            <Zap className="h-4 w-4" />
             Schnell-Diagnose
           </button>
         )}
