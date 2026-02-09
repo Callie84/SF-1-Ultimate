@@ -267,34 +267,125 @@ export class PriceService {
   }
   
   /**
-   * Search seeds
+   * Search seeds with prices
    */
   async searchSeeds(query: string, options: {
     type?: string;
+    breeder?: string;
     limit?: number;
     skip?: number;
-  } = {}): Promise<{ seeds: ISeed[]; total: number }> {
+  } = {}): Promise<{ seeds: any[]; total: number }> {
     const limit = Math.min(options.limit || 50, 200);
     const skip = options.skip || 0;
-    
+
     const searchQuery: any = {
-      $text: { $search: query }
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { breeder: { $regex: query, $options: 'i' } }
+      ]
     };
-    
+
     if (options.type) {
       searchQuery.type = options.type;
     }
-    
+    if (options.breeder) {
+      searchQuery.breeder = options.breeder;
+    }
+
     const [seeds, total] = await Promise.all([
       Seed.find(searchQuery)
-        .sort({ viewCount: -1 })
+        .sort({ viewCount: -1, lowestPrice: 1 })
         .skip(skip)
         .limit(limit)
         .lean(),
       Seed.countDocuments(searchQuery)
     ]);
-    
-    return { seeds, total };
+
+    // Enrich seeds with their prices
+    const enriched = await Promise.all(seeds.map(async (seed) => {
+      const prices = await Price.find({ seedId: seed._id })
+        .sort({ price: 1 })
+        .lean();
+
+      return {
+        ...seed,
+        prices: prices.map(p => ({
+          seedbank: p.seedbank,
+          seedbankSlug: p.seedbankSlug,
+          price: p.price,
+          currency: p.currency || 'EUR',
+          seedCount: p.seedCount || 1,
+          packSize: p.packSize,
+          url: p.url,
+          inStock: p.inStock ?? true,
+        }))
+      };
+    }));
+
+    return { seeds: enriched, total };
+  }
+
+  /**
+   * Browse all seeds with prices (paginated)
+   */
+  async browseSeeds(options: {
+    type?: string;
+    breeder?: string;
+    sort?: string;
+    limit?: number;
+    skip?: number;
+  } = {}): Promise<{ seeds: any[]; total: number; breeders: string[] }> {
+    const limit = Math.min(options.limit || 24, 100);
+    const skip = options.skip || 0;
+
+    const query: any = { priceCount: { $gt: 0 } };
+    if (options.type) query.type = options.type;
+    if (options.breeder) query.breeder = options.breeder;
+
+    let sortObj: any = { lowestPrice: 1 };
+    if (options.sort === 'price_desc') sortObj = { lowestPrice: -1 };
+    else if (options.sort === 'name') sortObj = { name: 1 };
+    else if (options.sort === 'popular') sortObj = { viewCount: -1 };
+
+    const [seeds, total, breedersAgg] = await Promise.all([
+      Seed.find(query)
+        .sort(sortObj)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Seed.countDocuments(query),
+      Seed.aggregate([
+        { $match: { priceCount: { $gt: 0 } } },
+        { $group: { _id: '$breeder', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ])
+    ]);
+
+    // Enrich with best price
+    const enriched = await Promise.all(seeds.map(async (seed) => {
+      const prices = await Price.find({ seedId: seed._id })
+        .sort({ price: 1 })
+        .limit(5)
+        .lean();
+
+      return {
+        ...seed,
+        prices: prices.map(p => ({
+          seedbank: p.seedbank,
+          seedbankSlug: p.seedbankSlug,
+          price: p.price,
+          currency: p.currency || 'EUR',
+          seedCount: p.seedCount || 1,
+          packSize: p.packSize,
+          url: p.url,
+          inStock: p.inStock ?? true,
+        }))
+      };
+    }));
+
+    const breeders = breedersAgg.map((b: any) => b._id);
+
+    return { seeds: enriched, total, breeders };
   }
   
   /**
