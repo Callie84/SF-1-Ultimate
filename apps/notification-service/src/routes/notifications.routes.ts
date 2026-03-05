@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { notificationService } from '../services/notification.service';
+import { emailService } from '../services/email.service';
 import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
@@ -90,5 +91,53 @@ router.delete('/:id',
     }
   }
 );
+
+/**
+ * POST /api/notifications/internal/email
+ * Internal endpoint for other services to send transactional emails.
+ * Requires X-Internal-Secret header.
+ */
+router.post('/internal/email', async (req, res, next) => {
+  try {
+    const secret = req.headers['x-internal-secret'];
+    if (!process.env.INTERNAL_SECRET || secret !== process.env.INTERNAL_SECRET) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { to, subject, template, data } = req.body;
+    if (!to || !subject || !template) {
+      return res.status(400).json({ error: 'to, subject, template required' });
+    }
+
+    const success = await emailService.send({ to, subject, template, data: data || {} });
+    res.json({ success });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/notifications/internal/create
+ * Internal endpoint for other services to create in-app notifications.
+ * Requires X-Internal-Secret header.
+ */
+router.post('/internal/create', async (req, res, next) => {
+  try {
+    const secret = req.headers['x-internal-secret'];
+    if (!process.env.INTERNAL_SECRET || secret !== process.env.INTERNAL_SECRET) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { userId, title, message, type = 'system' } = req.body;
+    if (!userId || !title || !message) {
+      return res.status(400).json({ error: 'userId, title, message required' });
+    }
+
+    await notificationService.create({ userId, type, title, message });
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
 
 export default router;

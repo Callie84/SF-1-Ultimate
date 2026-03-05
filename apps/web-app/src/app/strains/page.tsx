@@ -70,27 +70,27 @@ export default function StrainsPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3">
-              <Leaf className="h-8 w-8" />
+            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+              <Leaf className="h-6 w-6 sm:h-8 sm:w-8" />
               Strain-Datenbank
             </h1>
             <p className="text-muted-foreground">
               {pagination?.total || 0} Strains verfügbar
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-shrink-0">
             {selectedForCompare.length >= 2 && (
-              <Button onClick={handleCompare}>
-                <Scale className="h-4 w-4 mr-2" />
-                {selectedForCompare.length} vergleichen
+              <Button size="sm" onClick={handleCompare}>
+                <Scale className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">{selectedForCompare.length} vergleichen</span>
               </Button>
             )}
-            <Button variant="outline" asChild>
+            <Button variant="outline" size="sm" asChild>
               <Link href="/strains/compare">
-                <Scale className="h-4 w-4 mr-2" />
-                Vergleich
+                <Scale className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Vergleich</span>
               </Link>
             </Button>
           </div>
@@ -151,7 +151,7 @@ export default function StrainsPage() {
           </Card>
         ) : (
           <>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
               {strains.map((strain) => {
                 const isSelected = selectedForCompare.includes(strain._id);
 
@@ -204,25 +204,29 @@ export default function StrainsPage() {
 
                       <div className="flex gap-2 mt-4">
                         <Button
-                          variant={isSelected ? 'default' : 'outline'}
+                          variant="outline"
                           size="sm"
                           className="flex-1"
+                          asChild
+                        >
+                          <Link href={`/strains/${strain.slug}`}>
+                            Details
+                          </Link>
+                        </Button>
+                        <Button
+                          variant={isSelected ? 'default' : 'ghost'}
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleCompare(strain._id);
                           }}
                           disabled={!isSelected && selectedForCompare.length >= 4}
+                          title="Vergleichen"
                         >
                           {isSelected ? (
-                            <>
-                              <Check className="h-4 w-4 mr-1" />
-                              Ausgewählt
-                            </>
+                            <Check className="h-4 w-4" />
                           ) : (
-                            <>
-                              <Scale className="h-4 w-4 mr-1" />
-                              Vergleichen
-                            </>
+                            <Scale className="h-4 w-4" />
                           )}
                         </Button>
                       </div>

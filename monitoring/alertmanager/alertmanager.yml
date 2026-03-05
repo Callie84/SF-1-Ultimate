@@ -1,0 +1,44 @@
+global:
+  # Wenn ein Alert nach 4h immer noch feuert: erneut benachrichtigen
+  resolve_timeout: 5m
+
+# Routing-Baum: welcher Alert geht an welchen Receiver
+route:
+  receiver: telegram
+  group_by: ['alertname', 'severity']
+  # Wie lange warten bevor erste Benachrichtigung (sammelt Alerts)
+  group_wait: 30s
+  # Wie lange warten bevor nächste Gruppe benachrichtigt wird
+  group_interval: 5m
+  # Wie lange warten bevor ein aktiver Alert wiederholt wird
+  repeat_interval: 4h
+
+  # Routing nach Severity
+  routes:
+    # Kritische Alerts: sofort, wiederholt alle 30 Minuten
+    - matchers:
+        - severity = critical
+      receiver: telegram
+      group_wait: 10s
+      repeat_interval: 30m
+    # Warnings: normal, wiederholt alle 4 Stunden
+    - matchers:
+        - severity = warning
+      receiver: telegram
+      repeat_interval: 4h
+
+receivers:
+  - name: telegram
+    telegram_configs:
+      - bot_token: '8682775025:AAFzOVljDSOif8ZdQSn1EAGUAUiSpLls8xE'
+        chat_id: 8430091807
+        parse_mode: 'HTML'
+
+# Unterdrückungsregeln: kein Spam bei bekannten Zusammenhängen
+inhibit_rules:
+  # Wenn ein Service critical ist, unterdrücke seine warning-Alerts
+  - source_matchers:
+      - severity = critical
+    target_matchers:
+      - severity = warning
+    equal: ['alertname', 'job']

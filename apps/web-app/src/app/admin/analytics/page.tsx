@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useAnalyticsDashboard } from '@/hooks/use-analytics';
+import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import {
   StatCard,
   StatGrid,
@@ -38,45 +39,52 @@ export default function AnalyticsDashboard() {
 
   if (authLoading || (!user || user.role !== 'ADMIN')) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      </DashboardLayout>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">Analytics Dashboard</h1>
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-          <span className="ml-3 text-muted-foreground">Lade Daten...</span>
+      <DashboardLayout>
+        <div className="space-y-6">
+          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            <span className="ml-3 text-muted-foreground">Lade Daten...</span>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (isError) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">Analytics Dashboard</h1>
-        <div className="bg-destructive/10 border border-destructive rounded-lg p-4">
-          <p className="text-destructive">Fehler beim Laden der Analytics-Daten.</p>
-          <button
-            onClick={() => refetch()}
-            className="mt-2 text-sm underline hover:no-underline"
-          >
-            Erneut versuchen
-          </button>
+      <DashboardLayout>
+        <div className="space-y-6">
+          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+          <div className="bg-destructive/10 border border-destructive rounded-lg p-4">
+            <p className="text-destructive">Fehler beim Laden der Analytics-Daten.</p>
+            <button
+              onClick={() => refetch()}
+              className="mt-2 text-sm underline hover:no-underline"
+            >
+              Erneut versuchen
+            </button>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   const { auth, community, journal, gamification, search } = data;
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <DashboardLayout>
+    <div className="space-y-8">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
         <button
@@ -97,24 +105,28 @@ export default function AnalyticsDashboard() {
             value={auth?.users.total || 0}
             subtitle={`${auth?.users.active || 0} aktiv`}
             icon={<Users className="w-5 h-5" />}
+            href="/admin/users"
           />
           <StatCard
             title="Neue heute"
             value={auth?.users.today || 0}
             subtitle={`${auth?.users.thisWeek || 0} diese Woche`}
             icon={<TrendingUp className="w-5 h-5" />}
+            href="/admin/users"
           />
           <StatCard
             title="Threads"
             value={community?.threads.total || 0}
             subtitle={`${community?.threads.today || 0} heute`}
             icon={<MessageSquare className="w-5 h-5" />}
+            href="/admin/threads"
           />
           <StatCard
             title="Grows"
             value={journal?.grows.total || 0}
             subtitle={`${journal?.grows.active || 0} aktiv`}
             icon={<Sprout className="w-5 h-5" />}
+            href="/admin/grows"
           />
         </StatGrid>
       </section>
@@ -127,21 +139,25 @@ export default function AnalyticsDashboard() {
             title="Aktive 24h"
             value={gamification?.users.active24h || 0}
             icon={<Activity className="w-5 h-5" />}
+            href="/admin/users"
           />
           <StatCard
             title="Aktive 7d"
             value={gamification?.users.active7d || 0}
             icon={<Activity className="w-5 h-5" />}
+            href="/admin/users"
           />
           <StatCard
             title="Durchschn. Level"
             value={gamification?.users.avgLevel?.toFixed(1) || '0'}
             icon={<Award className="w-5 h-5" />}
+            href="/admin/users"
           />
           <StatCard
             title="Views gesamt"
             value={community?.threads.totalViews || 0}
             icon={<Eye className="w-5 h-5" />}
+            href="/admin/threads"
           />
         </StatGrid>
       </section>
@@ -217,5 +233,6 @@ export default function AnalyticsDashboard() {
         </section>
       )}
     </div>
+    </DashboardLayout>
   );
 }

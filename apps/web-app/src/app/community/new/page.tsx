@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,6 +14,7 @@ import { Loader2, ArrowLeft, MessageSquare, X } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useCategories, useCreateThread } from '@/hooks/use-community';
+import { useAuth } from '@/components/providers/auth-provider';
 
 const createThreadSchema = z.object({
   title: z.string().min(5, 'Titel muss mindestens 5 Zeichen haben').max(200, 'Titel zu lang'),
@@ -28,6 +29,14 @@ function NewThreadForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedCategory = searchParams.get('category');
+  const { user, isLoading: authLoading } = useAuth();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/auth/login');
+    }
+  }, [user, authLoading, router]);
 
   const { data: categoriesData, isLoading: categoriesLoading } = useCategories();
   const createThread = useCreateThread();

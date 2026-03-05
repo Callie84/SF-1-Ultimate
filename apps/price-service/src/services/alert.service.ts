@@ -81,8 +81,13 @@ export class AlertService {
     }
     
     return PriceAlert.find(query)
+      .populate('seedId', 'name breeder slug')
       .sort({ createdAt: -1 })
-      .lean();
+      .lean()
+      .then((alerts) => alerts.map((a: any) => ({
+        ...a,
+        seed: a.seedId ? { name: a.seedId.name, breeder: a.seedId.breeder } : undefined,
+      })));
   }
   
   /**

@@ -65,7 +65,7 @@ export class VirusScanService {
    * Scan in Queue schieben (async)
    */
   async queueScan(fileId: string): Promise<void> {
-    await redis.lpush('queue:virus-scan', JSON.stringify({
+    await redis.lPush('queue:virus-scan', JSON.stringify({
       fileId,
       timestamp: Date.now()
     }));

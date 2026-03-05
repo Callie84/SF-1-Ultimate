@@ -41,7 +41,7 @@ export default function VPDCalculatorPage() {
       </div>
 
       {/* Calculator */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border bg-card p-4 sm:p-6">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2 text-muted-foreground">
@@ -98,10 +98,10 @@ export default function VPDCalculatorPage() {
 
       {/* Result */}
       {result !== null && status && (
-        <div className="rounded-xl border bg-card p-6">
+        <div className="rounded-xl border bg-card p-4 sm:p-6">
           <h3 className="font-semibold mb-4">Ergebnis</h3>
-          <div className="rounded-lg border p-6 text-center">
-            <div className="text-3xl font-bold text-primary mb-1">
+          <div className="rounded-lg border p-4 sm:p-6 text-center">
+            <div className="text-2xl sm:text-3xl font-bold text-primary mb-1">
               {result.toFixed(2)} kPa
             </div>
             <div className={`text-lg font-bold ${status.color} mt-2`}>
@@ -115,7 +115,7 @@ export default function VPDCalculatorPage() {
       )}
 
       {/* Info */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border bg-card p-4 sm:p-6">
         <h3 className="font-semibold mb-3 flex items-center gap-2">
           <Info className="h-5 w-5 text-primary" />
           Was ist VPD?

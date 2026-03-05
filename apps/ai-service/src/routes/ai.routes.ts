@@ -59,7 +59,7 @@ router.post('/diagnose',
       const result = await diagnosisService.diagnose({
         images,
         symptoms: symptoms || description, // Beide Feldnamen akzeptieren
-        growSetup: growSetup ? JSON.parse(growSetup) : undefined,
+        growSetup: growSetup ? (() => { try { return JSON.parse(growSetup); } catch { return undefined; } })() : undefined,
         stage
       });
 

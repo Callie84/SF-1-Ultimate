@@ -1,6 +1,19 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api-client';
 import { Grow } from '@/types/journal';
+
+// Public user info by userId (username + avatar)
+export function useUserById(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['user-by-id', userId],
+    queryFn: async () => {
+      const data = await api.get(`/api/auth/users/by-id/${userId}`);
+      return data as { id: string; username: string; avatar: string | null };
+    },
+    enabled: !!userId,
+    staleTime: 10 * 60 * 1000, // 10 min cache
+  });
+}
 
 // Query Keys
 export const journalKeys = {
@@ -147,6 +160,27 @@ export function useDeleteEntry(growId: string) {
   });
 }
 
+// Mark grow as harvested
+export function useHarvestGrow(id: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      harvestDate: string;
+      yieldWet?: number;
+      yieldDry?: number;
+      quality?: number;
+    }) => {
+      const result = await api.post(`/api/journal/grows/${id}/harvest`, data);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: journalKeys.grow(id) });
+      queryClient.invalidateQueries({ queryKey: journalKeys.grows() });
+    },
+  });
+}
+
 // Toggle reaction
 export function useToggleReaction(entryId: string, growId: string) {
   const queryClient = useQueryClient();
@@ -174,7 +208,141 @@ export function useComments(entryId: string) {
   });
 }
 
-// Create comment
+// Public grows feed (infinite / paginated)
+export function usePublicFeed(options?: {
+  sortBy?: string;
+  status?: string;
+  environment?: string;
+  limit?: number;
+  userId?: string;
+}) {
+  const sortBy = options?.sortBy || 'recent';
+  const status = options?.status || '';
+  const environment = options?.environment || '';
+  const limit = options?.limit || 12;
+  const userId = options?.userId || '';
+
+  return useInfiniteQuery({
+    queryKey: [...journalKeys.all, 'feed', sortBy, status, environment, userId],
+    queryFn: async ({ pageParam = 0 }) => {
+      const params = new URLSearchParams({
+        sortBy,
+        limit: String(limit),
+        skip: String(pageParam),
+        ...(status && status !== 'all' ? { status } : {}),
+        ...(environment && environment !== 'all' ? { environment } : {}),
+        ...(userId ? { userId } : {}),
+      });
+      const data = await api.get(`/api/journal/feed/?${params}`);
+      return data as { grows: any[]; total: number };
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.flatMap(p => p.grows).length;
+      return loaded < lastPage.total ? loaded : undefined;
+    },
+    staleTime: 2 * 60 * 1000,
+    initialPageParam: 0,
+  });
+}
+
+// Following feed (grows from followed users) — requires auth
+export function useFollowingFeed(enabled: boolean) {
+  return useInfiniteQuery({
+    queryKey: [...journalKeys.all, 'feed', 'following'],
+    queryFn: async ({ pageParam = 0 }) => {
+      const data = await api.get(`/api/journal/feed/following?limit=12&skip=${pageParam}`);
+      return data as { grows: any[]; total: number };
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.flatMap(p => p.grows).length;
+      return loaded < lastPage.total ? loaded : undefined;
+    },
+    enabled,
+    staleTime: 2 * 60 * 1000,
+    initialPageParam: 0,
+  });
+}
+
+// Grows for a specific strain
+export function useStrainFeed(strainId: string | undefined) {
+  return useInfiniteQuery({
+    queryKey: [...journalKeys.all, 'feed', 'strain', strainId],
+    queryFn: async ({ pageParam = 0 }) => {
+      const data = await api.get(`/api/journal/feed/strain/${strainId}?limit=12&skip=${pageParam}`);
+      return data as { grows: any[]; total: number };
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.flatMap(p => p.grows).length;
+      return loaded < lastPage.total ? loaded : undefined;
+    },
+    enabled: !!strainId,
+    staleTime: 5 * 60 * 1000,
+    initialPageParam: 0,
+  });
+}
+
+// Public grow entries (no auth required)
+export function usePublicEntries(growId: string) {
+  return useQuery({
+    queryKey: [...journalKeys.all, 'public-entries', growId],
+    queryFn: async () => {
+      const data = await api.get(`/api/journal/grows/${growId}/entries`);
+      return data;
+    },
+    enabled: !!growId,
+  });
+}
+
+// Toggle grow visibility (public/private)
+export function useToggleVisibility(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (isPublic: boolean) => {
+      const data = await api.patch(`/api/journal/grows/${id}`, { isPublic });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: journalKeys.grow(id) });
+      queryClient.invalidateQueries({ queryKey: journalKeys.grows() });
+    },
+  });
+}
+
+// Upload photo to entry
+export function useUploadPhoto(entryId: string, growId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ file, caption }: { file: File; caption?: string }) => {
+      const formData = new FormData();
+      formData.append('photo', file);
+      if (caption) formData.append('caption', caption);
+      const data = await api.post(`/api/journal/entries/${entryId}/photos`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: journalKeys.entries(growId) });
+    },
+  });
+}
+
+// Delete photo
+export function useDeletePhoto(growId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (photoId: string) => {
+      await api.delete(`/api/journal/photos/${photoId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: journalKeys.entries(growId) });
+    },
+  });
+}
+
+// Create comment (for journal entries)
 export function useCreateComment(entryId: string, growId: string) {
   const queryClient = useQueryClient();
 
@@ -186,6 +354,77 @@ export function useCreateComment(entryId: string, growId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [...journalKeys.all, 'comments', entryId] });
       queryClient.invalidateQueries({ queryKey: journalKeys.entries(growId) });
+    },
+  });
+}
+
+// ── Grow Social (Likes + Comments) ──────────────────────────────────────────
+
+// Get reactions for a grow (includes userReaction if logged in)
+export function useGrowReactions(growId: string) {
+  return useQuery({
+    queryKey: [...journalKeys.all, 'reactions', growId],
+    queryFn: async () => {
+      const data = await api.get(`/api/journal/grows/${growId}/reactions`);
+      return data;
+    },
+    enabled: !!growId,
+  });
+}
+
+// Toggle like (uses 'fire' reaction type as the like)
+export function useLikeGrow(growId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const data = await api.post(`/api/journal/grows/${growId}/react`, { type: 'fire' });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...journalKeys.all, 'reactions', growId] });
+      queryClient.invalidateQueries({ queryKey: [...journalKeys.all, 'feed'] });
+      queryClient.invalidateQueries({ queryKey: journalKeys.grow(growId) });
+    },
+  });
+}
+
+// Get comments for a grow
+export function useGrowComments(growId: string) {
+  return useQuery({
+    queryKey: [...journalKeys.all, 'grow-comments', growId],
+    queryFn: async () => {
+      const data = await api.get(`/api/journal/grows/${growId}/comments`);
+      return data;
+    },
+    enabled: !!growId,
+  });
+}
+
+// Add a comment to a grow (with optional parentId for replies)
+export function useAddGrowComment(growId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ content, parentId }: { content: string; parentId?: string }) => {
+      const data = await api.post(`/api/journal/grows/${growId}/comment`, { content, parentId });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...journalKeys.all, 'grow-comments', growId] });
+      queryClient.invalidateQueries({ queryKey: journalKeys.grow(growId) });
+    },
+  });
+}
+
+// Delete a grow comment
+export function useDeleteGrowComment(growId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (commentId: string) => {
+      await api.delete(`/api/journal/grows/comments/${commentId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...journalKeys.all, 'grow-comments', growId] });
+      queryClient.invalidateQueries({ queryKey: journalKeys.grow(growId) });
     },
   });
 }

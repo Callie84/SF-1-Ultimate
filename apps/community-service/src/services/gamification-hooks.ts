@@ -14,7 +14,7 @@ export class GamificationHooks {
     };
     
     try {
-      await redis.lpush('queue:gamification', JSON.stringify(event));
+      await redis.lPush('queue:gamification', JSON.stringify(event));
       logger.debug(`[Gamification] Event published: ${type}`);
     } catch (error) {
       logger.error('[Gamification] Failed to publish event:', error);

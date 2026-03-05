@@ -3,6 +3,7 @@
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Plus,
   TrendingUp,
@@ -11,15 +12,43 @@ import {
   Sprout,
   Calendar,
   MessageSquare,
-  Loader2
+  Loader2,
+  Droplets,
+  Zap,
+  Scissors,
+  Sun,
+  Eye,
+  Bell,
+  CheckCircle2,
+  SkipForward,
+  AlertTriangle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useGrows } from '@/hooks/use-journal';
+import { useGamificationProfile } from '@/hooks/use-gamification';
+import { useUpcomingReminders, useOverdueReminders, useCompleteReminder, useSkipReminder, type ReminderType } from '@/hooks/use-reminders';
+
+const REMINDER_TYPE_CONFIG: Record<ReminderType, { label: string; color: string; icon: React.ReactNode }> = {
+  watering: { label: 'Gießen', color: 'bg-blue-500', icon: <Droplets className="h-3 w-3" /> },
+  feeding: { label: 'Düngen', color: 'bg-green-500', icon: <Zap className="h-3 w-3" /> },
+  transplant: { label: 'Umtopfen', color: 'bg-orange-500', icon: <Scissors className="h-3 w-3" /> },
+  harvest: { label: 'Ernte', color: 'bg-yellow-500', icon: <Sun className="h-3 w-3" /> },
+  inspection: { label: 'Kontrolle', color: 'bg-purple-500', icon: <Eye className="h-3 w-3" /> },
+  custom: { label: 'Sonstiges', color: 'bg-muted-foreground', icon: <Bell className="h-3 w-3" /> },
+};
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { data, isLoading } = useGrows();
+  const { data: gamification } = useGamificationProfile(user?.id);
+  const { data: upcomingData, isLoading: remindersLoading } = useUpcomingReminders(3);
+  const { data: overdueData } = useOverdueReminders();
+  const completeReminder = useCompleteReminder();
+  const skipReminder = useSkipReminder();
+
+  const upcomingReminders = upcomingData?.reminders || [];
+  const overdueReminders = overdueData?.reminders || [];
 
   const grows = data?.grows || [];
 
@@ -55,9 +84,9 @@ export default function DashboardPage() {
     },
     {
       name: 'Level',
-      value: (user as any)?.level?.toString() || '1',
+      value: gamification ? gamification.profile.level.toString() : '—',
       icon: Award,
-      change: `${(user as any)?.xp || 0} XP`
+      change: gamification ? `${gamification.profile.xp.toLocaleString('de-DE')} XP` : '...'
     },
   ];
 
@@ -90,7 +119,7 @@ export default function DashboardPage() {
       <div className="space-y-6">
         {/* Welcome Header */}
         <div>
-          <h1 className="text-3xl font-bold">
+          <h1 className="text-2xl sm:text-3xl font-bold">
             Willkommen zurück{user?.displayName || user?.username ? `, ${user?.displayName || user?.username}` : ''}!
           </h1>
           <p className="text-muted-foreground">
@@ -99,7 +128,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {stats.map((stat) => {
             const Icon = stat.icon;
             return (
@@ -120,7 +149,7 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <div>
           <h2 className="mb-4 text-xl font-semibold">Schnellaktionen</h2>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-3">
             {quickActions.map((action) => {
               const Icon = action.icon;
               return (
@@ -195,58 +224,154 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Tools & Resources */}
+          {/* Upcoming Reminders */}
           <Card>
-            <CardHeader>
-              <CardTitle>Tools & Rechner</CardTitle>
-              <CardDescription>Nützliche Werkzeuge für deinen Grow</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle>Bevorstehende Erinnerungen</CardTitle>
+                <CardDescription>Nächste 3 Tage + Überfällig</CardDescription>
+              </div>
+              {overdueReminders.length > 0 && (
+                <Badge variant="destructive" className="flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {overdueReminders.length} überfällig
+                </Badge>
+              )}
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <Link href="/tools/vpd" className="flex gap-3 rounded-lg border p-3 hover:bg-accent transition-colors">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-white text-sm font-medium">
-                    VP
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium">VPD Rechner</div>
-                    <div className="text-sm text-muted-foreground">
-                      Vapor Pressure Deficit berechnen
-                    </div>
-                  </div>
-                </Link>
+              {remindersLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {/* Overdue first */}
+                  {overdueReminders.slice(0, 2).map((r) => {
+                    const cfg = REMINDER_TYPE_CONFIG[r.type] || REMINDER_TYPE_CONFIG.custom;
+                    return (
+                      <div key={r._id} className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5">
+                        <div className={`flex h-7 w-7 items-center justify-center rounded-full ${cfg.color} text-white flex-shrink-0`}>
+                          {cfg.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{r.title}</div>
+                          <div className="text-xs text-destructive">Überfällig</div>
+                        </div>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => completeReminder.mutate(r._id)}
+                            title="Erledigt"
+                          >
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => skipReminder.mutate(r._id)}
+                            title="Überspringen"
+                          >
+                            <SkipForward className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
 
-                <Link href="/tools/dli" className="flex gap-3 rounded-lg border p-3 hover:bg-accent transition-colors">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-white text-sm font-medium">
-                    DL
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium">DLI Rechner</div>
-                    <div className="text-sm text-muted-foreground">
-                      Daily Light Integral berechnen
-                    </div>
-                  </div>
-                </Link>
+                  {/* Upcoming */}
+                  {upcomingReminders.slice(0, 3).map((r) => {
+                    const cfg = REMINDER_TYPE_CONFIG[r.type] || REMINDER_TYPE_CONFIG.custom;
+                    const dueDate = new Date(r.dueDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    dueDate.setHours(0, 0, 0, 0);
+                    const diffDays = Math.round((dueDate.getTime() - today.getTime()) / 86400000);
+                    const dateLabel = diffDays === 0 ? 'Heute' : diffDays === 1 ? 'Morgen' : `In ${diffDays} Tagen`;
+                    return (
+                      <div key={r._id} className="flex items-center gap-3 rounded-lg border p-2.5">
+                        <div className={`flex h-7 w-7 items-center justify-center rounded-full ${cfg.color} text-white flex-shrink-0`}>
+                          {cfg.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{r.title}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {dateLabel}{r.dueTime ? ` · ${r.dueTime}` : ''}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 flex-shrink-0"
+                          onClick={() => completeReminder.mutate(r._id)}
+                          title="Erledigt"
+                        >
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        </Button>
+                      </div>
+                    );
+                  })}
 
-                <Link href="/tools/ec" className="flex gap-3 rounded-lg border p-3 hover:bg-accent transition-colors">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white text-sm font-medium">
-                    EC
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium">EC/PPM Umrechner</div>
-                    <div className="text-sm text-muted-foreground">
-                      Nährstoffwerte umrechnen
-                    </div>
-                  </div>
-                </Link>
+                  {upcomingReminders.length === 0 && overdueReminders.length === 0 && (
+                    <p className="text-center text-muted-foreground py-6 text-sm">
+                      Keine bevorstehenden Erinnerungen
+                    </p>
+                  )}
 
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href="/tools">
-                    Alle Tools ansehen
-                  </Link>
-                </Button>
-              </div>
+                  <Button variant="outline" className="w-full mt-2" asChild>
+                    <Link href="/calendar">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Kalender öffnen
+                    </Link>
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
+        </div>
+
+        {/* Tools & Resources */}
+        <div>
+          <h2 className="mb-4 text-xl font-semibold">Tools & Rechner</h2>
+          <div className="grid gap-4 md:grid-cols-3">
+            <Link href="/tools/vpd" className="flex gap-3 rounded-lg border p-3 hover:bg-accent transition-colors bg-card">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-white text-sm font-medium flex-shrink-0">
+                VP
+              </div>
+              <div className="flex-1">
+                <div className="font-medium">VPD Rechner</div>
+                <div className="text-sm text-muted-foreground">
+                  Vapor Pressure Deficit berechnen
+                </div>
+              </div>
+            </Link>
+
+            <Link href="/tools/dli" className="flex gap-3 rounded-lg border p-3 hover:bg-accent transition-colors bg-card">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-white text-sm font-medium flex-shrink-0">
+                DL
+              </div>
+              <div className="flex-1">
+                <div className="font-medium">DLI Rechner</div>
+                <div className="text-sm text-muted-foreground">
+                  Daily Light Integral berechnen
+                </div>
+              </div>
+            </Link>
+
+            <Link href="/tools/ec" className="flex gap-3 rounded-lg border p-3 hover:bg-accent transition-colors bg-card">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white text-sm font-medium flex-shrink-0">
+                EC
+              </div>
+              <div className="flex-1">
+                <div className="font-medium">EC/PPM Umrechner</div>
+                <div className="text-sm text-muted-foreground">
+                  Nährstoffwerte umrechnen
+                </div>
+              </div>
+            </Link>
+          </div>
         </div>
       </div>
     </DashboardLayout>

@@ -1,6 +1,7 @@
 // /apps/web-app/src/components/analytics/popular-searches.tsx
 'use client';
 
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 interface PopularSearch {
@@ -33,11 +34,15 @@ export function PopularSearches({ searches, totalSearches, className }: PopularS
       ) : (
         <div className="space-y-3">
           {searches.slice(0, 10).map((search, index) => (
-            <div key={search.query} className="flex items-center gap-3">
+            <Link
+              key={search.query}
+              href={`/search?q=${encodeURIComponent(search.query)}`}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
               <span className="text-sm text-muted-foreground w-5">{index + 1}.</span>
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium truncate">{search.query}</span>
+                  <span className="text-sm font-medium truncate hover:underline">{search.query}</span>
                   <span className="text-xs text-muted-foreground ml-2">
                     {search.count}x
                   </span>
@@ -49,7 +54,7 @@ export function PopularSearches({ searches, totalSearches, className }: PopularS
                   />
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

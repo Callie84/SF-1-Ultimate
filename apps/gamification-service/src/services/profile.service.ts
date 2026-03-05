@@ -175,7 +175,7 @@ export class ProfileService {
    * Event publizieren
    */
   private async publishEvent(type: string, data: any): Promise<void> {
-    await redis.lpush('queue:notifications', JSON.stringify({
+    await redis.lPush('queue:notifications', JSON.stringify({
       type,
       data,
       timestamp: Date.now()

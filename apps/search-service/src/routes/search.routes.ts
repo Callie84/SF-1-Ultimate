@@ -177,6 +177,41 @@ router.get('/:index',
 );
 
 /**
+ * GET /api/search/strains/suggest
+ * Strain-Autocomplete mit vollständigen Objekten (id, name, breeder, type)
+ * Muss VOR /:index/suggest stehen!
+ */
+router.get('/strains/suggest',
+  async (req, res, next) => {
+    try {
+      const { q, limit } = req.query;
+      if (!q || typeof q !== 'string' || q.length < 2) {
+        return res.json({ suggestions: [] });
+      }
+
+      const results = await searchService.search({
+        query: q,
+        index: 'STRAINS',
+        limit: parseInt(limit as string) || 6,
+        attributesToRetrieve: ['id', 'name', 'breeder', 'type', 'slug'],
+      });
+
+      const suggestions = results.hits.map((hit: any) => ({
+        id: hit.id,
+        name: hit.name,
+        breeder: hit.breeder,
+        type: hit.type,
+        slug: hit.slug,
+      }));
+
+      res.json({ suggestions });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
  * GET /api/search/:index/suggest
  * Autocomplete / Suggestions
  */
@@ -202,6 +237,37 @@ router.get('/:index/suggest',
       );
       
       res.json({ suggestions });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * POST /api/search/internal/grows
+ * Internes Indexieren (von anderen Services, X-Internal-Secret)
+ */
+router.post('/internal/grows',
+  async (req, res, next) => {
+    try {
+      const secret = req.headers['x-internal-secret'];
+      if (secret !== process.env.INTERNAL_SECRET) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
+      const { action, document, id } = req.body;
+
+      if (action === 'delete' && id) {
+        await indexingService.deleteDocument('GROWS', id);
+        return res.json({ success: true });
+      }
+
+      if (document) {
+        await indexingService.indexDocument('GROWS', document);
+        return res.json({ success: true });
+      }
+
+      res.status(400).json({ error: 'Missing document or id' });
     } catch (error) {
       next(error);
     }

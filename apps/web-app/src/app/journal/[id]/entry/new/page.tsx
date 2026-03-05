@@ -17,11 +17,12 @@ import {
   Droplets,
   Thermometer,
   Zap,
-  Camera
+  CheckCircle2
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useGrow, useCreateEntry } from '@/hooks/use-journal';
+import { PhotoUpload } from '@/components/journal/photo-upload';
 
 const createEntrySchema = z.object({
   title: z.string().optional(),
@@ -53,6 +54,8 @@ export default function NewEntryPage() {
   const router = useRouter();
   const growId = params.id as string;
 
+  const [createdEntryId, setCreatedEntryId] = useState<string | null>(null);
+
   const { data: growData, isLoading: growLoading } = useGrow(growId);
   const createEntry = useCreateEntry(growId);
   const isLoading = createEntry.isPending;
@@ -63,8 +66,6 @@ export default function NewEntryPage() {
     register,
     handleSubmit,
     formState: { errors },
-    setValue,
-    watch,
   } = useForm<CreateEntryFormData>({
     resolver: zodResolver(createEntrySchema),
     defaultValues: {
@@ -76,9 +77,10 @@ export default function NewEntryPage() {
 
   const onSubmit = async (data: CreateEntryFormData) => {
     try {
-      await createEntry.mutateAsync(data);
-      toast.success('Eintrag erfolgreich erstellt!');
-      router.push(`/journal/${growId}`);
+      const result = await createEntry.mutateAsync(data);
+      const entryId = result?.entry?._id || result?.entry?.id;
+      toast.success('Eintrag erstellt! Jetzt Fotos hinzufügen.');
+      setCreatedEntryId(entryId || null);
     } catch (error: any) {
       console.error('Create entry error:', error);
       const message = error?.response?.data?.error || 'Fehler beim Erstellen des Eintrags';
@@ -307,27 +309,6 @@ export default function NewEntryPage() {
             </CardContent>
           </Card>
 
-          {/* Photos Placeholder */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Fotos</CardTitle>
-              <CardDescription>
-                Füge Fotos zu deinem Eintrag hinzu
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center">
-                <Camera className="mb-4 h-12 w-12 text-muted-foreground" />
-                <p className="text-muted-foreground">
-                  Foto-Upload kommt bald...
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Du kannst Fotos später hinzufügen
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Submit */}
           <div className="flex gap-4">
             <Button
@@ -351,6 +332,30 @@ export default function NewEntryPage() {
             </Button>
           </div>
         </form>
+
+        {/* Photo Upload Step (shown after entry is created) */}
+        {createdEntryId && (
+          <Card className="border-primary/30">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-primary" />
+                <CardTitle>Fotos hinzufügen</CardTitle>
+              </div>
+              <CardDescription>
+                Eintrag erstellt! Füge jetzt Fotos hinzu oder schließe ab.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <PhotoUpload entryId={createdEntryId} growId={growId} />
+              <Button
+                className="w-full"
+                onClick={() => router.push(`/journal/${growId}`)}
+              >
+                Fertig — Zum Grow
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );

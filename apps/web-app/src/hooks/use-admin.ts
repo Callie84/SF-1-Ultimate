@@ -17,19 +17,8 @@ export function useAdminStats() {
   return useQuery({
     queryKey: adminKeys.stats(),
     queryFn: async () => {
-      try {
-        const data = await api.get('/api/admin/stats');
-        return data;
-      } catch (error) {
-        // Return mock data if admin endpoint doesn't exist yet
-        return {
-          users: { total: 0, newToday: 0, newThisWeek: 0, active: 0 },
-          grows: { total: 0, active: 0, completed: 0 },
-          threads: { total: 0, newToday: 0 },
-          entries: { total: 0, newToday: 0 },
-          reports: { pending: 0, resolved: 0 },
-        };
-      }
+      const data = await api.get('/api/admin/stats');
+      return data;
     },
     refetchInterval: 30000, // Refresh every 30 seconds
   });
@@ -40,23 +29,8 @@ export function useSystemHealth() {
   return useQuery({
     queryKey: adminKeys.systemHealth(),
     queryFn: async () => {
-      try {
-        const data = await api.get('/api/admin/health');
-        return data;
-      } catch (error) {
-        // Return mock health data
-        return {
-          services: [
-            { name: 'Auth Service', status: 'healthy', latency: 0 },
-            { name: 'Journal Service', status: 'healthy', latency: 0 },
-            { name: 'Community Service', status: 'healthy', latency: 0 },
-            { name: 'Media Service', status: 'healthy', latency: 0 },
-          ],
-          database: { status: 'healthy', connections: 0 },
-          redis: { status: 'healthy', memory: '0MB' },
-          uptime: 0,
-        };
-      }
+      const data = await api.get('/api/admin/health');
+      return data;
     },
     refetchInterval: 10000, // Refresh every 10 seconds
   });
@@ -67,18 +41,14 @@ export function useAdminUsers(filters?: { page?: number; limit?: number; search?
   return useQuery({
     queryKey: adminKeys.users(filters),
     queryFn: async () => {
-      try {
-        const params = new URLSearchParams();
-        if (filters?.page) params.append('page', String(filters.page));
-        if (filters?.limit) params.append('limit', String(filters.limit));
-        if (filters?.search) params.append('search', filters.search);
-        if (filters?.role) params.append('role', filters.role);
+      const params = new URLSearchParams();
+      if (filters?.page) params.append('page', String(filters.page));
+      if (filters?.limit) params.append('limit', String(filters.limit));
+      if (filters?.search) params.append('search', filters.search);
+      if (filters?.role) params.append('role', filters.role);
 
-        const data = await api.get(`/api/admin/users?${params}`);
-        return data;
-      } catch (error) {
-        return { users: [], total: 0, page: 1, totalPages: 1 };
-      }
+      const data = await api.get(`/api/auth/admin/users?${params}`);
+      return data;
     },
   });
 }
@@ -88,7 +58,7 @@ export function useAdminUser(userId: string) {
   return useQuery({
     queryKey: adminKeys.user(userId),
     queryFn: async () => {
-      const data = await api.get(`/api/admin/users/${userId}`);
+      const data = await api.get(`/api/auth/admin/users/${userId}`);
       return data;
     },
     enabled: !!userId,
@@ -101,7 +71,7 @@ export function useUpdateUser() {
 
   return useMutation({
     mutationFn: async ({ userId, updates }: { userId: string; updates: any }) => {
-      const data = await api.patch(`/api/admin/users/${userId}`, updates);
+      const data = await api.patch(`/api/auth/admin/users/${userId}`, updates);
       return data;
     },
     onSuccess: (_, { userId }) => {
@@ -117,7 +87,7 @@ export function useBanUser() {
 
   return useMutation({
     mutationFn: async ({ userId, banned, reason }: { userId: string; banned: boolean; reason?: string }) => {
-      const data = await api.post(`/api/admin/users/${userId}/ban`, { banned, reason });
+      const data = await api.post(`/api/auth/admin/users/${userId}/ban`, { banned, reason });
       return data;
     },
     onSuccess: () => {
@@ -131,16 +101,12 @@ export function useAdminReports(filters?: { status?: string; type?: string }) {
   return useQuery({
     queryKey: adminKeys.reports(filters),
     queryFn: async () => {
-      try {
-        const params = new URLSearchParams();
-        if (filters?.status) params.append('status', filters.status);
-        if (filters?.type) params.append('type', filters.type);
+      const params = new URLSearchParams();
+      if (filters?.status) params.append('status', filters.status);
+      if (filters?.type) params.append('type', filters.type);
 
-        const data = await api.get(`/api/admin/reports?${params}`);
-        return data;
-      } catch (error) {
-        return { reports: [], total: 0 };
-      }
+      const data = await api.get(`/api/community/moderation/reports?${params}`);
+      return data;
     },
   });
 }
@@ -151,7 +117,7 @@ export function useResolveReport() {
 
   return useMutation({
     mutationFn: async ({ reportId, action, note }: { reportId: string; action: 'dismiss' | 'warn' | 'delete' | 'ban'; note?: string }) => {
-      const data = await api.post(`/api/admin/reports/${reportId}/resolve`, { action, note });
+      const data = await api.post(`/api/community/moderation/reports/${reportId}/resolve`, { action, note });
       return data;
     },
     onSuccess: () => {
@@ -161,13 +127,19 @@ export function useResolveReport() {
   });
 }
 
-// Delete content (thread/reply)
+// Delete content (thread/reply/grow/entry)
 export function useDeleteContent() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ type, id }: { type: 'thread' | 'reply' | 'grow' | 'entry'; id: string }) => {
-      const data = await api.delete(`/api/admin/${type}s/${id}`);
+      const urlMap: Record<string, string> = {
+        thread: `/api/community/threads/${id}`,
+        reply: `/api/community/replies/${id}`,
+        grow: `/api/grows/${id}`,
+        entry: `/api/journal/entries/${id}`,
+      };
+      const data = await api.delete(urlMap[type] || `/api/community/threads/${id}`);
       return data;
     },
     onSuccess: () => {
@@ -211,18 +183,14 @@ export function useAdminThreads(filters?: { page?: number; limit?: number; searc
   return useQuery({
     queryKey: adminKeys.threads(filters),
     queryFn: async () => {
-      try {
-        const params = new URLSearchParams();
-        if (filters?.page) params.append('page', String(filters.page));
-        if (filters?.limit) params.append('limit', String(filters.limit));
-        if (filters?.search) params.append('search', filters.search);
-        if (filters?.status) params.append('status', filters.status);
+      const params = new URLSearchParams();
+      if (filters?.page) params.append('page', String(filters.page));
+      if (filters?.limit) params.append('limit', String(filters.limit));
+      if (filters?.search) params.append('search', filters.search);
+      if (filters?.status) params.append('status', filters.status);
 
-        const data = await api.get(`/api/admin/threads?${params}`);
-        return data;
-      } catch (error) {
-        return { threads: [], total: 0, page: 1, totalPages: 1 };
-      }
+      const data = await api.get(`/api/community/threads?${params}`);
+      return data;
     },
   });
 }
@@ -232,18 +200,14 @@ export function useAdminGrows(filters?: { page?: number; limit?: number; search?
   return useQuery({
     queryKey: [...adminKeys.all, 'grows', filters] as const,
     queryFn: async () => {
-      try {
-        const params = new URLSearchParams();
-        if (filters?.page) params.append('page', String(filters.page));
-        if (filters?.limit) params.append('limit', String(filters.limit));
-        if (filters?.search) params.append('search', filters.search);
-        if (filters?.status) params.append('status', filters.status);
+      const params = new URLSearchParams();
+      if (filters?.page) params.append('page', String(filters.page));
+      if (filters?.limit) params.append('limit', String(filters.limit));
+      if (filters?.search) params.append('search', filters.search);
+      if (filters?.status) params.append('status', filters.status);
 
-        const data = await api.get(`/api/admin/grows?${params}`);
-        return data;
-      } catch (error) {
-        return { grows: [], total: 0, page: 1, totalPages: 1 };
-      }
+      const data = await api.get(`/api/grows?${params}`);
+      return data;
     },
   });
 }
@@ -253,18 +217,14 @@ export function useAdminLogs(filters?: { page?: number; limit?: number; level?: 
   return useQuery({
     queryKey: [...adminKeys.all, 'logs', filters] as const,
     queryFn: async () => {
-      try {
-        const params = new URLSearchParams();
-        if (filters?.page) params.append('page', String(filters.page));
-        if (filters?.limit) params.append('limit', String(filters.limit));
-        if (filters?.level) params.append('level', filters.level);
-        if (filters?.service) params.append('service', filters.service);
+      const params = new URLSearchParams();
+      if (filters?.page) params.append('page', String(filters.page));
+      if (filters?.limit) params.append('limit', String(filters.limit));
+      if (filters?.level) params.append('level', filters.level);
+      if (filters?.service) params.append('service', filters.service);
 
-        const data = await api.get(`/api/admin/logs?${params}`);
-        return data;
-      } catch (error) {
-        return { logs: [], total: 0, page: 1, totalPages: 1 };
-      }
+      const data = await api.get(`/api/auth/admin/logs?${params}`);
+      return data;
     },
   });
 }
@@ -276,6 +236,36 @@ export function useCreateCategory() {
   return useMutation({
     mutationFn: async (categoryData: { name: string; slug: string; description?: string; icon?: string }) => {
       const data = await api.post('/api/community/categories', categoryData);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['community', 'categories'] });
+    },
+  });
+}
+
+// Update category
+export function useUpdateCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: { name?: string; slug?: string; description?: string; icon?: string } }) => {
+      const data = await api.put(`/api/community/categories/${id}`, updates);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['community', 'categories'] });
+    },
+  });
+}
+
+// Delete category
+export function useDeleteCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const data = await api.delete(`/api/community/categories/${id}`);
       return data;
     },
     onSuccess: () => {

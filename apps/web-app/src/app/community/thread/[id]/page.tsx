@@ -1,39 +1,151 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowUp, ArrowDown, MessageSquare, Share2, Flag, Award, Check, Loader2, ArrowLeft, Pin, Lock } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import {
+  ArrowUp, ArrowDown, MessageSquare, Share2, Check, Loader2,
+  ArrowLeft, Pin, Lock, Pencil, Trash2, X,
+} from 'lucide-react';
 import Link from 'next/link';
-import { formatRelativeTime } from '@/lib/utils';
-import { useThread, useReplies, useCreateReply } from '@/hooks/use-community';
+import { formatRelativeTime, cn } from '@/lib/utils';
+import {
+  useThread,
+  useReplies,
+  useCreateReply,
+  useVoteThread,
+  useVoteReply,
+  useUserVotesBatch,
+  useUpdateThread,
+  useDeleteThread,
+  useUpdateReply,
+  useDeleteReply,
+} from '@/hooks/use-community';
+import { useAuth } from '@/components/providers/auth-provider';
 import { toast } from 'sonner';
+
+function VoteButtons({
+  score, targetId, userVote, onVote, size = 'md',
+}: {
+  score: number;
+  targetId: string;
+  userVote?: 'upvote' | 'downvote';
+  onVote: (type: 'upvote' | 'downvote') => void;
+  size?: 'sm' | 'md';
+}) {
+  const iconSize = size === 'sm' ? 'h-3.5 w-3.5' : 'h-5 w-5';
+  const btnSize = size === 'sm' ? 'h-6 w-6' : 'h-8 w-8';
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <button
+        onClick={() => onVote('upvote')}
+        className={cn(
+          `flex items-center justify-center rounded ${btnSize} transition-colors`,
+          userVote === 'upvote'
+            ? 'text-primary bg-primary/10'
+            : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+        )}
+      >
+        <ArrowUp className={iconSize} />
+      </button>
+      <span className={cn(
+        'font-bold',
+        size === 'sm' ? 'text-xs' : 'text-base',
+        score > 0 ? 'text-primary' : score < 0 ? 'text-destructive' : 'text-muted-foreground'
+      )}>
+        {score}
+      </span>
+      <button
+        onClick={() => onVote('downvote')}
+        className={cn(
+          `flex items-center justify-center rounded ${btnSize} transition-colors`,
+          userVote === 'downvote'
+            ? 'text-destructive bg-destructive/10'
+            : 'text-muted-foreground hover:text-destructive hover:bg-destructive/10'
+        )}
+      >
+        <ArrowDown className={iconSize} />
+      </button>
+    </div>
+  );
+}
 
 export default function ThreadDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const threadId = params.id as string;
+  const { user } = useAuth();
 
   const { data: threadData, isLoading: threadLoading } = useThread(threadId);
   const { data: repliesData, isLoading: repliesLoading } = useReplies(threadId);
   const createReply = useCreateReply(threadId);
-
-  const [replyContent, setReplyContent] = useState('');
+  const voteThread = useVoteThread(threadId);
+  const updateThread = useUpdateThread(threadId);
+  const deleteThread = useDeleteThread();
 
   const thread = threadData?.thread;
   const replies = repliesData?.replies || [];
 
-  const handleSubmitReply = async () => {
-    if (!replyContent.trim()) return;
+  const allIds = [threadId, ...replies.map((r: any) => r.id || r._id)];
+  const { data: userVotes } = useUserVotesBatch(user ? allIds : []);
 
+  const [replyContent, setReplyContent] = useState('');
+  const [replyingTo, setReplyingTo] = useState<{ id: string; username: string } | null>(null);
+
+  // Thread edit state
+  const [isEditingThread, setIsEditingThread] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const isThreadOwner = user && thread && (thread.userId === user.id || thread.user?.id === user.id);
+
+  const handleSubmitReply = async (content: string, parentId?: string) => {
+    if (!content.trim()) return;
+    if (!user) { toast.error('Bitte einloggen'); return; }
     try {
-      await createReply.mutateAsync({ content: replyContent });
+      await createReply.mutateAsync({ content, parentId } as any);
       toast.success('Antwort gesendet!');
       setReplyContent('');
+      setReplyingTo(null);
     } catch (error: any) {
       toast.error(error?.response?.data?.error || 'Fehler beim Senden');
+    }
+  };
+
+  const handleVoteThread = (type: 'upvote' | 'downvote') => {
+    if (!user) { toast.error('Bitte einloggen'); return; }
+    voteThread.mutate(type);
+  };
+
+  const handleStartEditThread = () => {
+    setEditTitle(thread!.title);
+    setEditContent(thread!.content);
+    setIsEditingThread(true);
+  };
+
+  const handleSaveThread = async () => {
+    if (!editTitle.trim() || !editContent.trim()) return;
+    try {
+      await updateThread.mutateAsync({ title: editTitle, content: editContent } as any);
+      toast.success('Thread aktualisiert!');
+      setIsEditingThread(false);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Fehler beim Speichern');
+    }
+  };
+
+  const handleDeleteThread = async () => {
+    try {
+      await deleteThread.mutateAsync(threadId);
+      toast.success('Thread gelöscht');
+      router.push('/community');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Fehler beim Löschen');
     }
   };
 
@@ -42,7 +154,6 @@ export default function ThreadDetailPage() {
       <DashboardLayout>
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-muted-foreground">Lade Thread...</span>
         </div>
       </DashboardLayout>
     );
@@ -89,71 +200,134 @@ export default function ThreadDetailPage() {
         <Card>
           <CardHeader>
             <div className="flex gap-4">
-              {/* Voting */}
-              <div className="flex flex-col items-center gap-1">
-                <Button variant="ghost" size="icon">
-                  <ArrowUp className="h-5 w-5" />
-                </Button>
-                <span className={`text-lg font-bold ${score > 0 ? 'text-primary' : score < 0 ? 'text-destructive' : ''}`}>
-                  {score}
-                </span>
-                <Button variant="ghost" size="icon">
-                  <ArrowDown className="h-5 w-5" />
-                </Button>
-              </div>
+              <VoteButtons
+                score={score}
+                targetId={threadId}
+                userVote={userVotes?.[threadId]}
+                onVote={handleVoteThread}
+              />
 
-              {/* Content */}
               <div className="flex-1">
-                <h1 className="text-2xl font-bold mb-3">
-                  {thread.isPinned && <Pin className="inline h-5 w-5 mr-2 text-primary" />}
-                  {thread.isLocked && <Lock className="inline h-5 w-5 mr-2 text-muted-foreground" />}
-                  {thread.title}
-                </h1>
-
-                {/* Tags */}
-                {thread.tags && thread.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {thread.tags.map((tag: string) => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary"
+                {/* Edit-Mode */}
+                {isEditingThread ? (
+                  <div className="space-y-3">
+                    <Input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="text-xl font-bold"
+                      placeholder="Titel..."
+                    />
+                    <Textarea
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      rows={8}
+                      placeholder="Inhalt..."
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleSaveThread}
+                        disabled={updateThread.isPending || !editTitle.trim() || !editContent.trim()}
                       >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Author & Meta */}
-                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white font-medium">
-                      {thread.user?.username?.charAt(0) || '?'}
+                        {updateThread.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Speichern'}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setIsEditingThread(false)}>
+                        Abbrechen
+                      </Button>
                     </div>
-                    <span className="font-medium">{thread.user?.username || 'Unbekannt'}</span>
                   </div>
-                  <span>•</span>
-                  <span>{thread.createdAt ? formatRelativeTime(new Date(thread.createdAt)) : ''}</span>
-                  <span>•</span>
-                  <span>{thread.viewCount || 0} Aufrufe</span>
-                </div>
+                ) : (
+                  <>
+                    <h1 className="text-2xl font-bold mb-3">
+                      {thread.isPinned && <Pin className="inline h-5 w-5 mr-2 text-primary" />}
+                      {thread.isLocked && <Lock className="inline h-5 w-5 mr-2 text-muted-foreground" />}
+                      {thread.title}
+                    </h1>
 
-                {/* Content */}
-                <div className="prose prose-sm max-w-none">
-                  <p className="whitespace-pre-wrap">{thread.content}</p>
-                </div>
+                    {thread.tags && thread.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {thread.tags.map((tag: string) => (
+                          <span key={tag} className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
-                {/* Actions */}
-                <div className="mt-6 flex items-center gap-3">
-                  <Button variant="ghost" size="sm">
-                    <Share2 className="mr-2 h-4 w-4" />
-                    Teilen
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <Flag className="mr-2 h-4 w-4" />
-                    Melden
-                  </Button>
-                </div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white font-medium">
+                          {thread.user?.username?.charAt(0) || '?'}
+                        </div>
+                        <Link href={`/profile/${thread.user?.username}`} className="font-medium hover:underline">
+                          {thread.user?.username || 'Unbekannt'}
+                        </Link>
+                      </div>
+                      <span>•</span>
+                      <span>{thread.createdAt ? formatRelativeTime(new Date(thread.createdAt)) : ''}</span>
+                      <span>•</span>
+                      <span>{thread.viewCount || 0} Aufrufe</span>
+                    </div>
+
+                    <div className="prose prose-sm max-w-none">
+                      <p className="whitespace-pre-wrap">{thread.content}</p>
+                    </div>
+
+                    <div className="mt-6 flex items-center gap-2 flex-wrap">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(window.location.href);
+                          toast.success('Link kopiert!');
+                        }}
+                      >
+                        <Share2 className="mr-2 h-4 w-4" />
+                        Teilen
+                      </Button>
+
+                      {isThreadOwner && !thread.isLocked && (
+                        <>
+                          <Button variant="ghost" size="sm" onClick={handleStartEditThread}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Bearbeiten
+                          </Button>
+                          {!showDeleteConfirm ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setShowDeleteConfirm(true)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Löschen
+                            </Button>
+                          ) : (
+                            <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/5 px-3 py-1.5">
+                              <span className="text-sm text-destructive">Wirklich löschen?</span>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="h-6 px-2 text-xs"
+                                onClick={handleDeleteThread}
+                                disabled={deleteThread.isPending}
+                              >
+                                {deleteThread.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Ja'}
+                              </Button>
+                              <button
+                                type="button"
+                                onClick={() => setShowDeleteConfirm(false)}
+                                className="text-muted-foreground hover:text-foreground"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -172,67 +346,20 @@ export default function ThreadDetailPage() {
           )}
 
           {!repliesLoading && replies.length > 0 && (
-            <div className="space-y-4">
-              {replies.map((reply: any) => {
-                const replyScore = (reply.upvoteCount || 0) - (reply.downvoteCount || 0);
-                return (
-                  <Card key={reply.id || reply._id} className={reply.parentId ? 'ml-12' : ''}>
-                    <CardHeader>
-                      <div className="flex gap-4">
-                        {/* Voting */}
-                        <div className="flex flex-col items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <ArrowUp className="h-4 w-4" />
-                          </Button>
-                          <span className={`text-sm font-semibold ${replyScore > 0 ? 'text-primary' : ''}`}>
-                            {replyScore}
-                          </span>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <ArrowDown className="h-4 w-4" />
-                          </Button>
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1">
-                          {/* Author */}
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-purple-500 text-white text-sm font-medium">
-                              {reply.user?.username?.charAt(0) || '?'}
-                            </div>
-                            <span className="font-medium">{reply.user?.username || 'Unbekannt'}</span>
-                            {reply.isBestAnswer && (
-                              <div className="flex items-center gap-1 rounded-full bg-green-500 px-2 py-0.5 text-xs font-medium text-white">
-                                <Check className="h-3 w-3" />
-                                Beste Antwort
-                              </div>
-                            )}
-                            <span className="text-xs text-muted-foreground">
-                              {reply.createdAt ? formatRelativeTime(new Date(reply.createdAt)) : ''}
-                            </span>
-                          </div>
-
-                          {/* Content */}
-                          <div className="prose prose-sm max-w-none">
-                            <p className="whitespace-pre-wrap text-sm">{reply.content}</p>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="mt-3 flex items-center gap-2">
-                            <Button variant="ghost" size="sm">
-                              <MessageSquare className="mr-2 h-3 w-3" />
-                              Antworten
-                            </Button>
-                            <Button variant="ghost" size="sm">
-                              <Flag className="mr-2 h-3 w-3" />
-                              Melden
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardHeader>
-                  </Card>
-                );
-              })}
+            <div className="space-y-3">
+              {replies.map((reply: any) => (
+                <ReplyCard
+                  key={reply.id || reply._id}
+                  reply={reply}
+                  threadId={threadId}
+                  userVote={userVotes?.[reply.id || reply._id]}
+                  currentUser={user}
+                  onReplyClick={(id, username) => {
+                    setReplyingTo({ id, username });
+                    setTimeout(() => document.getElementById('reply-form')?.scrollIntoView({ behavior: 'smooth' }), 100);
+                  }}
+                />
+              ))}
             </div>
           )}
 
@@ -246,33 +373,41 @@ export default function ThreadDetailPage() {
 
         {/* Reply Form */}
         {!thread.isLocked && (
-          <Card>
+          <Card id="reply-form">
             <CardHeader>
-              <h3 className="font-semibold">Deine Antwort</h3>
+              <h3 className="font-semibold">
+                {replyingTo ? (
+                  <span className="flex items-center gap-2">
+                    Antwort an <span className="text-primary">@{replyingTo.username}</span>
+                    <button
+                      type="button"
+                      onClick={() => setReplyingTo(null)}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      (abbrechen)
+                    </button>
+                  </span>
+                ) : 'Deine Antwort'}
+              </h3>
             </CardHeader>
             <CardContent className="space-y-4">
               <Textarea
-                placeholder="Schreibe deine Antwort..."
-                rows={6}
+                placeholder={replyingTo ? `@${replyingTo.username} ` : 'Schreibe deine Antwort...'}
+                rows={5}
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
               />
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setReplyContent('')}>
+                <Button variant="outline" onClick={() => { setReplyContent(''); setReplyingTo(null); }}>
                   Abbrechen
                 </Button>
                 <Button
-                  onClick={handleSubmitReply}
+                  onClick={() => handleSubmitReply(replyContent, replyingTo?.id)}
                   disabled={!replyContent.trim() || createReply.isPending}
                 >
                   {createReply.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Wird gesendet...
-                    </>
-                  ) : (
-                    'Antworten'
-                  )}
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Wird gesendet...</>
+                  ) : 'Antworten'}
                 </Button>
               </div>
             </CardContent>
@@ -289,5 +424,168 @@ export default function ThreadDetailPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+function ReplyCard({
+  reply, threadId, userVote, currentUser, onReplyClick,
+}: {
+  reply: any;
+  threadId: string;
+  userVote?: 'upvote' | 'downvote';
+  currentUser: any;
+  onReplyClick: (id: string, username: string) => void;
+}) {
+  const replyId = reply.id || reply._id;
+  const voteReply = useVoteReply(replyId, threadId);
+  const updateReply = useUpdateReply(replyId, threadId);
+  const deleteReply = useDeleteReply(threadId);
+  const replyScore = (reply.upvoteCount || 0) - (reply.downvoteCount || 0);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const isOwner = currentUser && (reply.userId === currentUser.id || reply.user?.id === currentUser.id);
+
+  const handleVote = (type: 'upvote' | 'downvote') => {
+    if (!currentUser) { toast.error('Bitte einloggen'); return; }
+    voteReply.mutate(type);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editContent.trim()) return;
+    try {
+      await updateReply.mutateAsync({ content: editContent } as any);
+      toast.success('Antwort aktualisiert!');
+      setIsEditing(false);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Fehler beim Speichern');
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await deleteReply.mutateAsync(replyId);
+      toast.success('Antwort gelöscht');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Fehler beim Löschen');
+    }
+  };
+
+  return (
+    <Card className={reply.parentId ? 'ml-8 border-l-2 border-l-primary/20' : ''}>
+      <CardHeader>
+        <div className="flex gap-3">
+          <VoteButtons
+            score={replyScore}
+            targetId={replyId}
+            userVote={userVote}
+            onVote={handleVote}
+            size="sm"
+          />
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500 text-white text-xs font-medium flex-shrink-0">
+                {reply.user?.username?.charAt(0) || '?'}
+              </div>
+              <Link href={`/profile/${reply.user?.username}`} className="font-medium text-sm hover:underline">
+                {reply.user?.username || 'Unbekannt'}
+              </Link>
+              {reply.isBestAnswer && (
+                <span className="flex items-center gap-1 rounded-full bg-green-500 px-2 py-0.5 text-xs font-medium text-white">
+                  <Check className="h-3 w-3" />
+                  Beste Antwort
+                </span>
+              )}
+              <span className="text-xs text-muted-foreground">
+                {reply.createdAt ? formatRelativeTime(new Date(reply.createdAt)) : ''}
+              </span>
+              {reply.isEdited && (
+                <span className="text-xs text-muted-foreground italic">(bearbeitet)</span>
+              )}
+            </div>
+
+            {isEditing ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  rows={4}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleSaveEdit} disabled={updateReply.isPending || !editContent.trim()}>
+                    {updateReply.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Speichern'}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setIsEditing(false)}>
+                    Abbrechen
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm whitespace-pre-wrap">{reply.content}</p>
+            )}
+
+            {!isEditing && (
+              <div className="mt-2 flex items-center gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => onReplyClick(replyId, reply.user?.username || 'User')}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <MessageSquare className="h-3 w-3" />
+                  Antworten
+                </button>
+
+                {isOwner && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => { setEditContent(reply.content); setIsEditing(true); }}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Bearbeiten
+                    </button>
+
+                    {!showDeleteConfirm ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Löschen
+                      </button>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-xs">
+                        <span className="text-destructive">Löschen?</span>
+                        <button
+                          type="button"
+                          onClick={handleDelete}
+                          disabled={deleteReply.isPending}
+                          className="font-medium text-destructive hover:underline"
+                        >
+                          {deleteReply.isPending ? '...' : 'Ja'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowDeleteConfirm(false)}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          Nein
+                        </button>
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+    </Card>
   );
 }

@@ -17,25 +17,48 @@ import {
   Bell,
   Shield,
   MessageSquare,
-  Leaf
+  Leaf,
+  CalendarDays,
+  Trophy,
+  Sprout,
 } from 'lucide-react';
+import { AdCarousel } from '@/components/ads/ad-carousel';
+import { useAdZones } from '@/hooks/use-ad-zones';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Mein Journal', href: '/journal', icon: BookOpen },
+  { name: 'Öffentliche Grows', href: '/grows', icon: Sprout },
   { name: 'Community', href: '/community', icon: Users },
   { name: 'Nachrichten', href: '/messages', icon: MessageSquare },
   { name: 'Strains', href: '/strains', icon: Leaf },
+  { name: 'Kalender', href: '/calendar', icon: CalendarDays },
   { name: 'Preisvergleich', href: '/prices', icon: TrendingDown },
+  { name: 'Seedbanks', href: '/seedbanks', icon: Leaf },
+  { name: 'Preisalarme', href: '/alerts', icon: Bell },
   { name: 'Suche', href: '/search', icon: Search },
   { name: 'AI Assistent', href: '/ai', icon: Brain },
   { name: 'Rechner', href: '/tools', icon: Calculator },
+  { name: 'Bestenliste', href: '/leaderboard', icon: Trophy },
   { name: 'Profil', href: '/profile', icon: Award },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  onNavigate?: () => void;
+}
+
+export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const { user } = useAuth();
+  const { data: zonesData } = useAdZones();
+  const zones = zonesData?.zones ?? [];
+  const getZone = (id: string) => zones.find((z) => z.id === id && z.isActive);
+  const sidebarTop = getZone('sidebar-top');
+  const sidebarBottom = getZone('sidebar-bottom');
+
+  const handleClick = () => {
+    onNavigate?.();
+  };
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-card">
@@ -50,6 +73,19 @@ export function Sidebar() {
         </div>
       </div>
 
+      {/* Sidebar-Top Werbezone */}
+      {sidebarTop && (
+        <div
+          className="px-3 pt-2"
+          style={{
+            width: sidebarTop.width ? `${sidebarTop.width}px` : '100%',
+            height: `${sidebarTop.height}px`,
+          }}
+        >
+          <AdCarousel type={sidebarTop.adType} showControls={false} autoPlayInterval={6000} />
+        </div>
+      )}
+
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-4">
         {navigation.map((item) => {
@@ -60,6 +96,7 @@ export function Sidebar() {
             <Link
               key={item.name}
               href={item.href}
+              onClick={handleClick}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 isActive
@@ -79,6 +116,7 @@ export function Sidebar() {
         <div className="border-t p-4">
           <Link
             href="/admin"
+            onClick={handleClick}
             className={cn(
               'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               pathname?.startsWith('/admin')
@@ -92,10 +130,25 @@ export function Sidebar() {
         </div>
       )}
 
+      {/* Sidebar-Bottom Werbezone */}
+      {sidebarBottom && (
+        <div
+          className="px-3 pb-2"
+          style={{
+            width: sidebarBottom.width ? `${sidebarBottom.width}px` : '100%',
+            height: `${sidebarBottom.height}px`,
+          }}
+        >
+          <AdCarousel type={sidebarBottom.adType} showControls={false} autoPlayInterval={6000} />
+        </div>
+      )}
+
+
       {/* Footer */}
       <div className="border-t p-4">
         <Link
           href="/settings"
+          onClick={handleClick}
           className={cn(
             'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
             pathname === '/settings'

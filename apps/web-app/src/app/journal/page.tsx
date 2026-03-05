@@ -3,7 +3,7 @@
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Calendar, Sprout, Eye, Heart, MessageSquare, Loader2 } from 'lucide-react';
+import { Plus, Calendar, Sprout, Eye, Heart, MessageSquare, Loader2, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { formatRelativeTime } from '@/lib/utils';
 import { useGrows } from '@/hooks/use-journal';
@@ -35,7 +35,7 @@ const typeColors: Record<string, string> = {
 };
 
 export default function JournalPage() {
-  const { data, isLoading, error } = useGrows();
+  const { data, isLoading, error, refetch } = useGrows();
 
   const grows = data?.grows || [];
 
@@ -51,23 +51,31 @@ export default function JournalPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold">Mein Grow Journal</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">Mein Grow Journal</h1>
             <p className="text-muted-foreground">
               Dokumentiere deine Grows und teile deine Erfahrungen
             </p>
           </div>
-          <Button asChild>
-            <Link href="/journal/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Neuer Grow
-            </Link>
-          </Button>
+          <div className="flex gap-2 flex-shrink-0">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/journal/stats">
+                <BarChart3 className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Statistiken</span>
+              </Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link href="/journal/new">
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Neuer Grow</span>
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Stats Overview */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Aktive Grows</CardTitle>
@@ -126,7 +134,7 @@ export default function JournalPage() {
           <Card className="border-destructive">
             <CardContent className="pt-6">
               <p className="text-destructive">Fehler beim Laden: {(error as Error).message}</p>
-              <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+              <Button variant="outline" className="mt-4" onClick={() => refetch()}>
                 Erneut versuchen
               </Button>
             </CardContent>

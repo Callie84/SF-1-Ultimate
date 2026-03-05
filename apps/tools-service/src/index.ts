@@ -6,13 +6,23 @@ import { connectRedis } from './config/redis';
 import calculatorsRoutes from './routes/calculators.routes';
 import historyRoutes from './routes/history.routes';
 import { logger } from './utils/logger';
+import promClient from 'prom-client';
+promClient.collectDefaultMetrics({ prefix: 'sf1_' });
 
 const app = express();
 const PORT = process.env.PORT || 3004;
 
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'https://seedfinderpro.de',
+  credentials: true
+}));
 app.use(express.json({ limit: '1mb' }));
+
+app.get('/metrics', async (_req, res) => {
+  res.set('Content-Type', promClient.register.contentType);
+  res.end(await promClient.register.metrics());
+});
 
 app.get('/health', (req, res) => {
   res.json({

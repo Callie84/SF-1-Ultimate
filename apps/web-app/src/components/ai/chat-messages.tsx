@@ -18,7 +18,7 @@ interface ChatMessagesProps {
 
 export function ChatMessages({ messages, isLoading }: ChatMessagesProps) {
   return (
-    <div className="space-y-4 max-w-3xl mx-auto">
+    <div className="space-y-4 max-w-full sm:max-w-3xl mx-auto">
       {messages.map((message) => (
         <MessageBubble key={message.id} message={message} />
       ))}
@@ -32,14 +32,14 @@ function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === 'user';
 
   return (
-    <div className={cn('flex gap-3', isUser ? 'justify-end' : '')}>
+    <div className={cn('flex gap-2 sm:gap-3', isUser ? 'justify-end' : '')}>
       {!isUser && (
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground flex-shrink-0">
-          <Bot className="h-4 w-4" />
+        <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground flex-shrink-0">
+          <Bot className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
         </div>
       )}
 
-      <div className={cn('flex-1 max-w-[80%]', isUser && 'flex justify-end')}>
+      <div className={cn('flex-1 max-w-[90%] sm:max-w-[80%]', isUser && 'flex justify-end')}>
         <div
           className={cn(
             'rounded-xl px-4 py-3',
@@ -88,8 +88,8 @@ function MessageBubble({ message }: { message: Message }) {
       </div>
 
       {isUser && (
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted flex-shrink-0">
-          <User className="h-4 w-4 text-muted-foreground" />
+        <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-muted flex-shrink-0">
+          <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
         </div>
       )}
     </div>

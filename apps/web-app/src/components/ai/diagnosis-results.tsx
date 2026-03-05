@@ -56,7 +56,7 @@ export function DiagnosisResults({ results, onReset }: DiagnosisResultsProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="rounded-xl border bg-card p-6 text-center">
+      <div className="rounded-xl border bg-card p-4 sm:p-6 text-center">
         <h2 className="text-xl font-bold mb-1">Diagnose-Ergebnis</h2>
         <p className="text-sm text-muted-foreground">
           {results.length} {results.length === 1 ? 'Problem' : 'Probleme'} erkannt
@@ -67,7 +67,7 @@ export function DiagnosisResults({ results, onReset }: DiagnosisResultsProps) {
       {results.map((result, index) => {
         const style = getSeverityStyle(result.severity);
         return (
-          <div key={index} className="rounded-xl border bg-card p-6 space-y-5">
+          <div key={index} className="rounded-xl border bg-card p-4 sm:p-6 space-y-5">
             {/* Problem Header */}
             <div className="flex items-start gap-4">
               <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg flex-shrink-0', style.bg, style.text)}>

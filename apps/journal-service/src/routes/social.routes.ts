@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { socialService } from '../services/social.service';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 
 const router = Router();
@@ -50,6 +50,7 @@ router.delete('/:growId/react',
 );
 
 router.get('/:growId/reactions',
+  optionalAuthMiddleware,
   async (req, res, next) => {
     try {
       const reactions = await socialService.getReactions(
@@ -84,6 +85,7 @@ router.post('/:growId/comment',
 );
 
 router.get('/:growId/comments',
+  optionalAuthMiddleware,
   async (req, res, next) => {
     try {
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);

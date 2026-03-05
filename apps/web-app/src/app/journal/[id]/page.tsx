@@ -15,15 +15,17 @@ import {
   Edit,
   Trash2,
   Eye,
-  Droplets,
-  Thermometer,
-  Zap,
   Loader2,
-  ArrowLeft
+  ArrowLeft,
+  Scissors,
+  Globe,
+  Lock,
+  ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
-import { useGrow, useEntries } from '@/hooks/use-journal';
+import { useGrow, useEntries, useDeleteEntry, useHarvestGrow, useToggleVisibility } from '@/hooks/use-journal';
+import { toast } from 'sonner';
 
 const statusColors: Record<string, string> = {
   PLANNING: 'bg-gray-500',
@@ -40,15 +42,61 @@ const statusColors: Record<string, string> = {
   cancelled: 'bg-red-500'
 };
 
+const STAGE_LABELS: Record<string, string> = {
+  PLANNING: 'Planung',
+  GERMINATION: 'Keimung',
+  SEEDLING: 'Sämling',
+  VEGETATIVE: 'Vegetation',
+  FLOWERING: 'Blüte',
+  DRYING: 'Trocknung',
+  CURING: 'Curing',
+  HARVESTED: 'Geerntet',
+  ABANDONED: 'Abgebrochen',
+};
+
 export default function GrowDetailPage() {
   const params = useParams();
   const id = params.id as string;
 
+  const [showHarvestForm, setShowHarvestForm] = useState(false);
+  const [harvestData, setHarvestData] = useState({
+    harvestDate: new Date().toISOString().split('T')[0],
+    yieldDry: '',
+    quality: '4',
+  });
+
   const { data: growData, isLoading: growLoading, error: growError } = useGrow(id);
   const { data: entriesData, isLoading: entriesLoading } = useEntries(id);
+  const deleteEntry = useDeleteEntry(id);
+  const harvestGrow = useHarvestGrow(id);
+  const toggleVisibility = useToggleVisibility(id);
 
   const grow = growData?.grow;
   const entries = entriesData?.entries || [];
+
+  const handleDeleteEntry = async (entryId: string) => {
+    if (!confirm('Eintrag wirklich löschen?')) return;
+    try {
+      await deleteEntry.mutateAsync(entryId);
+      toast.success('Eintrag gelöscht');
+    } catch {
+      toast.error('Fehler beim Löschen');
+    }
+  };
+
+  const handleHarvest = async () => {
+    try {
+      await harvestGrow.mutateAsync({
+        harvestDate: new Date(harvestData.harvestDate).toISOString(),
+        yieldDry: harvestData.yieldDry ? parseFloat(harvestData.yieldDry) : undefined,
+        quality: parseInt(harvestData.quality),
+      });
+      toast.success('Grow als geerntet markiert!');
+      setShowHarvestForm(false);
+    } catch {
+      toast.error('Fehler beim Markieren');
+    }
+  };
 
   // Loading State
   if (growLoading) {
@@ -119,9 +167,60 @@ export default function GrowDetailPage() {
                   </div>
                 </CardDescription>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="icon">
-                  <Share2 className="h-4 w-4" />
+              <div className="flex flex-wrap gap-2">
+                {/* Visibility toggle */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={grow.isPublic !== false
+                    ? 'gap-1.5 text-green-700 border-green-300 hover:bg-green-50'
+                    : 'gap-1.5 text-muted-foreground'}
+                  disabled={toggleVisibility.isPending}
+                  onClick={async () => {
+                    const next = grow.isPublic === false;
+                    try {
+                      await toggleVisibility.mutateAsync(next);
+                      toast.success(next ? 'Grow ist jetzt öffentlich' : 'Grow ist jetzt privat');
+                    } catch {
+                      toast.error('Fehler beim Ändern der Sichtbarkeit');
+                    }
+                  }}
+                >
+                  {toggleVisibility.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : grow.isPublic !== false ? (
+                    <Globe className="h-4 w-4" />
+                  ) : (
+                    <Lock className="h-4 w-4" />
+                  )}
+                  {grow.isPublic !== false ? 'Öffentlich' : 'Privat'}
+                </Button>
+
+                {grow.isPublic !== false && (
+                  <Button variant="ghost" size="sm" asChild className="gap-1.5">
+                    <Link href={`/grows/${id}`} target="_blank">
+                      <ExternalLink className="h-4 w-4" />
+                      Öffentlich ansehen
+                    </Link>
+                  </Button>
+                )}
+
+                {!['HARVESTED', 'ABANDONED', 'completed', 'cancelled'].includes(grow.status) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 text-amber-600 border-amber-300 hover:bg-amber-50"
+                    onClick={() => setShowHarvestForm(!showHarvestForm)}
+                  >
+                    <Scissors className="h-4 w-4" />
+                    Ernten
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/calendar?growId=${id}`}>
+                    <Calendar className="h-4 w-4 mr-1" />
+                    Kalender
+                  </Link>
                 </Button>
                 <Button variant="outline" size="icon" asChild>
                   <Link href={`/journal/${id}/edit`}>
@@ -134,6 +233,64 @@ export default function GrowDetailPage() {
           <CardContent>
             {grow.description && (
               <p className="text-muted-foreground">{grow.description}</p>
+            )}
+
+            {/* Harvest Form */}
+            {showHarvestForm && (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50/50 p-4 space-y-3">
+                <h3 className="font-semibold text-amber-800">Ernte dokumentieren</h3>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">Erntedatum</label>
+                    <input
+                      type="date"
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                      value={harvestData.harvestDate}
+                      onChange={e => setHarvestData(d => ({ ...d, harvestDate: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">Trockengewicht (g)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      placeholder="z.B. 45"
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                      value={harvestData.yieldDry}
+                      onChange={e => setHarvestData(d => ({ ...d, yieldDry: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">Qualität (1-5)</label>
+                    <select
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                      value={harvestData.quality}
+                      onChange={e => setHarvestData(d => ({ ...d, quality: e.target.value }))}
+                    >
+                      <option value="1">1 - Schlecht</option>
+                      <option value="2">2 - Mittelmäßig</option>
+                      <option value="3">3 - Gut</option>
+                      <option value="4">4 - Sehr gut</option>
+                      <option value="5">5 - Ausgezeichnet</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="bg-amber-600 hover:bg-amber-700"
+                    onClick={handleHarvest}
+                    disabled={harvestGrow.isPending}
+                  >
+                    {harvestGrow.isPending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                    Ernte bestätigen
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setShowHarvestForm(false)}>
+                    Abbrechen
+                  </Button>
+                </div>
+              </div>
             )}
 
             {/* Stats Row */}
@@ -177,130 +334,142 @@ export default function GrowDetailPage() {
           </div>
         )}
 
-        {/* Timeline */}
+        {/* Visual Timeline */}
         {!entriesLoading && entries.length > 0 && (
-          <div className="space-y-4">
-            {entries.map((entry: any) => (
-              <Card key={entry.id || entry._id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
-                          D{entry.day || '?'}
+          <div>
+            {entries.map((entry: any, idx: number) => {
+              const isLast = idx === entries.length - 1;
+              const stage = entry.stage || entry.growStage || '';
+              const prevStage = idx > 0 ? (entries[idx - 1].stage || entries[idx - 1].growStage || '') : null;
+              const isNewStage = stage && stage !== prevStage;
+              const nodeColor = statusColors[stage] || 'bg-primary';
+
+              const measurements = [
+                { label: 'Höhe', value: entry.measurements?.height ?? entry.height, unit: 'cm' },
+                { label: 'pH', value: entry.measurements?.ph ?? entry.ph, unit: '' },
+                { label: 'EC', value: entry.measurements?.ec ?? entry.ec, unit: '' },
+                { label: 'Temp', value: entry.measurements?.temperature ?? entry.temperature, unit: '°C' },
+                { label: 'Feuchte', value: entry.measurements?.humidity ?? entry.humidity, unit: '%' },
+              ].filter(m => m.value !== undefined && m.value !== null && m.value !== '');
+
+              return (
+                <div key={entry.id || entry._id}>
+                  {/* Phase Transition Banner */}
+                  {isNewStage && (
+                    <div className="flex items-center gap-3 py-3">
+                      <div className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${nodeColor}`} />
+                      <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                        {STAGE_LABELS[stage] || stage}
+                      </span>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+                  )}
+
+                  {/* Entry Row */}
+                  <div className="flex gap-3 sm:gap-4">
+                    {/* Left: Node + vertical line */}
+                    <div className="flex flex-col items-center flex-shrink-0">
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-full text-white text-xs font-bold shadow-sm ${nodeColor}`}>
+                        D{entry.day ?? '?'}
+                      </div>
+                      {!isLast && (
+                        <div className="w-0.5 flex-1 bg-border min-h-[28px] my-2" />
+                      )}
+                    </div>
+
+                    {/* Right: Entry content */}
+                    <div className={`flex-1 min-w-0 ${!isLast ? 'pb-6' : 'pb-2'}`}>
+                      <div className="rounded-lg border bg-card p-4 space-y-3 shadow-sm">
+                        {/* Header */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-semibold truncate">
+                              {entry.title || `Tag ${entry.day ?? '?'}`}
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {entry.week && `Woche ${entry.week} · `}
+                              {entry.createdAt ? formatRelativeTime(new Date(entry.createdAt)) : ''}
+                            </p>
+                          </div>
+                          <div className="flex gap-1 flex-shrink-0">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                              <Link href={`/journal/${id}/entry/${entry.id || entry._id}/edit`}>
+                                <Edit className="h-3.5 w-3.5" />
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => handleDeleteEntry(entry.id || entry._id)}
+                              disabled={deleteEntry.isPending}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                            </Button>
+                          </div>
                         </div>
-                        <div>
-                          <CardTitle className="text-lg">{entry.title || `Eintrag Tag ${entry.day}`}</CardTitle>
-                          <CardDescription>
-                            Tag {entry.day || '?'} • Woche {entry.week || '?'} • {entry.stage || 'N/A'}
-                          </CardDescription>
+
+                        {/* Notes */}
+                        {(entry.content || entry.notes) && (
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            {entry.content || entry.notes}
+                          </p>
+                        )}
+
+                        {/* Photos */}
+                        {entry.photos && entry.photos.length > 0 && (
+                          <div className="flex gap-2 overflow-x-auto pb-1">
+                            {entry.photos.map((photo: any, pidx: number) => {
+                              const photoUrl = typeof photo === 'string'
+                                ? photo
+                                : (photo.thumbnailUrl || photo.url);
+                              return (
+                                <div
+                                  key={photo._id || photo.id || pidx}
+                                  className="h-20 w-20 sm:h-24 sm:w-24 flex-shrink-0 rounded-lg overflow-hidden bg-muted"
+                                >
+                                  {photoUrl ? (
+                                    <img src={photoUrl} alt={`Foto ${pidx + 1}`} className="h-full w-full object-cover" />
+                                  ) : (
+                                    <div className="h-full w-full flex items-center justify-center">
+                                      <Sprout className="h-6 w-6 text-muted-foreground/40" />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Measurements */}
+                        {measurements.length > 0 && (
+                          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 rounded-md bg-muted/50 p-2.5">
+                            {measurements.map(m => (
+                              <div key={m.label} className="text-center">
+                                <div className="text-xs text-muted-foreground">{m.label}</div>
+                                <div className="font-semibold text-sm">{m.value}{m.unit}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Reactions */}
+                        <div className="flex items-center gap-4 border-t pt-2 text-sm text-muted-foreground">
+                          <button className="flex items-center gap-1.5 hover:text-foreground transition-colors">
+                            <Heart className="h-3.5 w-3.5" />
+                            <span>{entry.stats?.reactions || entry.reactionCount || 0}</span>
+                          </button>
+                          <button className="flex items-center gap-1.5 hover:text-foreground transition-colors">
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            <span>{entry.stats?.comments || entry.commentCount || 0}</span>
+                          </button>
                         </div>
                       </div>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {entry.createdAt ? formatRelativeTime(new Date(entry.createdAt)) : 'N/A'}
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Content */}
-                  {(entry.content || entry.notes) && (
-                    <p className="text-sm">{entry.content || entry.notes}</p>
-                  )}
-
-                  {/* Measurements */}
-                  {(entry.measurements || entry.height || entry.ph) && (
-                    <div className="grid grid-cols-2 gap-4 rounded-lg border p-4 md:grid-cols-5">
-                      <div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Sprout className="h-4 w-4" />
-                          Höhe
-                        </div>
-                        <div className="mt-1 font-semibold">
-                          {entry.measurements?.height || entry.height || '-'} cm
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Droplets className="h-4 w-4" />
-                          pH
-                        </div>
-                        <div className="mt-1 font-semibold">
-                          {entry.measurements?.ph || entry.ph || '-'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Zap className="h-4 w-4" />
-                          EC
-                        </div>
-                        <div className="mt-1 font-semibold">
-                          {entry.measurements?.ec || entry.ec || '-'} mS/cm
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Thermometer className="h-4 w-4" />
-                          Temp
-                        </div>
-                        <div className="mt-1 font-semibold">
-                          {entry.measurements?.temperature || entry.temperature || '-'}°C
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Droplets className="h-4 w-4" />
-                          RH
-                        </div>
-                        <div className="mt-1 font-semibold">
-                          {entry.measurements?.humidity || entry.humidity || '-'}%
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Photos Preview */}
-                  {entry.photos && entry.photos.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto">
-                      {entry.photos.map((photo: any, idx: number) => (
-                        <div
-                          key={idx}
-                          className="h-32 w-32 flex-shrink-0 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center overflow-hidden"
-                        >
-                          {typeof photo === 'string' && photo.startsWith('http') ? (
-                            <img src={photo} alt={`Foto ${idx + 1}`} className="h-full w-full object-cover" />
-                          ) : (
-                            <Sprout className="h-12 w-12 text-primary/40" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-4 border-t pt-4">
-                    <Button variant="ghost" size="sm">
-                      <Heart className="mr-2 h-4 w-4" />
-                      {entry.stats?.reactions || entry.reactionCount || 0}
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      {entry.stats?.comments || entry.commentCount || 0}
-                    </Button>
-                    <div className="ml-auto flex gap-2">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/journal/${id}/entry/${entry.id || entry._id}/edit`}>
-                          <Edit className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
 

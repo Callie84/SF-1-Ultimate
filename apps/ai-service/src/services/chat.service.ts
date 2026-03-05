@@ -2,6 +2,7 @@
 import { openai, MODELS, SYSTEM_PROMPTS } from '../config/openai';
 import { redis } from '../config/redis';
 import { logger } from '../utils/logger';
+import { trackUsage } from '../utils/token-tracker';
 
 export interface ChatMessage {
   id: string;
@@ -59,6 +60,16 @@ export class ChatService {
       const assistantResponse = response.choices[0].message.content || '';
       const assistantMsgId = `msg_${Date.now()}_ai`;
       const timestamp = Date.now();
+
+      // Token-Tracking
+      if (response.usage) {
+        trackUsage({
+          model: MODELS.GPT4O_MINI,
+          endpoint: 'chat',
+          inputTokens: response.usage.prompt_tokens,
+          outputTokens: response.usage.completion_tokens,
+        });
+      }
 
       session.messages.push({
         id: assistantMsgId,

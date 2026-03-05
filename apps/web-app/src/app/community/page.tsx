@@ -1,12 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, MessageSquare, Users, TrendingUp, Pin, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Plus, MessageSquare, Users, TrendingUp, Pin, Loader2, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import { formatNumber, formatRelativeTime } from '@/lib/utils';
-import { useCategories, useThreads } from '@/hooks/use-community';
+import { useCategories, useThreads, useSearchThreads } from '@/hooks/use-community';
 
 const categoryColors: Record<string, string> = {
   beginners: 'bg-green-500',
@@ -29,11 +31,14 @@ const categoryIcons: Record<string, string> = {
 };
 
 export default function CommunityPage() {
+  const [searchQuery, setSearchQuery] = useState('');
   const { data: categoriesData, isLoading: categoriesLoading } = useCategories();
   const { data: threadsData, isLoading: threadsLoading } = useThreads(undefined, { isPinned: true, limit: 5 });
+  const { data: searchResults, isLoading: searchLoading } = useSearchThreads(searchQuery);
 
   const categories = categoriesData?.categories || [];
   const pinnedThreads = threadsData?.threads?.filter((t: any) => t.isPinned) || [];
+  const isSearching = searchQuery.length >= 2;
 
   const totalThreads = categories.reduce((acc: number, cat: any) => acc + (cat.threadCount || 0), 0);
   const totalPosts = categories.reduce((acc: number, cat: any) => acc + (cat.postCount || 0), 0);
@@ -42,23 +47,81 @@ export default function CommunityPage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold">Community Forum</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">Community Forum</h1>
             <p className="text-muted-foreground">
               Tausche dich mit anderen Growern aus und teile dein Wissen
             </p>
           </div>
-          <Button asChild>
+          <Button size="sm" asChild className="flex-shrink-0">
             <Link href="/community/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Neuer Thread
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Neuer Thread</span>
             </Link>
           </Button>
         </div>
 
-        {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-3">
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Threads durchsuchen..."
+            className="pl-9 pr-9"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Search Results */}
+        {isSearching && (
+          <div>
+            {searchLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : (searchResults?.threads?.length ?? 0) === 0 ? (
+              <p className="text-center text-muted-foreground py-6">Keine Threads gefunden für „{searchQuery}"</p>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">{searchResults!.threads.length} Ergebnis(se)</p>
+                {searchResults!.threads.map((thread: any) => (
+                  <Link key={thread.id || thread._id} href={`/community/thread/${thread.id || thread._id}`}>
+                    <Card className="hover:bg-accent transition-colors cursor-pointer">
+                      <CardHeader className="py-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{thread.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{thread.content}</p>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground flex-shrink-0">
+                            <span className="flex items-center gap-1">
+                              <MessageSquare className="h-3 w-3" />
+                              {thread.replyCount || 0}
+                            </span>
+                            <span>{thread.createdAt ? formatRelativeTime(new Date(thread.createdAt)) : ''}</span>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Stats + Categories + Pinned (hidden during search) */}
+        {!isSearching && <>
+        <div className="grid grid-cols-3 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Kategorien</CardTitle>
@@ -132,7 +195,7 @@ export default function CommunityPage() {
                           </CardDescription>
 
                           {/* Stats */}
-                          <div className="mt-3 flex items-center gap-6 text-sm text-muted-foreground">
+                          <div className="mt-3 flex items-center gap-3 sm:gap-6 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1">
                               <MessageSquare className="h-4 w-4" />
                               <span>{formatNumber(category.threadCount || 0)} Threads</span>
@@ -183,7 +246,7 @@ export default function CommunityPage() {
                           {thread.createdAt ? formatRelativeTime(new Date(thread.createdAt)) : ''}
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="hidden sm:flex items-center gap-4 text-sm text-muted-foreground flex-shrink-0">
                         <div className="flex items-center gap-1">
                           <TrendingUp className="h-4 w-4" />
                           <span>{thread.viewCount || 0}</span>
@@ -200,6 +263,7 @@ export default function CommunityPage() {
             </div>
           </div>
         )}
+        </> /* end !isSearching */}
       </div>
     </DashboardLayout>
   );

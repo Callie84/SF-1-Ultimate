@@ -117,9 +117,9 @@ export default function PricesPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <div className="flex items-center gap-3 mb-2">
-          <TrendingDown className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Preisvergleich</h1>
+        <div className="flex items-center gap-2 mb-2">
+          <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" />
+          <h1 className="text-xl sm:text-2xl font-bold">Preisvergleich</h1>
         </div>
         <p className="text-muted-foreground">
           Vergleiche Preise von {total} Seeds aus {breeders.length} Seedbanks
@@ -320,7 +320,7 @@ export default function PricesPage() {
                         </div>
                         {price.url && (
                           <a
-                            href={price.url}
+                            href={`/api/prices/click?url=${encodeURIComponent(price.url)}&seed=${encodeURIComponent(seed.slug)}&bank=${encodeURIComponent(price.seedbankSlug || price.seedbank)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[10px] font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
@@ -343,7 +343,7 @@ export default function PricesPage() {
                     Bestes Angebot: {seed.prices[0].seedbank}
                   </span>
                   <a
-                    href={seed.prices[0].url}
+                    href={`/api/prices/click?url=${encodeURIComponent(seed.prices[0].url)}&seed=${encodeURIComponent(seed.slug)}&bank=${encodeURIComponent(seed.prices[0].seedbankSlug || seed.prices[0].seedbank)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"

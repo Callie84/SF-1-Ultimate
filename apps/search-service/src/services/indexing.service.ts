@@ -148,11 +148,11 @@ export class IndexingService {
       logger.info('[Indexing] Starting strain reindex...');
       
       // MongoDB-Connection (zu Price-Service DB)
-      const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/sf1-prices';
+      const mongoUrl = process.env.MONGODB_URL_PRICES || process.env.MONGODB_URL || 'mongodb://localhost:27017/sf1-prices';
       await mongoose.connect(mongoUrl);
       
       // Strain-Model (simplified)
-      const Strain = mongoose.model('Seed', new mongoose.Schema({}, { strict: false }));
+      const Strain = mongoose.models['Seed'] || mongoose.model('Seed', new mongoose.Schema({}, { strict: false }));
       
       const strains = await Strain.find({ deletedAt: { $exists: false } })
         .select('_id name slug breeder type thc cbd floweringTime genetics effects flavors viewCount')
@@ -191,10 +191,10 @@ export class IndexingService {
     try {
       logger.info('[Indexing] Starting thread reindex...');
       
-      const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/sf1-community';
+      const mongoUrl = process.env.MONGODB_URL_COMMUNITY || process.env.MONGODB_URL || 'mongodb://localhost:27017/sf1-community';
       await mongoose.connect(mongoUrl);
       
-      const Thread = mongoose.model('Thread', new mongoose.Schema({}, { strict: false }));
+      const Thread = mongoose.models['Thread'] || mongoose.model('Thread', new mongoose.Schema({}, { strict: false }));
       
       const threads = await Thread.find({ deletedAt: { $exists: false } })
         .select('_id title content category tags isPinned isSolved replyCount viewCount upvotes createdAt')
@@ -232,10 +232,10 @@ export class IndexingService {
     try {
       logger.info('[Indexing] Starting grow reindex...');
       
-      const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017/sf1-journal';
+      const mongoUrl = process.env.MONGODB_URL_JOURNAL || process.env.MONGODB_URL || 'mongodb://localhost:27017/sf1-journal';
       await mongoose.connect(mongoUrl);
       
-      const Grow = mongoose.model('Grow', new mongoose.Schema({}, { strict: false }));
+      const Grow = mongoose.models['Grow'] || mongoose.model('Grow', new mongoose.Schema({}, { strict: false }));
       
       const grows = await Grow.find({ 
         deletedAt: { $exists: false },
@@ -294,14 +294,13 @@ export class IndexingService {
    */
   async reindexAll(): Promise<void> {
     logger.info('[Indexing] Starting full reindex...');
-    
-    await Promise.all([
-      this.reindexStrains(),
-      this.reindexThreads(),
-      this.reindexGrows(),
-      // this.reindexUsers() // TODO
-    ]);
-    
+
+    // Sequential to avoid mongoose session conflicts (each method connects/disconnects)
+    await this.reindexStrains();
+    await this.reindexThreads();
+    await this.reindexGrows();
+    // await this.reindexUsers(); // TODO
+
     logger.info('[Indexing] Full reindex completed');
   }
   

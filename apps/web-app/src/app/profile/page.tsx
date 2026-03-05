@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,20 +16,29 @@ import {
   Save,
   X,
   Loader2,
-  Camera
+  Camera,
+  Star,
+  Flame,
+  Trophy,
+  TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useGrows } from '@/hooks/use-journal';
+import { useGamificationProfile } from '@/hooks/use-gamification';
 import { FollowStats } from '@/components/follows/follow-stats';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import api from '@/lib/api-client';
+import { cn } from '@/lib/utils';
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth();
   const { data: growsData, isLoading: growsLoading } = useGrows();
+  const { data: gamification } = useGamificationProfile(user?.id);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     displayName: user?.displayName || '',
     bio: user?.bio || '',
@@ -64,6 +73,26 @@ export default function ProfilePage() {
     setIsEditing(false);
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      await api.post('/api/auth/profile/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success('Avatar aktualisiert');
+      if (refreshUser) await refreshUser();
+    } catch (error) {
+      toast.error('Fehler beim Hochladen des Avatars');
+    } finally {
+      setIsUploadingAvatar(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  };
+
   if (!user) {
     return (
       <DashboardLayout>
@@ -78,25 +107,25 @@ export default function ProfilePage() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold">Mein Profil</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">Mein Profil</h1>
             <p className="text-muted-foreground">
               Verwalte deine Profil-Informationen
             </p>
           </div>
           {!isEditing ? (
-            <Button onClick={() => setIsEditing(true)}>
+            <Button size="sm" onClick={() => setIsEditing(true)} className="flex-shrink-0">
               <Edit className="mr-2 h-4 w-4" />
               Bearbeiten
             </Button>
           ) : (
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+            <div className="flex gap-2 flex-shrink-0">
+              <Button size="sm" variant="outline" onClick={handleCancel} disabled={isSaving}>
                 <X className="mr-2 h-4 w-4" />
                 Abbrechen
               </Button>
-              <Button onClick={handleSave} disabled={isSaving}>
+              <Button size="sm" onClick={handleSave} disabled={isSaving}>
                 {isSaving ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -114,7 +143,7 @@ export default function ProfilePage() {
             <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
               {/* Avatar */}
               <div className="relative">
-                <div className="flex h-32 w-32 items-center justify-center rounded-full bg-primary/10 text-primary text-4xl font-bold">
+                <div className="flex h-32 w-32 items-center justify-center rounded-full bg-primary/10 text-primary text-4xl font-bold overflow-hidden">
                   {user.avatar ? (
                     <img
                       src={user.avatar}
@@ -125,13 +154,26 @@ export default function ProfilePage() {
                     user.username?.charAt(0).toUpperCase() || 'U'
                   )}
                 </div>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                />
                 {isEditing && (
                   <Button
                     size="icon"
                     variant="secondary"
                     className="absolute bottom-0 right-0 rounded-full"
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={isUploadingAvatar}
                   >
-                    <Camera className="h-4 w-4" />
+                    {isUploadingAvatar ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Camera className="h-4 w-4" />
+                    )}
                   </Button>
                 )}
               </div>
@@ -236,6 +278,113 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Gamification */}
+        {gamification && (
+          <>
+            {/* XP / Level Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-yellow-500" />
+                  Level & XP
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary text-2xl font-bold flex-shrink-0">
+                    {gamification.profile.level}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">Level {gamification.profile.level}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {gamification.profile.xp.toLocaleString('de-DE')} XP
+                      </span>
+                    </div>
+                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-2 bg-primary rounded-full transition-all"
+                        style={{
+                          width: `${Math.min(
+                            100 - Math.round((gamification.profile.xpToNextLevel / (gamification.profile.xpToNextLevel + gamification.profile.xp)) * 100),
+                            100
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Noch {gamification.profile.xpToNextLevel.toLocaleString('de-DE')} XP bis Level {gamification.profile.level + 1}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Stat Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Reputation', value: gamification.profile.reputation, icon: <Star className="h-4 w-4 text-yellow-500" /> },
+                    { label: 'Streak', value: `${gamification.profile.currentStreak}d`, icon: <Flame className="h-4 w-4 text-orange-500" /> },
+                    { label: 'Beiträge', value: gamification.profile.totalPosts + gamification.profile.totalReplies, icon: <TrendingUp className="h-4 w-4 text-blue-500" /> },
+                    { label: 'Rang', value: gamification.profile.globalRank ? `#${gamification.profile.globalRank}` : '—', icon: <Trophy className="h-4 w-4 text-yellow-500" /> },
+                  ].map((s) => (
+                    <div key={s.label} className="flex items-center gap-2 rounded-lg border p-3">
+                      {s.icon}
+                      <div>
+                        <div className="font-semibold text-sm">{s.value}</div>
+                        <div className="text-xs text-muted-foreground">{s.label}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Achievements */}
+            {gamification.achievements.unlockedCount > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Award className="h-5 w-5 text-purple-500" />
+                      Achievements
+                    </span>
+                    <span className="text-sm font-normal text-muted-foreground">
+                      {gamification.achievements.unlockedCount} / {gamification.achievements.total}
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {gamification.achievements.unlocked.map((a) => {
+                      const rarityColor: Record<string, string> = {
+                        legendary: 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950',
+                        epic: 'border-purple-500 bg-purple-50 dark:bg-purple-950',
+                        rare: 'border-blue-500 bg-blue-50 dark:bg-blue-950',
+                        common: 'border-border bg-muted/50',
+                      };
+                      return (
+                        <div
+                          key={a.id}
+                          className={cn(
+                            'flex items-center gap-2 rounded-lg border p-3',
+                            rarityColor[a.rarity] || rarityColor.common
+                          )}
+                          title={a.description}
+                        >
+                          <span className="text-2xl flex-shrink-0">{a.icon}</span>
+                          <div className="min-w-0">
+                            <div className="text-xs font-medium truncate">{a.name}</div>
+                            <div className="text-xs text-muted-foreground">+{a.xpReward} XP</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
 
         {/* Recent Grows */}
         <Card>

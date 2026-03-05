@@ -1,0 +1,50 @@
+SF-1 Ultimate - Backup Manifest
+================================
+Date: 2026-03-03 00:16:47 UTC
+Backup ID: 20260303-001647
+
+Files:
+------
+postgres_sf1_db_20260303-001647.sql.gz  - PostgreSQL (sf1_db): 4 tables, 10 users, 326 lines
+mongodb_20260303-001647.tar.gz           - MongoDB: 9 databases, 33 collections, 2802 seeds, 2612 prices
+redis_20260303-001647.rdb                - Redis: session/cache data (60K)
+code_20260303-001647.tar.gz              - Codebase (no node_modules): 866 files, 1.7M
+env_20260303-001647.env                  - Environment variables (chmod 600)
+
+Verification:
+------------
+✓ PostgreSQL: Restore test PASSED (4 tables, 10 users restored correctly)
+✓ MongoDB:    Restore test PASSED (2802/2802 seeds, 2612/2612 prices)
+✓ Redis:      RDB magic bytes valid (REDIS)
+✓ Code:       Key files present (docker-compose.yml, journal/page.tsx)
+
+Services running at backup time:
+---------------------------------
+sf1-ai-service: Up 5 days
+sf1-alertmanager: Up 5 days
+sf1-api-gateway: Up 6 days
+sf1-auth-service: Up 14 minutes (healthy)
+sf1-community-service: Up 5 days
+sf1-frontend: Up About an hour
+sf1-gamification-service: Up 5 days
+sf1-grafana: Up 3 hours
+sf1-journal-service: Up 5 days
+sf1-loki: Up 3 hours
+sf1-media-service: Up 5 days
+sf1-meilisearch: Up 10 days (healthy)
+sf1-mongodb: Up 6 days (healthy)
+sf1-node-exporter: Up 6 days
+sf1-notification-service: Up 2 hours (healthy)
+sf1-postgres: Up 5 days (healthy)
+sf1-price-service: Up 16 minutes (healthy)
+sf1-prometheus: Up 6 days
+sf1-promtail: Up 3 hours
+sf1-redis: Up 5 days (healthy)
+sf1-search-service: Up 5 days
+sf1-tools-service: Up 5 days
+
+Git Status:
+-----------
+Not a git repository (files managed directly)
+
+Total Size: 2,0M

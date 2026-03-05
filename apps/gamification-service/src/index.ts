@@ -7,18 +7,29 @@ import { connectRedis } from './config/redis';
 import { eventProcessorService } from './services/event-processor.service';
 import profileRoutes from './routes/profile.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import adminRoutes from './routes/admin.routes';
 import { errorHandler } from './utils/errors';
 import { logger } from './utils/logger';
+import promClient from 'prom-client';
+promClient.collectDefaultMetrics({ prefix: 'sf1_' });
 
 const app = express();
 const PORT = process.env.PORT || 3009;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'https://seedfinderpro.de',
+  credentials: true
+}));
 app.use(express.json({ limit: '1mb' }));
 
 // Health Check
+app.get('/metrics', async (_req, res) => {
+  res.set('Content-Type', promClient.register.contentType);
+  res.end(await promClient.register.metrics());
+});
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
@@ -39,6 +50,7 @@ app.get('/api/gamification/health', (req, res) => {
 // Routes
 app.use('/api/gamification/profile', profileRoutes);
 app.use('/api/gamification/analytics', analyticsRoutes);
+app.use('/api/gamification/admin', adminRoutes);
 
 // Shortcut routes (für Traefik PathPrefix)
 app.use('/api/leaderboard', (req, res) => {

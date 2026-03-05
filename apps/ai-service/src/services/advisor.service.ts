@@ -1,6 +1,7 @@
 // /apps/ai-service/src/services/advisor.service.ts
 import { openai, MODELS, SYSTEM_PROMPTS } from '../config/openai';
 import { logger } from '../utils/logger';
+import { trackUsage } from '../utils/token-tracker';
 
 export interface AdvisorInput {
   question: string;
@@ -110,6 +111,10 @@ export class AdvisorService {
 
       const content = response.choices[0].message.content || '{}';
 
+      if (response.usage) {
+        trackUsage({ model: MODELS.GPT4O, endpoint: 'advice', inputTokens: response.usage.prompt_tokens, outputTokens: response.usage.completion_tokens });
+      }
+
       try {
         const parsed = JSON.parse(content);
         return this.validateAdvisorResult(parsed);
@@ -160,6 +165,10 @@ export class AdvisorService {
       });
 
       const content = response.choices[0].message.content || '{}';
+
+      if (response.usage) {
+        trackUsage({ model: MODELS.GPT4O, endpoint: 'advice', inputTokens: response.usage.prompt_tokens, outputTokens: response.usage.completion_tokens });
+      }
 
       try {
         const parsed = JSON.parse(content);

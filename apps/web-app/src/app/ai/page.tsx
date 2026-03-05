@@ -45,12 +45,12 @@ export default function AiPage() {
       </div>
 
       {/* Tool Cards */}
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {aiTools.map((tool) => (
           <Link
             key={tool.href}
             href={tool.href}
-            className="group rounded-xl border bg-card p-6 transition-all hover:border-primary hover:shadow-lg"
+            className="group rounded-xl border bg-card p-4 sm:p-6 transition-all hover:border-primary hover:shadow-lg"
           >
             <div className={`mb-4 inline-flex rounded-lg ${tool.color} p-3`}>
               <tool.icon className="h-6 w-6 text-white" />
@@ -83,9 +83,9 @@ export default function AiPage() {
       </div>
 
       {/* Quick Info */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border bg-card p-4 sm:p-6">
         <h3 className="font-semibold mb-2">Wie funktioniert es?</h3>
-        <div className="grid gap-4 md:grid-cols-3 text-sm text-muted-foreground">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-3 text-sm text-muted-foreground">
           <div className="flex gap-3">
             <span className="text-primary font-bold">1.</span>
             <span>Wähle ein Tool aus der Navigation links oder den Karten oben.</span>

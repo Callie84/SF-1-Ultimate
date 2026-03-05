@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, Filter, X, Loader2 } from 'lucide-react';
+import { Search, Filter, X, Loader2, Sprout, MessageSquare, Leaf } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,11 +76,15 @@ function transformApiResponse(apiResponse: ApiSearchResponse, searchQuery: strin
       results.push({
         id: hit.id || hit._id,
         type: 'GROW',
-        title: hit.title || hit.name,
-        description: hit.description?.substring(0, 200),
-        imageUrl: hit.coverImage,
-        url: `/journal/${hit.id || hit._id}`,
-        metadata: { strain: hit.strain },
+        title: hit.strainName || hit.name || 'Grow',
+        description: hit.notes?.substring(0, 200),
+        url: `/grows/${hit.id || hit._id}`,
+        metadata: {
+          status: hit.status,
+          environment: hit.environment,
+          views: hit.viewCount,
+          yieldDry: hit.yieldDry,
+        },
         score: 1,
       });
     });
@@ -130,6 +134,7 @@ function SearchPageContent() {
   const [filters, setFilters] = useState<SearchFiltersType>({});
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<'relevance' | 'date'>('relevance');
+  const [activeTab, setActiveTab] = useState<'all' | 'strains' | 'threads' | 'grows'>('all');
 
   // Perform search
   const performSearch = async (searchQuery: string, currentFilters: SearchFiltersType, currentPage: number) => {
@@ -272,6 +277,34 @@ function SearchPageContent() {
         )}
       </div>
 
+      {/* Tabs */}
+      {results && (
+        <div className="flex gap-1 border-b">
+          {[
+            { key: 'all', label: 'Alle', count: results.total },
+            { key: 'strains', label: 'Strains', count: results.facets?.types?.STRAIN || 0, icon: Leaf },
+            { key: 'threads', label: 'Threads', count: results.facets?.types?.THREAD || 0, icon: MessageSquare },
+            { key: 'grows', label: 'Grows', count: results.facets?.types?.GROW || 0, icon: Sprout },
+          ].map(({ key, label, count, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key as typeof activeTab)}
+              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === key
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {Icon && <Icon className="h-3.5 w-3.5" />}
+              {label}
+              {count > 0 && (
+                <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs">{count}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Content Area */}
       <div className="flex gap-6">
         {/* Filters Sidebar */}
@@ -293,7 +326,13 @@ function SearchPageContent() {
             </div>
           ) : results ? (
             <>
-              <SearchResults results={results.results || []} />
+              <SearchResults results={(results.results || []).filter(r => {
+                if (activeTab === 'all') return true;
+                if (activeTab === 'strains') return r.type === 'STRAIN';
+                if (activeTab === 'threads') return r.type === 'THREAD';
+                if (activeTab === 'grows') return r.type === 'GROW';
+                return true;
+              })} />
 
               {/* Pagination */}
               {totalPages > 1 && (

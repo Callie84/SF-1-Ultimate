@@ -68,7 +68,7 @@ export function DiagnosisForm({ onDiagnose, onQuickDiagnose, isLoading }: Diagno
   return (
     <div className="space-y-6">
       {/* Image Upload */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border bg-card p-4 sm:p-6">
         <h3 className="font-semibold mb-4 flex items-center gap-2">
           <Upload className="h-5 w-5 text-primary" />
           Bilder hochladen (Optional)
@@ -82,7 +82,7 @@ export function DiagnosisForm({ onDiagnose, onQuickDiagnose, isLoading }: Diagno
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
             className={cn(
-              'rounded-xl border-2 border-dashed p-12 text-center cursor-pointer transition-colors',
+              'rounded-xl border-2 border-dashed p-6 sm:p-12 text-center cursor-pointer transition-colors',
               dragActive
                 ? 'border-primary bg-primary/5'
                 : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/50'
@@ -111,7 +111,7 @@ export function DiagnosisForm({ onDiagnose, onQuickDiagnose, isLoading }: Diagno
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               {images.map((image, index) => (
                 <div key={index} className="relative rounded-xl border bg-accent/50 p-1.5 group">
                   <img
@@ -150,7 +150,7 @@ export function DiagnosisForm({ onDiagnose, onQuickDiagnose, isLoading }: Diagno
       </div>
 
       {/* Description */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border bg-card p-4 sm:p-6">
         <h3 className="font-semibold mb-4 flex items-center gap-2">
           <span className="text-lg">📝</span>
           Beschreibung (Optional)
@@ -165,7 +165,7 @@ export function DiagnosisForm({ onDiagnose, onQuickDiagnose, isLoading }: Diagno
       </div>
 
       {/* Actions */}
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <button
           onClick={handleSubmit}
           disabled={isLoading || (images.length === 0 && !description.trim())}
@@ -182,7 +182,7 @@ export function DiagnosisForm({ onDiagnose, onQuickDiagnose, isLoading }: Diagno
           <button
             onClick={handleQuickSubmit}
             disabled={isLoading}
-            className="rounded-lg border bg-card px-6 py-3 text-sm font-medium hover:bg-accent transition-colors flex items-center gap-2"
+            className="rounded-lg border bg-card px-6 py-3 text-sm font-medium hover:bg-accent transition-colors flex items-center justify-center gap-2"
           >
             <Zap className="h-4 w-4" />
             Schnell-Diagnose

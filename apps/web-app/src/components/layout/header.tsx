@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Moon, Sun, User, LogOut, Settings } from 'lucide-react';
+import { Moon, Sun, User, LogOut, Settings, Menu } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/components/providers/auth-provider';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-export function Header() {
+interface HeaderProps {
+  onMenuToggle?: () => void;
+}
+
+export function Header({ onMenuToggle }: HeaderProps) {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
@@ -27,18 +31,30 @@ export function Header() {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b bg-card px-6 gap-4">
+    <header className="flex h-14 sm:h-16 items-center justify-between border-b bg-card px-3 sm:px-6 gap-2 sm:gap-4">
+      {/* Mobile Menu Button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="lg:hidden flex-shrink-0"
+        onClick={onMenuToggle}
+      >
+        <Menu className="h-5 w-5" />
+        <span className="sr-only">Menu</span>
+      </Button>
+
       {/* Search Bar */}
-      <div className="flex-1 max-w-2xl">
+      <div className="flex-1 max-w-2xl min-w-0">
         <SearchBar />
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
         {/* Theme Toggle */}
         <Button
           variant="ghost"
           size="icon"
+          className="hidden sm:inline-flex"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         >
           <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -47,15 +63,15 @@ export function Header() {
         </Button>
 
         {/* Messages */}
-        <MessageDropdown />
+        {user && <MessageDropdown />}
 
         {/* Notifications */}
-        <NotificationDropdown />
+        {user && <NotificationDropdown />}
 
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="gap-2">
+            <Button variant="ghost" className="gap-2 px-2 sm:px-3">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
                 {user?.avatar ? (
                   <img src={user.avatar} alt={user?.username} className="h-8 w-8 rounded-full" />
@@ -73,7 +89,20 @@ export function Header() {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem onClick={() => router.push(`/profile/${user?.username}`)}>
+            {/* Theme toggle in mobile dropdown */}
+            <DropdownMenuItem
+              className="sm:hidden"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            >
+              {theme === 'dark' ? (
+                <Sun className="mr-2 h-4 w-4" />
+              ) : (
+                <Moon className="mr-2 h-4 w-4" />
+              )}
+              {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="sm:hidden" />
+            <DropdownMenuItem onClick={() => router.push(user?.username ? `/profile/${user.username}` : '/profile')}>
               <User className="mr-2 h-4 w-4" />
               Mein Profil
             </DropdownMenuItem>

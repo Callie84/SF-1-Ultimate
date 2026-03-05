@@ -31,12 +31,12 @@ export function AdvisorForm({ onSubmit, isLoading }: AdvisorFormProps) {
   return (
     <div className="space-y-6">
       {/* Step 1: Experience */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border bg-card p-4 sm:p-6">
         <label className="block font-semibold mb-4 flex items-center gap-2">
           <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-bold">1</span>
           Deine Erfahrung
         </label>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { value: 'beginner', label: 'Anfanger', desc: 'Erster Grow' },
             { value: 'intermediate', label: 'Fortgeschritten', desc: 'Einige Grows' },
@@ -61,12 +61,12 @@ export function AdvisorForm({ onSubmit, isLoading }: AdvisorFormProps) {
       </div>
 
       {/* Step 2: Goal */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border bg-card p-4 sm:p-6">
         <label className="block font-semibold mb-4 flex items-center gap-2">
           <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-bold">2</span>
           Dein Ziel
         </label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[
             { value: 'yield', label: 'Max. Ertrag', desc: 'Grosse Ernte erzielen' },
             { value: 'potency', label: 'Max. Potenz', desc: 'Hoher THC-Gehalt' },
@@ -92,12 +92,12 @@ export function AdvisorForm({ onSubmit, isLoading }: AdvisorFormProps) {
       </div>
 
       {/* Step 3: Setup */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border bg-card p-4 sm:p-6">
         <label className="block font-semibold mb-4 flex items-center gap-2">
           <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-bold">3</span>
           Dein Setup
         </label>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="text-sm font-medium mb-2 block text-muted-foreground">Grow-Typ</label>
             <select

@@ -32,6 +32,7 @@ export default function AiChatPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [showSessions, setShowSessions] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -42,6 +43,40 @@ export default function AiChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Sessions beim Laden der Seite vom Server holen
+  useEffect(() => {
+    const loadSessions = async () => {
+      try {
+        const response = await apiClient.get('/api/ai/chat/sessions');
+        const sessionList = (response.sessions || []).map((s: any) => ({
+          id: s.id,
+          title: s.messages?.find((m: any) => m.role === 'user')?.content?.slice(0, 50) || 'Chat Session',
+          lastMessage: new Date(s.updatedAt),
+        }));
+        setSessions(sessionList);
+
+        // Letzte Session automatisch laden
+        if (sessionList.length > 0) {
+          const latest = response.sessions[0];
+          setCurrentSessionId(latest.id);
+          const msgs = (latest.messages || []).map((msg: any) => ({
+            ...msg,
+            id: msg.id || Date.now().toString(),
+            timestamp: new Date(msg.timestamp),
+          }));
+          if (msgs.length > 0) {
+            setMessages(msgs);
+          }
+        }
+      } catch (error) {
+        // Nicht eingeloggt oder kein Zugriff – kein Problem
+      } finally {
+        setIsLoadingSessions(false);
+      }
+    };
+    loadSessions();
+  }, []);
 
   const handleSendMessage = async (content: string) => {
     const userMessage: Message = {
@@ -134,40 +169,40 @@ export default function AiChatPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)]">
+    <div className="flex flex-col h-[calc(100dvh-8rem)]">
       {/* Chat Header */}
-      <div className="flex items-center justify-between pb-4 border-b mb-4 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
+      <div className="flex items-center justify-between pb-4 border-b mb-4 flex-shrink-0 gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs sm:text-sm flex-shrink-0">
             AI
           </div>
-          <div>
-            <h1 className="text-lg font-bold">AI Chat</h1>
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-bold">AI Chat</h1>
             <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+              <span className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></span>
               Online
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           {/* Sessions Toggle */}
           <button
             onClick={() => setShowSessions(!showSessions)}
             className={cn(
-              'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              'flex items-center gap-1 sm:gap-2 rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium transition-colors',
               showSessions ? 'bg-primary text-primary-foreground' : 'bg-accent text-muted-foreground hover:text-foreground'
             )}
           >
             <MessageSquare className="h-4 w-4" />
-            Sessions
+            <span className="hidden sm:inline">Sessions</span>
             {showSessions ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
           </button>
 
           {/* New Session */}
           <button
             onClick={handleNewSession}
-            className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="flex items-center gap-1 sm:gap-2 rounded-lg bg-primary px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             <Plus className="h-4 w-4" />
             Neu

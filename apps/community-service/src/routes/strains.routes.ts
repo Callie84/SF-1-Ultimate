@@ -33,6 +33,19 @@ strainSchema.index({ isActive: 1 });
 
 const Strain = mongoose.models.Strain || mongoose.model('Strain', strainSchema);
 
+// Strain Review Schema
+const reviewSchema = new mongoose.Schema({
+  strainSlug: { type: String, required: true, index: true },
+  userId: { type: String, required: true },
+  username: { type: String, required: true },
+  rating: { type: Number, required: true, min: 1, max: 5 },
+  comment: { type: String, maxlength: 1000 },
+}, { timestamps: true });
+
+reviewSchema.index({ strainSlug: 1, userId: 1 }, { unique: true }); // one review per user per strain
+
+const StrainReview = mongoose.models.StrainReview || mongoose.model('StrainReview', reviewSchema);
+
 /**
  * GET /api/community/strains
  * Liste aller Strains (paginiert)
@@ -146,6 +159,84 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
     next(error);
   }
 });
+
+/**
+ * GET /api/community/strains/:slug/reviews
+ * Reviews für einen Strain
+ */
+router.get('/:slug/reviews', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { slug } = req.params;
+    const reviews = await StrainReview.find({ strainSlug: slug })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+
+    const avgRating = reviews.length
+      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+      : null;
+
+    res.json({ reviews, count: reviews.length, avgRating });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/community/strains/:slug/reviews
+ * Review erstellen (Auth required)
+ */
+router.post('/:slug/reviews',
+  authMiddleware,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { slug } = req.params;
+      const { rating, comment } = req.body;
+
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: 'Bewertung muss zwischen 1 und 5 liegen' });
+      }
+
+      // Check strain exists
+      const strain = await Strain.findOne({ slug }).lean();
+      if (!strain) {
+        return res.status(404).json({ error: 'Strain nicht gefunden' });
+      }
+
+      const userId = req.user?.id;
+      const username = (req.body.username as string)?.trim().slice(0, 50) || 'User';
+
+      // Upsert: update if user already reviewed this strain
+      const review = await StrainReview.findOneAndUpdate(
+        { strainSlug: slug, userId },
+        { rating: Math.round(rating), comment: comment?.trim() || '', username },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      res.status(201).json({ review });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * DELETE /api/community/strains/:slug/reviews/my
+ * Eigene Review löschen (Auth required)
+ */
+router.delete('/:slug/reviews/my',
+  authMiddleware,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { slug } = req.params;
+      const userId = req.user?.id;
+      await StrainReview.deleteOne({ strainSlug: slug, userId });
+      res.json({ message: 'Review gelöscht' });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /**
  * POST /api/community/strains
