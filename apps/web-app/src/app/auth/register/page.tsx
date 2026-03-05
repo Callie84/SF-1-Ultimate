@@ -60,7 +60,8 @@ export default function RegisterPage() {
     } catch (error: any) {
       console.error('Register error:', error);
       toast.error(
-        error.response?.data?.message || 
+        error.response?.data?.error ||
+        error.response?.data?.message ||
         'Registrierung fehlgeschlagen. Bitte versuche es erneut.'
       );
     } finally {

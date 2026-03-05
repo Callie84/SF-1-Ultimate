@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { entryService } from '../services/entry.service';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 
 const router = Router();
@@ -44,7 +44,7 @@ router.post('/:growId/entries',
 );
 
 router.get('/:growId/entries',
-  authMiddleware,
+  optionalAuthMiddleware,
   async (req, res, next) => {
     try {
       const entries = await entryService.getByGrow(

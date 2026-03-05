@@ -140,7 +140,7 @@ export class NotificationService {
    * Queue Email
    */
   private async queueEmail(notificationId: string): Promise<void> {
-    await redis.lpush('queue:email', JSON.stringify({
+    await redis.lPush('queue:email', JSON.stringify({
       notificationId,
       timestamp: Date.now()
     }));
@@ -150,7 +150,7 @@ export class NotificationService {
    * Queue Push
    */
   private async queuePush(notificationId: string): Promise<void> {
-    await redis.lpush('queue:push', JSON.stringify({
+    await redis.lPush('queue:push', JSON.stringify({
       notificationId,
       timestamp: Date.now()
     }));

@@ -5,6 +5,7 @@ import { Reply } from '../models/Reply.model';
 import { AppError } from '../utils/errors';
 import { logger } from '../utils/logger';
 import { gamificationHooks } from './gamification-hooks';
+import { sendNotification } from './notification-client';
 
 export class VoteService {
   /**
@@ -52,14 +53,31 @@ export class VoteService {
     await vote.save();
     await this.updateVoteCount(data.targetId, data.targetType, data.type, 1);
     
-    // Gamification-Event (für Target-Owner)
+    // Gamification + Notification bei Upvote
     if (data.type === 'upvote') {
       const owner = await this.getTargetOwner(data.targetId, data.targetType);
       if (owner) {
         await gamificationHooks.onUpvoteReceived(owner, data.targetId, data.targetType);
+
+        // Nur benachrichtigen wenn nicht sich selbst upgevoted
+        if (owner !== userId) {
+          const isThread = data.targetType === 'thread';
+          const url = isThread
+            ? `/community/thread/${data.targetId}`
+            : undefined; // Reply: URL kann thread-ID nicht einfach ableiten
+          sendNotification({
+            userId: owner,
+            type: 'reaction',
+            title: isThread ? 'Dein Thread wurde geupvoted' : 'Deine Antwort wurde geupvoted',
+            message: 'Dein Beitrag hat einen Upvote erhalten',
+            relatedUrl: url,
+            relatedId: data.targetId,
+            relatedType: data.targetType,
+          });
+        }
       }
     }
-    
+
     return { voted: true, removed: false };
   }
   

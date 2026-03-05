@@ -140,27 +140,20 @@ function ResultCard({ result }: { result: SearchResult }) {
 
               {result.type === 'GROW' && (
                 <>
-                  {result.metadata.strain && (
-                    <div className="flex items-center gap-1">
+                  {result.metadata.status && (
+                    <div className="rounded-full bg-primary/10 px-2 py-0.5 text-primary capitalize">
+                      {result.metadata.status}
+                    </div>
+                  )}
+                  {result.metadata.environment && (
+                    <div className="flex items-center gap-1 capitalize">
                       <Sprout className="h-3 w-3" />
-                      <span>{result.metadata.strain}</span>
+                      <span>{result.metadata.environment}</span>
                     </div>
                   )}
-                  {result.metadata.phase && (
-                    <div className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
-                      {result.metadata.phase}
-                    </div>
-                  )}
-                  {result.metadata.daysSinceStart !== undefined && (
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>Tag {result.metadata.daysSinceStart}</span>
-                    </div>
-                  )}
-                  {result.metadata.author && (
-                    <div className="flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      <span>{result.metadata.author}</span>
+                  {result.metadata.yieldDry && (
+                    <div className="flex items-center gap-1 text-green-600">
+                      <span>{result.metadata.yieldDry} g</span>
                     </div>
                   )}
                   {result.metadata.views !== undefined && (

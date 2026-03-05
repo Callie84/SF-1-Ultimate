@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -23,8 +23,15 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user, isLoading: authLoading } = useAuth();
   const router = useRouter();
+
+  // Bereits eingeloggt → Dashboard
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace('/dashboard');
+    }
+  }, [user, authLoading, router]);
 
   const {
     register,
@@ -44,7 +51,8 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error('Login error:', error);
       toast.error(
-        error.response?.data?.message || 
+        error.response?.data?.error ||
+        error.response?.data?.message ||
         'Login fehlgeschlagen. Bitte überprüfe deine Zugangsdaten.'
       );
     } finally {
@@ -92,9 +100,14 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
-                Passwort
-              </label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="text-sm font-medium">
+                  Passwort
+                </label>
+                <Link href="/auth/forgot-password" className="text-xs text-muted-foreground hover:text-primary">
+                  Passwort vergessen?
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"

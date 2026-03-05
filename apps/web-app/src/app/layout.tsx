@@ -9,9 +9,37 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'SF-1 Ultimate | Cannabis Growing Platform',
-  description: 'Grow smarter with AI-powered plant diagnosis, price comparison, and community support',
-  keywords: ['cannabis', 'growing', 'seeds', 'cultivation', 'AI diagnosis'],
+  title: {
+    default: 'SeedFinderPro — Cannabis Samen Preisvergleich & Strain-Datenbank',
+    template: '%s | SeedFinderPro',
+  },
+  description: 'Vergleiche Preise von 2800+ Cannabis Samen aus 12 Seedbanks. Strain-Datenbank, Grow-Tagebuch, Community-Forum und KI-Assistent für Grower.',
+  keywords: ['cannabis samen', 'samenbank preisvergleich', 'cannabis strains', 'seeds kaufen', 'growing community', 'strain datenbank'],
+  authors: [{ name: 'SeedFinderPro' }],
+  creator: 'SeedFinderPro',
+  metadataBase: new URL('https://seedfinderpro.de'),
+  openGraph: {
+    type: 'website',
+    locale: 'de_DE',
+    url: 'https://seedfinderpro.de',
+    siteName: 'SeedFinderPro',
+    title: 'SeedFinderPro — Cannabis Samen Preisvergleich',
+    description: 'Vergleiche Preise von 2800+ Cannabis Samen aus 12 Seedbanks. Kostenlos, ohne Anmeldung.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'SeedFinderPro — Cannabis Samen Preisvergleich',
+    description: 'Vergleiche Preise von 2800+ Cannabis Samen aus 12 Seedbanks.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-snippet': -1,
+    },
+  },
   icons: {
     icon: '/icon.svg',
     shortcut: '/icon.svg',

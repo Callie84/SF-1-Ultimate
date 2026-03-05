@@ -1,6 +1,7 @@
 // /apps/community-service/src/services/follow.service.ts
 import { Follow, IFollow } from '../models/Follow.model';
 import { AppError } from '../utils/errors';
+import { sendNotification } from './notification-client';
 
 export interface FollowStats {
   followersCount: number;
@@ -25,6 +26,17 @@ export class FollowService {
     const follow = await Follow.create({
       followerId,
       followingId
+    });
+
+    // Benachrichtige den gefolgten User
+    sendNotification({
+      userId: followingId,
+      type: 'follow',
+      title: 'Neuer Follower',
+      message: 'Jemand folgt jetzt deinem Profil',
+      relatedUrl: `/profile`,
+      relatedId: followerId,
+      relatedType: 'user',
     });
 
     return follow;

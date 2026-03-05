@@ -10,6 +10,10 @@ volumes:
   redis_data:
   meilisearch_data:
   traefik_certs:
+  prometheus_data:
+  grafana_data:
+  alertmanager_data:
+  loki_data:
 
 services:
   # Datenbanken
@@ -85,7 +89,8 @@ services:
     container_name: sf1-api-gateway
     restart: always
     command:
-      - "--api.insecure=true"
+      - "--api=true"
+      - "--api.dashboard=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network=sf-1-ultimate-_sf1-network"
@@ -101,12 +106,25 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik_certs:/certs
     networks:
       - sf1-network
+    labels:
+      - "traefik.enable=true"
+      # Dashboard-Router: nur HTTPS, nur über traefik.seedfinderpro.de
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.seedfinderpro.de`)"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.traefik-dashboard.tls=true"
+      - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.middlewares=traefik-auth,traefik-compress"
+      # BasicAuth Middleware (Passwort in .env: TRAEFIK_DASHBOARD_USERS)
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_DASHBOARD_USERS}"
+      - "traefik.http.middlewares.traefik-auth.basicauth.removeheader=true"
+      # Gzip-Kompression für Dashboard-Assets
+      - "traefik.http.middlewares.traefik-compress.compress=true"
 
   # Frontend
   frontend:
@@ -158,6 +176,13 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      FRONTEND_URL: https://seedfinderpro.de
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_REGION: ${S3_REGION}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
     networks:
       - sf1-network
     labels:
@@ -174,6 +199,12 @@ services:
       - "traefik.http.routers.auth-local.entrypoints=web"
       # Service
       - "traefik.http.services.auth.loadbalancer.server.port=3001"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       mongodb:
         condition: service_healthy
@@ -195,6 +226,15 @@ services:
       MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_journal?authSource=admin&directConnection=true
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      NOTIFICATION_SERVICE_URL: http://notification-service:3006
+      SEARCH_SERVICE_URL: http://sf1-search-service:3007
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_REGION: ${S3_REGION}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
     networks:
       - sf1-network
     labels:
@@ -213,6 +253,12 @@ services:
       # Shared middleware and service
       - "traefik.http.middlewares.journal-stripprefix.stripprefix.prefixes=/api/journal,/api/grows,/api/plants"
       - "traefik.http.services.journal.loadbalancer.server.port=3003"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       mongodb:
         condition: service_healthy
@@ -230,10 +276,14 @@ services:
     environment:
       NODE_ENV: production
       MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_search?authSource=admin&directConnection=true
+      MONGODB_URL_PRICES: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_price?authSource=admin&directConnection=true
+      MONGODB_URL_COMMUNITY: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_community?authSource=admin&directConnection=true
+      MONGODB_URL_JOURNAL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_journal?authSource=admin&directConnection=true
       MEILISEARCH_HOST: http://meilisearch:7700
       MEILISEARCH_KEY: ${MEILISEARCH_MASTER_KEY}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
     networks:
       - sf1-network
     labels:
@@ -245,6 +295,12 @@ services:
       - "traefik.http.routers.search.tls.certresolver=letsencrypt"
       # NO middlewares - service expects full path /api/search/...
       - "traefik.http.services.search.loadbalancer.server.port=3007"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       mongodb:
         condition: service_healthy
@@ -266,6 +322,7 @@ services:
       MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_gamification?authSource=admin&directConnection=true
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
     networks:
       - sf1-network
     labels:
@@ -277,6 +334,12 @@ services:
       - "traefik.http.routers.gamification.tls.certresolver=letsencrypt"
       # NO middlewares - service expects full path /api/gamification/...
       - "traefik.http.services.gamification.loadbalancer.server.port=3009"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3009/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       mongodb:
         condition: service_healthy
@@ -298,6 +361,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
     networks:
       - sf1-network
     labels:
@@ -309,6 +374,12 @@ services:
       - "traefik.http.routers.price.tls.certresolver=letsencrypt"
       # NO middlewares - service expects full path /api/prices/...
       - "traefik.http.services.price.loadbalancer.server.port=3002"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       mongodb:
         condition: service_healthy
@@ -327,6 +398,7 @@ services:
       NODE_ENV: production
       MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_media?authSource=admin&directConnection=true
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      CORS_ORIGIN: ${CORS_ORIGIN}
     networks:
       - sf1-network
     labels:
@@ -338,6 +410,12 @@ services:
       - "traefik.http.routers.media.tls.certresolver=letsencrypt"
       # NO middlewares - service expects full path /api/media/...
       - "traefik.http.services.media.loadbalancer.server.port=3008"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3008/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       mongodb:
         condition: service_healthy
@@ -367,6 +445,12 @@ services:
       - "traefik.http.routers.ai.tls.certresolver=letsencrypt"
       # NO middlewares - service expects full path /api/ai/...
       - "traefik.http.services.ai.loadbalancer.server.port=3010"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       mongodb:
         condition: service_healthy
@@ -385,6 +469,7 @@ services:
       NODE_ENV: production
       MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_tools?authSource=admin&directConnection=true
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      CORS_ORIGIN: ${CORS_ORIGIN}
     networks:
       - sf1-network
     labels:
@@ -396,6 +481,12 @@ services:
       - "traefik.http.routers.tools.tls.certresolver=letsencrypt"
       # NO middlewares - service expects full path /api/tools/...
       - "traefik.http.services.tools.loadbalancer.server.port=3004"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   notification-service:
     image: node:20-alpine
@@ -410,6 +501,13 @@ services:
       MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_notification?authSource=admin&directConnection=true
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-SeedFinderPro <noreply@seedfinderpro.de>}
+      AUTH_SERVICE_URL: http://sf1-auth-service:3001
     networks:
       - sf1-network
     labels:
@@ -421,6 +519,12 @@ services:
       - "traefik.http.routers.notification.tls.certresolver=letsencrypt"
       # NO middlewares - service expects full path /api/notifications/...
       - "traefik.http.services.notification.loadbalancer.server.port=3006"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       mongodb:
         condition: service_healthy
@@ -458,8 +562,138 @@ services:
       # Shared middleware and service
       - "traefik.http.middlewares.community-stripprefix.stripprefix.prefixes=/api/community,/api/posts,/api/comments"
       - "traefik.http.services.community.loadbalancer.server.port=3005"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  # ==========================================
+  # MONITORING STACK
+  # ==========================================
+
+  # Metriken-Sammlung
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: sf1-prometheus
+    restart: always
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts:/etc/prometheus/alerts:ro
+      - prometheus_data:/prometheus
+    networks:
+      - sf1-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.seedfinderpro.de`)"
+      - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.tls=true"
+      - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
+      # Prometheus hinter BasicAuth (gleiche Credentials wie Traefik-Dashboard)
+      - "traefik.http.routers.prometheus.middlewares=traefik-auth"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+
+  # Alert-Routing → Telegram
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: sf1-alertmanager
+    restart: always
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--cluster.listen-address='
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    networks:
+      - sf1-network
+
+  # Dashboards
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: sf1-grafana
+    restart: always
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_SERVER_ROOT_URL: https://grafana.seedfinderpro.de
+      GF_ALERTING_ENABLED: 'false'
+      GF_UNIFIED_ALERTING_ENABLED: 'false'
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - sf1-network
+    depends_on:
+      - prometheus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.seedfinderpro.de`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls=true"
+      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+      # Grafana hat eigene Auth → kein BasicAuth-Middleware
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+  # ==========================================
+  # LOG-AGGREGATION
+  # ==========================================
+
+  # Loki: Log-Datenbank
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: sf1-loki
+    restart: always
+    command: -config.file=/etc/loki/loki.yml
+    volumes:
+      - ./monitoring/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/loki
+    networks:
+      - sf1-network
+
+  # Promtail: Log-Collector (liest Docker-Container-Logs)
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: sf1-promtail
+    restart: always
+    volumes:
+      - ./monitoring/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/promtail.yml
+    networks:
+      - sf1-network
+    depends_on:
+      - loki
+
+  # Host-Metriken (CPU, RAM, Disk, Netzwerk)
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: sf1-node-exporter
+    restart: always
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - sf1-network

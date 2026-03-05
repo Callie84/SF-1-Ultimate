@@ -20,6 +20,7 @@ const prisma = new PrismaClient();
 export interface CreateUserDto {
   email: string;
   password: string;
+  username?: string;
   name?: string;
   role?: 'user' | 'premium' | 'moderator' | 'admin';
   provider?: 'LOCAL' | 'GOOGLE' | 'DISCORD';
@@ -112,7 +113,7 @@ export class UserService {
       const user = await prisma.user.create({
         data: {
           email: userData.email,
-          username: userData.name || userData.email.split('@')[0],
+          username: userData.username || userData.name || userData.email.split('@')[0],
           passwordHash,
           role: roleEnum,
           provider: userData.provider || 'LOCAL',
@@ -188,6 +189,25 @@ export class UserService {
       console.error('Error updating password:', error);
       throw new Error('Password update failed');
     }
+  }
+
+  /**
+   * Update User Profile (bio, displayName, avatar)
+   */
+  async updateProfile(userId: string, data: {
+    bio?: string;
+    displayName?: string;
+    avatar?: string;
+  }): Promise<User> {
+    const updateData: any = {};
+    if (data.bio !== undefined) updateData.bio = data.bio;
+    if (data.displayName !== undefined) updateData.name = data.displayName;
+    if (data.avatar !== undefined) updateData.avatar = data.avatar;
+
+    return prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
   }
 
   /**

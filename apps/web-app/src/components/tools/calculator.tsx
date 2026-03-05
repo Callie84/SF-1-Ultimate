@@ -73,7 +73,7 @@ export function Calculator({
       </div>
 
       {/* Calculator */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border bg-card p-4 sm:p-6">
         <div className="space-y-4">
           {fields.map((field) => (
             <div key={field.name}>
@@ -123,10 +123,10 @@ export function Calculator({
 
       {/* Result */}
       {result !== null && (
-        <div className="rounded-xl border bg-card p-6">
+        <div className="rounded-xl border bg-card p-4 sm:p-6">
           <h3 className="font-semibold mb-4">Ergebnis</h3>
-          <div className="rounded-lg border p-6 text-center">
-            <div className="text-3xl font-bold text-primary mb-1">
+          <div className="rounded-lg border p-4 sm:p-6 text-center">
+            <div className="text-2xl sm:text-3xl font-bold text-primary mb-1">
               {typeof result === 'number' ? result.toFixed(2) : result} {resultUnit}
             </div>
             <div className="text-sm font-medium text-muted-foreground mb-2">
@@ -145,7 +145,7 @@ export function Calculator({
       )}
 
       {/* Info */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border bg-card p-4 sm:p-6">
         <h3 className="font-semibold mb-3 flex items-center gap-2">
           <Info className="h-5 w-5 text-primary" />
           {info.title}

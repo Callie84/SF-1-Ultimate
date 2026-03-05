@@ -13,18 +13,30 @@ import strainsRoutes from './routes/strains.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import messagesRoutes from './routes/messages.routes';
 import followsRoutes from './routes/follows.routes';
+import adsRoutes from './routes/ads.routes';
+import seedbankReviewsRoutes from './routes/seedbank-reviews.routes';
 import { errorHandler } from './utils/errors';
 import { logger } from './utils/logger';
+import promClient from 'prom-client';
+promClient.collectDefaultMetrics({ prefix: 'sf1_' });
 
 const app = express();
 const PORT = process.env.PORT || 3005;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'https://seedfinderpro.de',
+  credentials: true
+}));
 app.use(express.json({ limit: '1mb' }));
 
 // Health Check
+app.get('/metrics', async (_req, res) => {
+  res.set('Content-Type', promClient.register.contentType);
+  res.end(await promClient.register.metrics());
+});
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
@@ -52,6 +64,8 @@ app.use('/api/community/strains', strainsRoutes);
 app.use('/api/community/analytics', analyticsRoutes);
 app.use('/api/community/messages', messagesRoutes);
 app.use('/api/community/follows', followsRoutes);
+app.use('/api/community/ads', adsRoutes);
+app.use('/api/community/seedbank-reviews', seedbankReviewsRoutes);
 
 // Error Handler
 app.use(errorHandler);

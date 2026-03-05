@@ -1,20 +1,37 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Sprout, 
-  Search, 
-  BookOpen, 
-  Users, 
-  Brain, 
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import type { Metadata } from 'next';
+import {
+  Sprout,
+  Search,
+  BookOpen,
+  Users,
+  Brain,
   TrendingDown,
-  Shield,
   Zap,
   Award,
-  MessageSquare
+  ArrowRight,
+  CheckCircle,
+  Leaf,
+  ShoppingCart,
+  LogIn,
 } from 'lucide-react';
 
+export const metadata: Metadata = {
+  title: 'SeedFinderPro — Cannabis Samen Preisvergleich & Strain-Datenbank',
+  description: 'Vergleiche Preise von 2800+ Cannabis Samen aus 12 Seedbanks. Kostenloser Strain-Preisvergleich, Community-Forum und KI-Assistent für Grower.',
+};
+
 export default function LandingPage() {
+  const cookieStore = cookies();
+  const token = cookieStore.get('sf1_access_token');
+  if (token) {
+    redirect('/dashboard');
+  }
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -22,31 +39,49 @@ export default function LandingPage() {
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-4xl text-center">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
-              <Sprout className="h-4 w-4" />
-              SF-1 Ultimate Platform
+              <Leaf className="h-4 w-4" />
+              Kostenloser Samen-Preisvergleich
             </div>
-            
+
             <h1 className="mb-6 text-4xl font-bold tracking-tight md:text-6xl">
-              Grow Smarter mit{' '}
-              <span className="text-primary">KI-Unterstützung</span>
+              Der deutsche{' '}
+              <span className="text-primary">Preisvergleich</span>
+              {' '}für Cannabis-Samen
             </h1>
-            
-            <p className="mb-8 text-lg text-muted-foreground md:text-xl">
-              Die ultimative Cannabis-Growing-Plattform mit AI-Diagnose, 
-              Preisvergleich, Community-Forum und wissenschaftlichen Tools.
+
+            <p className="mb-8 text-lg text-muted-foreground md:text-xl max-w-2xl mx-auto">
+              Vergleiche Preise von <strong>2800+ Samen</strong> aus <strong>12 Seedbanks</strong> —
+              kostenlos, ohne Anmeldung. Plus Community-Forum, Grow-Tagebuch und KI-Assistent.
             </p>
-            
+
             <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
-              <Button asChild size="lg" className="text-lg">
+              <Button asChild size="lg" className="text-lg gap-2">
                 <Link href="/auth/register">
-                  Kostenlos starten
+                  <Sprout className="h-5 w-5" />
+                  Kostenlos registrieren
                 </Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className="text-lg">
+              <Button asChild size="lg" variant="outline" className="text-lg gap-2">
                 <Link href="/auth/login">
-                  Login
+                  <LogIn className="h-5 w-5" />
+                  Anmelden
                 </Link>
               </Button>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="mt-12 grid grid-cols-2 gap-4 md:grid-cols-4 max-w-2xl mx-auto">
+              {[
+                { value: '2800+', label: 'Samen' },
+                { value: '183', label: 'Strain-Profile' },
+                { value: '12', label: 'Seedbanks' },
+                { value: '100%', label: 'Kostenlos' },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-lg border bg-background/80 p-4 text-center">
+                  <div className="text-2xl font-bold text-primary">{stat.value}</div>
+                  <div className="text-sm text-muted-foreground">{stat.label}</div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -57,167 +92,162 @@ export default function LandingPage() {
         <div className="container mx-auto px-4">
           <div className="mb-12 text-center">
             <h2 className="mb-4 text-3xl font-bold md:text-4xl">
-              Alles was du zum Growen brauchst
+              Alles was du brauchst
             </h2>
             <p className="text-lg text-muted-foreground">
-              11 integrierte Services für professionelle Grower
+              Preisvergleich, Strain-Info, Community und KI — alles auf einer Plattform
             </p>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {/* AI Diagnosis */}
-            <Card>
-              <CardHeader>
-                <Brain className="mb-2 h-10 w-10 text-primary" />
-                <CardTitle>AI Plant Diagnosis</CardTitle>
-                <CardDescription>
-                  GPT-4 Vision analysiert deine Pflanzen-Fotos und erkennt Probleme automatisch
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            {/* Price Comparison */}
-            <Card>
+            <Card className="border-primary/20 hover:border-primary transition-colors">
               <CardHeader>
                 <TrendingDown className="mb-2 h-10 w-10 text-primary" />
-                <CardTitle>Preisvergleich</CardTitle>
+                <CardTitle>Samen-Preisvergleich</CardTitle>
                 <CardDescription>
-                  10.000+ Strains von 50+ Seedbanks. Finde die besten Deals automatisch
+                  2800+ Samen aus 12 Seedbanks täglich aktualisiert. Finde den günstigsten Preis sofort.
                 </CardDescription>
               </CardHeader>
             </Card>
 
-            {/* Grow Journal */}
-            <Card>
+            <Card className="border-primary/20 hover:border-primary transition-colors">
               <CardHeader>
-                <BookOpen className="mb-2 h-10 w-10 text-primary" />
-                <CardTitle>Grow-Tagebuch</CardTitle>
+                <Leaf className="mb-2 h-10 w-10 text-primary" />
+                <CardTitle>Strain-Datenbank</CardTitle>
                 <CardDescription>
-                  Dokumentiere deinen Grow mit Timeline, Fotos und Community-Feedback
+                  183 Cannabis-Profile mit THC/CBD-Werten, Terpenprofil, Wirkungen und Aromen. Inkl. Preisvergleich.
                 </CardDescription>
               </CardHeader>
             </Card>
 
-            {/* Community Forum */}
-            <Card>
+            <Card className="border-primary/20 hover:border-primary transition-colors">
+              <CardHeader>
+                <Brain className="mb-2 h-10 w-10 text-primary" />
+                <CardTitle>KI-Assistent</CardTitle>
+                <CardDescription>
+                  GPT-4o analysiert deine Pflanzen-Fotos, empfiehlt Strains und beantwortet Grow-Fragen sofort.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card className="border-primary/20 hover:border-primary transition-colors">
               <CardHeader>
                 <Users className="mb-2 h-10 w-10 text-primary" />
                 <CardTitle>Community Forum</CardTitle>
                 <CardDescription>
-                  Reddit-Style Forum mit Upvotes, Karma und hilfreichen Diskussionen
+                  Reddit-Style Forum mit Kategorien, Upvotes und Direktnachrichten für alle Grower.
                 </CardDescription>
               </CardHeader>
             </Card>
 
-            {/* Search */}
-            <Card>
+            <Card className="border-primary/20 hover:border-primary transition-colors">
               <CardHeader>
-                <Search className="mb-2 h-10 w-10 text-primary" />
-                <CardTitle>Universal Search</CardTitle>
+                <BookOpen className="mb-2 h-10 w-10 text-primary" />
+                <CardTitle>Grow-Tagebuch</CardTitle>
                 <CardDescription>
-                  Blitzschnelle Suche über Strains, Threads, Grows und User
+                  Dokumentiere deinen Grow mit Timeline, Notizen und Community-Feedback. Mit Exportfunktion.
                 </CardDescription>
               </CardHeader>
             </Card>
 
-            {/* Gamification */}
-            <Card>
+            <Card className="border-primary/20 hover:border-primary transition-colors">
               <CardHeader>
-                <Award className="mb-2 h-10 w-10 text-primary" />
-                <CardTitle>Gamification</CardTitle>
+                <Zap className="mb-2 h-10 w-10 text-primary" />
+                <CardTitle>Wissenschaftliche Rechner</CardTitle>
                 <CardDescription>
-                  XP, Levels, Badges und Achievements für aktive Community-Mitglieder
+                  VPD, EC/PPM, DLI, PPFD, Stromkosten und CO₂ — alle wichtigen Werte präzise berechnet.
                 </CardDescription>
               </CardHeader>
             </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Preisvergleich Highlight */}
+      <section className="bg-muted/50 py-20">
+        <div className="container mx-auto px-4">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <h2 className="text-3xl font-bold mb-4">
+                Nie wieder zu viel bezahlen
+              </h2>
+              <p className="text-muted-foreground mb-6">
+                Unser automatischer Preisvergleich durchsucht täglich alle großen deutschen und europäischen
+                Seedbanks. Du siehst auf einen Blick, wo du am günstigsten kaufen kannst.
+              </p>
+              <ul className="space-y-3">
+                {[
+                  'Preise täglich automatisch aktualisiert',
+                  'Lagerbestand direkt angezeigt',
+                  'Preis-pro-Samen Berechnung',
+                  'Direkt-Links zum Shop',
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-2 text-sm">
+                    <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <Button asChild className="mt-6 gap-2">
+                <Link href="/auth/register">
+                  Jetzt kostenlos registrieren
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { seedbank: 'Sensi Seeds', price: '€12.50', inStock: true },
+                { seedbank: 'Dutch Passion', price: '€11.90', inStock: true },
+                { seedbank: 'Royal Queen Seeds', price: '€13.00', inStock: false },
+                { seedbank: 'FastBuds', price: '€10.50', inStock: true },
+              ].map((item) => (
+                <div key={item.seedbank} className="rounded-lg border bg-background p-4">
+                  <div className="font-medium text-sm">{item.seedbank}</div>
+                  <div className="text-primary font-bold mt-1">{item.price}</div>
+                  <div className={`text-xs mt-1 ${item.inStock ? 'text-green-600' : 'text-muted-foreground'}`}>
+                    {item.inStock ? 'Auf Lager' : 'Nicht verfügbar'}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* Tools Section */}
-      <section className="bg-muted/50 py-20">
+      <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="mb-12 text-center">
             <h2 className="mb-4 text-3xl font-bold md:text-4xl">
-              Wissenschaftliche Rechner
+              Grow-Rechner
             </h2>
             <p className="text-lg text-muted-foreground">
-              Optimiere dein Setup mit präzisen Berechnungen
+              Professionelle Tools für optimale Ergebnisse
             </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div className="flex items-center gap-3 rounded-lg border bg-background p-4">
-              <Zap className="h-6 w-6 text-primary" />
-              <div>
-                <div className="font-semibold">VPD Calculator</div>
-                <div className="text-sm text-muted-foreground">Vapor Pressure Deficit</div>
+            {[
+              { name: 'VPD Calculator', desc: 'Vapor Pressure Deficit optimieren' },
+              { name: 'EC/PPM Calculator', desc: 'Nährstoff-Konzentration berechnen' },
+              { name: 'DLI Calculator', desc: 'Daily Light Integral' },
+              { name: 'PPFD Calculator', desc: 'Lichtintensität optimal einstellen' },
+              { name: 'Stromkosten', desc: 'Betriebskosten kalkulieren' },
+              { name: 'CO₂ Calculator', desc: 'CO₂-Ergänzung optimieren' },
+            ].map((tool) => (
+              <div
+                key={tool.name}
+                className="flex items-center gap-3 rounded-lg border bg-background p-4 opacity-60 cursor-not-allowed"
+              >
+                <Zap className="h-6 w-6 text-primary flex-shrink-0" />
+                <div>
+                  <div className="font-semibold">{tool.name}</div>
+                  <div className="text-sm text-muted-foreground">{tool.desc}</div>
+                </div>
               </div>
-            </div>
-
-            <div className="flex items-center gap-3 rounded-lg border bg-background p-4">
-              <Zap className="h-6 w-6 text-primary" />
-              <div>
-                <div className="font-semibold">EC/PPM Calculator</div>
-                <div className="text-sm text-muted-foreground">Nährstoff-Konzentration</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 rounded-lg border bg-background p-4">
-              <Zap className="h-6 w-6 text-primary" />
-              <div>
-                <div className="font-semibold">DLI Calculator</div>
-                <div className="text-sm text-muted-foreground">Daily Light Integral</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 rounded-lg border bg-background p-4">
-              <Zap className="h-6 w-6 text-primary" />
-              <div>
-                <div className="font-semibold">PPFD Calculator</div>
-                <div className="text-sm text-muted-foreground">Lichtintensität</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 rounded-lg border bg-background p-4">
-              <Zap className="h-6 w-6 text-primary" />
-              <div>
-                <div className="font-semibold">Power Cost Calculator</div>
-                <div className="text-sm text-muted-foreground">Stromkosten berechnen</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 rounded-lg border bg-background p-4">
-              <Zap className="h-6 w-6 text-primary" />
-              <div>
-                <div className="font-semibold">CO₂ Calculator</div>
-                <div className="text-sm text-muted-foreground">CO₂-Ergänzung optimieren</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <div className="grid gap-8 md:grid-cols-4">
-            <div className="text-center">
-              <div className="mb-2 text-4xl font-bold text-primary">10,000+</div>
-              <div className="text-muted-foreground">Cannabis Strains</div>
-            </div>
-            <div className="text-center">
-              <div className="mb-2 text-4xl font-bold text-primary">50+</div>
-              <div className="text-muted-foreground">Seedbanks</div>
-            </div>
-            <div className="text-center">
-              <div className="mb-2 text-4xl font-bold text-primary">11</div>
-              <div className="text-muted-foreground">Microservices</div>
-            </div>
-            <div className="text-center">
-              <div className="mb-2 text-4xl font-bold text-primary">160+</div>
-              <div className="text-muted-foreground">API Endpoints</div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -226,16 +256,25 @@ export default function LandingPage() {
       <section className="bg-primary py-20 text-primary-foreground">
         <div className="container mx-auto px-4 text-center">
           <h2 className="mb-4 text-3xl font-bold md:text-4xl">
-            Bereit zum Start?
+            Bereit loszulegen?
           </h2>
-          <p className="mb-8 text-lg opacity-90">
-            Registriere dich jetzt kostenlos und nutze alle Features
+          <p className="mb-8 text-lg opacity-90 max-w-xl mx-auto">
+            Preisvergleich ist kostenlos und ohne Anmeldung. Für Community, Grow-Tagebuch und KI-Features kostenlos registrieren.
           </p>
-          <Button asChild size="lg" variant="secondary" className="text-lg">
-            <Link href="/auth/register">
-              Jetzt kostenlos registrieren
-            </Link>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button asChild size="lg" variant="secondary" className="text-lg gap-2">
+              <Link href="/auth/register">
+                <Sprout className="h-5 w-5" />
+                Kostenlos registrieren
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="text-lg gap-2 bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
+              <Link href="/auth/login">
+                <LogIn className="h-5 w-5" />
+                Anmelden
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -245,21 +284,13 @@ export default function LandingPage() {
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Sprout className="h-5 w-5 text-primary" />
-              <span>© 2025 SF-1 Ultimate. All rights reserved.</span>
+              <span>© 2026 SeedFinderPro. Alle Rechte vorbehalten.</span>
             </div>
             <div className="flex gap-6 text-sm">
-              <Link href="/about" className="hover:text-primary">
-                Über uns
-              </Link>
-              <Link href="/privacy" className="hover:text-primary">
-                Datenschutz
-              </Link>
-              <Link href="/terms" className="hover:text-primary">
-                AGB
-              </Link>
-              <Link href="/contact" className="hover:text-primary">
-                Kontakt
-              </Link>
+              <Link href="/about" className="text-muted-foreground hover:text-primary">Über uns</Link>
+              <Link href="/privacy" className="text-muted-foreground hover:text-primary">Datenschutz</Link>
+              <Link href="/terms" className="text-muted-foreground hover:text-primary">AGB</Link>
+              <Link href="/contact" className="text-muted-foreground hover:text-primary">Kontakt</Link>
             </div>
           </div>
         </div>

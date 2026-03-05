@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TopThread {
@@ -44,9 +45,20 @@ export function TopContentTable({ threads, grows, title, type, className }: TopC
     );
   }
 
+  const adminHref = type === 'threads' ? '/admin/threads' : '/admin/grows';
+
   return (
     <div className={cn("bg-card rounded-lg border p-4 shadow-sm", className)}>
-      <h3 className="text-lg font-semibold mb-4">{title}</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">{title}</h3>
+        <Link
+          href={adminHref}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+        >
+          Alle anzeigen
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

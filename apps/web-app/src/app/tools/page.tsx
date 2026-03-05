@@ -76,7 +76,7 @@ export default function ToolsPage() {
             <Link
               key={tool.id}
               href={tool.href}
-              className="group rounded-xl border bg-card p-5 transition-all hover:border-primary hover:shadow-lg"
+              className="group rounded-xl border bg-card p-4 sm:p-5 transition-all hover:border-primary hover:shadow-lg"
             >
               <div className={`mb-3 inline-flex rounded-lg ${tool.color} p-2.5`}>
                 <Icon className="h-5 w-5 text-white" />
@@ -95,7 +95,7 @@ export default function ToolsPage() {
       </div>
 
       {/* Info */}
-      <div className="rounded-xl border bg-card p-6">
+      <div className="rounded-xl border bg-card p-4 sm:p-6">
         <h3 className="font-semibold mb-2">Uber diese Tools</h3>
         <div className="text-sm text-muted-foreground space-y-2">
           <p>

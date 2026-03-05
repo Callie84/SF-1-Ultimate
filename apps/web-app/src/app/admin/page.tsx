@@ -24,6 +24,12 @@ import {
   Flag,
   Leaf,
   BarChart3,
+  Megaphone,
+  Download,
+  MousePointerClick,
+  Store,
+  Trophy,
+  Bot,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
@@ -102,7 +108,7 @@ export default function AdminDashboardPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">Admin Dashboard</h1>
             <p className="text-muted-foreground">
               Überwache und verwalte die SF-1 Plattform
             </p>
@@ -118,7 +124,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Link href="/admin/users">
             <Card className="cursor-pointer transition-colors hover:bg-accent">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -323,7 +329,7 @@ export default function AdminDashboardPage() {
             <CardDescription>Häufig verwendete Admin-Funktionen</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <Button variant="outline" className="justify-start" asChild>
                 <Link href="/admin/users">
                   <Users className="mr-2 h-4 w-4" />
@@ -358,6 +364,42 @@ export default function AdminDashboardPage() {
                 <Link href="/admin/analytics">
                   <BarChart3 className="mr-2 h-4 w-4" />
                   Analytics
+                </Link>
+              </Button>
+              <Button variant="outline" className="justify-start" asChild>
+                <Link href="/admin/ads">
+                  <Megaphone className="mr-2 h-4 w-4" />
+                  Werbeanzeigen
+                </Link>
+              </Button>
+              <Button variant="outline" className="justify-start" asChild>
+                <Link href="/admin/scraper">
+                  <Download className="mr-2 h-4 w-4" />
+                  Feed-Importer
+                </Link>
+              </Button>
+              <Button variant="outline" className="justify-start" asChild>
+                <Link href="/admin/clicks">
+                  <MousePointerClick className="mr-2 h-4 w-4" />
+                  Affiliate-Klicks
+                </Link>
+              </Button>
+              <Button variant="outline" className="justify-start" asChild>
+                <Link href="/admin/seedbanks">
+                  <Store className="mr-2 h-4 w-4" />
+                  Seedbanks
+                </Link>
+              </Button>
+              <Button variant="outline" className="justify-start" asChild>
+                <Link href="/admin/achievements">
+                  <Trophy className="mr-2 h-4 w-4" />
+                  Achievements
+                </Link>
+              </Button>
+              <Button variant="outline" className="justify-start" asChild>
+                <Link href="/admin/ai">
+                  <Bot className="mr-2 h-4 w-4" />
+                  AI-Monitoring
                 </Link>
               </Button>
             </div>

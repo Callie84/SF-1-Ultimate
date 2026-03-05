@@ -2,6 +2,7 @@
 import { openai, MODELS, SYSTEM_PROMPTS } from '../config/openai';
 import { redis } from '../config/redis';
 import { logger } from '../utils/logger';
+import { trackUsage } from '../utils/token-tracker';
 
 export interface DiagnosisInput {
   images: string[]; // Base64 or URLs
@@ -91,6 +92,16 @@ export class DiagnosisService {
 
       const content = response.choices[0].message.content || '{}';
 
+      // Token-Tracking
+      if (response.usage) {
+        trackUsage({
+          model: MODELS.GPT4O,
+          endpoint: 'diagnose',
+          inputTokens: response.usage.prompt_tokens,
+          outputTokens: response.usage.completion_tokens,
+        });
+      }
+
       try {
         const parsed = JSON.parse(content);
         const diagnoses = this.validateDiagnoses(parsed.diagnoses || []);
@@ -140,6 +151,16 @@ export class DiagnosisService {
       });
 
       const content = response.choices[0].message.content || '{}';
+
+      // Token-Tracking
+      if (response.usage) {
+        trackUsage({
+          model: MODELS.GPT4O_MINI,
+          endpoint: 'diagnose',
+          inputTokens: response.usage.prompt_tokens,
+          outputTokens: response.usage.completion_tokens,
+        });
+      }
 
       try {
         const parsed = JSON.parse(content);

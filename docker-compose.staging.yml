@@ -1,0 +1,315 @@
+version: '3.8'
+
+# ============================================================
+# SF-1 Ultimate – Staging Stack
+# Domain: staging.seedfinderpro.de
+# Start:  scripts/staging-up.sh
+# Stop:   docker-compose -f docker-compose.staging.yml --env-file .env.staging down
+#
+# Design:
+#   - Teilt sf1-network mit Production (Zugriff auf DB-Container)
+#   - Eigene Datenbank-Namespaces: sf1_stg_*
+#   - Alle Routes hinter BasicAuth-Schutz
+#   - Nur bei Bedarf starten (spart RAM)
+# ============================================================
+
+networks:
+  sf1-network:
+    external: true
+    name: sf-1-ultimate-_sf1-network
+
+services:
+
+  # ----------------------------------------------------------
+  # FRONTEND
+  # ----------------------------------------------------------
+  frontend-stg:
+    image: node:20-alpine
+    container_name: sf1-frontend-stg
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install --include=dev && npm run build && npm run start"
+    volumes:
+      - ./apps/web-app:/app
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ""
+      NEXT_TELEMETRY_DISABLED: 1
+    networks:
+      - sf1-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend-stg.rule=Host(`staging.seedfinderpro.de`)"
+      - "traefik.http.routers.frontend-stg.priority=1"
+      - "traefik.http.routers.frontend-stg.entrypoints=websecure"
+      - "traefik.http.routers.frontend-stg.tls=true"
+      - "traefik.http.routers.frontend-stg.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.frontend-stg.middlewares=staging-auth"
+      - "traefik.http.services.frontend-stg.loadbalancer.server.port=3000"
+      # BasicAuth-Middleware (für ALLE Staging-Routes)
+      - "traefik.http.middlewares.staging-auth.basicauth.users=${STAGING_BASICAUTH_USERS}"
+      - "traefik.http.middlewares.staging-auth.basicauth.removeheader=true"
+
+  # ----------------------------------------------------------
+  # BACKEND SERVICES
+  # ----------------------------------------------------------
+
+  auth-service-stg:
+    image: node:20-slim
+    container_name: sf1-auth-service-stg
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "apt-get update && apt-get install -y openssl ca-certificates && npm install && npx prisma generate && npx prisma db push && npm install -g tsx && npx tsx watch src/index.ts"
+    volumes:
+      - ./apps/auth-service:/app
+    environment:
+      NODE_ENV: staging
+      DATABASE_URL: postgresql://sf1_user:${POSTGRES_PASSWORD}@postgres:5432/sf1_stg_db
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_stg_auth?authSource=admin&directConnection=true
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+    networks:
+      - sf1-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth-stg.rule=Host(`staging.seedfinderpro.de`) && PathPrefix(`/api/auth`)"
+      - "traefik.http.routers.auth-stg.priority=10"
+      - "traefik.http.routers.auth-stg.entrypoints=websecure"
+      - "traefik.http.routers.auth-stg.tls=true"
+      - "traefik.http.routers.auth-stg.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.auth-stg.middlewares=staging-auth"
+      - "traefik.http.services.auth-stg.loadbalancer.server.port=3001"
+
+  journal-service-stg:
+    image: node:20-alpine
+    container_name: sf1-journal-service-stg
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    volumes:
+      - ./apps/journal-service:/app
+    environment:
+      NODE_ENV: staging
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_stg_journal?authSource=admin&directConnection=true
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+    networks:
+      - sf1-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.journal-stg.rule=Host(`staging.seedfinderpro.de`) && (PathPrefix(`/api/journal`) || PathPrefix(`/api/grows`) || PathPrefix(`/api/plants`))"
+      - "traefik.http.routers.journal-stg.priority=10"
+      - "traefik.http.routers.journal-stg.entrypoints=websecure"
+      - "traefik.http.routers.journal-stg.tls=true"
+      - "traefik.http.routers.journal-stg.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.journal-stg.middlewares=staging-auth"
+      - "traefik.http.services.journal-stg.loadbalancer.server.port=3003"
+
+  search-service-stg:
+    image: node:20-alpine
+    container_name: sf1-search-service-stg
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    volumes:
+      - ./apps/search-service:/app
+    environment:
+      NODE_ENV: staging
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_stg_search?authSource=admin&directConnection=true
+      MEILISEARCH_HOST: http://meilisearch:7700
+      MEILISEARCH_KEY: ${MEILISEARCH_MASTER_KEY}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+    networks:
+      - sf1-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.search-stg.rule=Host(`staging.seedfinderpro.de`) && PathPrefix(`/api/search`)"
+      - "traefik.http.routers.search-stg.priority=10"
+      - "traefik.http.routers.search-stg.entrypoints=websecure"
+      - "traefik.http.routers.search-stg.tls=true"
+      - "traefik.http.routers.search-stg.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.search-stg.middlewares=staging-auth"
+      - "traefik.http.services.search-stg.loadbalancer.server.port=3007"
+
+  gamification-service-stg:
+    image: node:20-alpine
+    container_name: sf1-gamification-service-stg
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    volumes:
+      - ./apps/gamification-service:/app
+    environment:
+      NODE_ENV: staging
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_stg_gamification?authSource=admin&directConnection=true
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+    networks:
+      - sf1-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gamification-stg.rule=Host(`staging.seedfinderpro.de`) && (PathPrefix(`/api/gamification`) || PathPrefix(`/api/achievements`) || PathPrefix(`/api/leaderboard`))"
+      - "traefik.http.routers.gamification-stg.priority=10"
+      - "traefik.http.routers.gamification-stg.entrypoints=websecure"
+      - "traefik.http.routers.gamification-stg.tls=true"
+      - "traefik.http.routers.gamification-stg.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.gamification-stg.middlewares=staging-auth"
+      - "traefik.http.services.gamification-stg.loadbalancer.server.port=3009"
+
+  price-service-stg:
+    image: node:20-alpine
+    container_name: sf1-price-service-stg
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    volumes:
+      - ./apps/price-service:/app
+    environment:
+      NODE_ENV: staging
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_stg_price?authSource=admin&directConnection=true
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+    networks:
+      - sf1-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.price-stg.rule=Host(`staging.seedfinderpro.de`) && (PathPrefix(`/api/prices`) || PathPrefix(`/api/strains`) || PathPrefix(`/api/alerts`))"
+      - "traefik.http.routers.price-stg.priority=10"
+      - "traefik.http.routers.price-stg.entrypoints=websecure"
+      - "traefik.http.routers.price-stg.tls=true"
+      - "traefik.http.routers.price-stg.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.price-stg.middlewares=staging-auth"
+      - "traefik.http.services.price-stg.loadbalancer.server.port=3002"
+
+  media-service-stg:
+    image: node:20-alpine
+    container_name: sf1-media-service-stg
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    volumes:
+      - ./apps/media-service:/app
+    environment:
+      NODE_ENV: staging
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_stg_media?authSource=admin&directConnection=true
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      CORS_ORIGIN: ${CORS_ORIGIN}
+    networks:
+      - sf1-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.media-stg.rule=Host(`staging.seedfinderpro.de`) && (PathPrefix(`/api/media`) || PathPrefix(`/api/upload`))"
+      - "traefik.http.routers.media-stg.priority=10"
+      - "traefik.http.routers.media-stg.entrypoints=websecure"
+      - "traefik.http.routers.media-stg.tls=true"
+      - "traefik.http.routers.media-stg.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.media-stg.middlewares=staging-auth"
+      - "traefik.http.services.media-stg.loadbalancer.server.port=3008"
+
+  ai-service-stg:
+    image: node:20-alpine
+    container_name: sf1-ai-service-stg
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    volumes:
+      - ./apps/ai-service:/app
+    environment:
+      NODE_ENV: staging
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_stg_ai?authSource=admin&directConnection=true
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    networks:
+      - sf1-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ai-stg.rule=Host(`staging.seedfinderpro.de`) && PathPrefix(`/api/ai`)"
+      - "traefik.http.routers.ai-stg.priority=10"
+      - "traefik.http.routers.ai-stg.entrypoints=websecure"
+      - "traefik.http.routers.ai-stg.tls=true"
+      - "traefik.http.routers.ai-stg.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.ai-stg.middlewares=staging-auth"
+      - "traefik.http.services.ai-stg.loadbalancer.server.port=3010"
+
+  tools-service-stg:
+    image: node:20-alpine
+    container_name: sf1-tools-service-stg
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    volumes:
+      - ./apps/tools-service:/app
+    environment:
+      NODE_ENV: staging
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_stg_tools?authSource=admin&directConnection=true
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      CORS_ORIGIN: ${CORS_ORIGIN}
+    networks:
+      - sf1-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tools-stg.rule=Host(`staging.seedfinderpro.de`) && (PathPrefix(`/api/tools`) || PathPrefix(`/api/calculator`))"
+      - "traefik.http.routers.tools-stg.priority=10"
+      - "traefik.http.routers.tools-stg.entrypoints=websecure"
+      - "traefik.http.routers.tools-stg.tls=true"
+      - "traefik.http.routers.tools-stg.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.tools-stg.middlewares=staging-auth"
+      - "traefik.http.services.tools-stg.loadbalancer.server.port=3004"
+
+  notification-service-stg:
+    image: node:20-alpine
+    container_name: sf1-notification-service-stg
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    volumes:
+      - ./apps/notification-service:/app
+    environment:
+      NODE_ENV: staging
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_stg_notification?authSource=admin&directConnection=true
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+    networks:
+      - sf1-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.notification-stg.rule=Host(`staging.seedfinderpro.de`) && (PathPrefix(`/api/notifications`) || PathPrefix(`/api/preferences`))"
+      - "traefik.http.routers.notification-stg.priority=10"
+      - "traefik.http.routers.notification-stg.entrypoints=websecure"
+      - "traefik.http.routers.notification-stg.tls=true"
+      - "traefik.http.routers.notification-stg.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.notification-stg.middlewares=staging-auth"
+      - "traefik.http.services.notification-stg.loadbalancer.server.port=3006"
+
+  community-service-stg:
+    image: node:20-alpine
+    container_name: sf1-community-service-stg
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    volumes:
+      - ./apps/community-service:/app
+    environment:
+      NODE_ENV: staging
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_stg_community?authSource=admin&directConnection=true
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+    networks:
+      - sf1-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.community-stg.rule=Host(`staging.seedfinderpro.de`) && (PathPrefix(`/api/community`) || PathPrefix(`/api/posts`) || PathPrefix(`/api/comments`))"
+      - "traefik.http.routers.community-stg.priority=10"
+      - "traefik.http.routers.community-stg.entrypoints=websecure"
+      - "traefik.http.routers.community-stg.tls=true"
+      - "traefik.http.routers.community-stg.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.community-stg.middlewares=staging-auth"
+      - "traefik.http.services.community-stg.loadbalancer.server.port=3005"

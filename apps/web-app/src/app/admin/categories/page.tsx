@@ -21,7 +21,7 @@ import {
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useCategories } from '@/hooks/use-community';
-import { useCreateCategory } from '@/hooks/use-admin';
+import { useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/hooks/use-admin';
 import { formatNumber } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -30,9 +30,18 @@ export default function AdminCategoriesPage() {
   const { user: currentUser, isLoading: authLoading } = useAuth();
   const { data: categoriesData, isLoading: categoriesLoading, refetch } = useCategories();
   const createCategory = useCreateCategory();
+  const updateCategory = useUpdateCategory();
+  const deleteCategory = useDeleteCategory();
 
   const [isCreating, setIsCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newCategory, setNewCategory] = useState({
+    name: '',
+    slug: '',
+    description: '',
+    icon: '',
+  });
+  const [editForm, setEditForm] = useState({
     name: '',
     slug: '',
     description: '',
@@ -45,6 +54,17 @@ export default function AdminCategoriesPage() {
       router.push('/dashboard');
     }
   }, [currentUser, authLoading, router]);
+
+  const generateSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .replace(/[äöüß]/g, (match) => {
+        const replacements: Record<string, string> = { ä: 'ae', ö: 'oe', ü: 'ue', ß: 'ss' };
+        return replacements[match] || match;
+      })
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  };
 
   const handleCreateCategory = async () => {
     if (!newCategory.name || !newCategory.slug) {
@@ -63,15 +83,42 @@ export default function AdminCategoriesPage() {
     }
   };
 
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[äöüß]/g, (match) => {
-        const replacements: Record<string, string> = { ä: 'ae', ö: 'oe', ü: 'ue', ß: 'ss' };
-        return replacements[match] || match;
-      })
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
+  const startEdit = (category: any) => {
+    setEditingId(category.id || category._id);
+    setEditForm({
+      name: category.name || '',
+      slug: category.slug || '',
+      description: category.description || '',
+      icon: category.icon || '',
+    });
+  };
+
+  const handleUpdateCategory = async (id: string) => {
+    if (!editForm.name || !editForm.slug) {
+      toast.error('Name und Slug sind erforderlich');
+      return;
+    }
+
+    try {
+      await updateCategory.mutateAsync({ id, updates: editForm });
+      toast.success('Kategorie aktualisiert');
+      setEditingId(null);
+      refetch();
+    } catch (error) {
+      toast.error('Fehler beim Aktualisieren der Kategorie');
+    }
+  };
+
+  const handleDeleteCategory = async (id: string, name: string) => {
+    if (!confirm(`Kategorie "${name}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) return;
+
+    try {
+      await deleteCategory.mutateAsync(id);
+      toast.success('Kategorie gelöscht');
+      refetch();
+    } catch (error) {
+      toast.error('Fehler beim Löschen der Kategorie');
+    }
   };
 
   if (authLoading) {
@@ -220,47 +267,136 @@ export default function AdminCategoriesPage() {
               </div>
             ) : categories.length > 0 ? (
               <div className="space-y-3">
-                {categories.map((category: any) => (
-                  <div
-                    key={category.id || category._id}
-                    className="flex items-center justify-between rounded-lg border p-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-2xl">
-                        {category.icon || '💬'}
-                      </div>
-                      <div>
-                        <div className="font-semibold">{category.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          /{category.slug}
+                {categories.map((category: any) => {
+                  const catId = category.id || category._id;
+                  const isEditing = editingId === catId;
+
+                  return (
+                    <div
+                      key={catId}
+                      className="rounded-lg border p-4"
+                    >
+                      {isEditing ? (
+                        /* Edit Form */
+                        <div className="space-y-3">
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium text-muted-foreground">Name *</label>
+                              <Input
+                                value={editForm.name}
+                                onChange={(e) => setEditForm({ ...editForm, name: e.target.value, slug: generateSlug(e.target.value) })}
+                                placeholder="Kategorie-Name"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium text-muted-foreground">Slug *</label>
+                              <Input
+                                value={editForm.slug}
+                                onChange={(e) => setEditForm({ ...editForm, slug: e.target.value })}
+                                placeholder="kategorie-slug"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium text-muted-foreground">Icon (Emoji)</label>
+                              <Input
+                                value={editForm.icon}
+                                onChange={(e) => setEditForm({ ...editForm, icon: e.target.value })}
+                                placeholder="🌱"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium text-muted-foreground">Beschreibung</label>
+                            <Textarea
+                              value={editForm.description}
+                              onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                              rows={2}
+                              placeholder="Beschreibung..."
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setEditingId(null)}
+                            >
+                              <X className="mr-1 h-3 w-3" />
+                              Abbrechen
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleUpdateCategory(catId)}
+                              disabled={updateCategory.isPending}
+                            >
+                              {updateCategory.isPending ? (
+                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                              ) : (
+                                <Save className="mr-1 h-3 w-3" />
+                              )}
+                              Speichern
+                            </Button>
+                          </div>
                         </div>
-                        {category.description && (
-                          <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
-                            {category.description}
-                          </p>
-                        )}
-                      </div>
+                      ) : (
+                        /* Display Mode */
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-2xl">
+                              {category.icon || '💬'}
+                            </div>
+                            <div>
+                              <div className="font-semibold">{category.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                /{category.slug}
+                              </div>
+                              {category.description && (
+                                <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
+                                  {category.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <div className="text-sm font-medium">
+                                {formatNumber(category.threadCount || 0)} Threads
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatNumber(category.postCount || 0)} Beiträge
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => startEdit(category)}
+                                title="Bearbeiten"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteCategory(catId, category.name)}
+                                disabled={deleteCategory.isPending}
+                                title="Löschen"
+                              >
+                                {deleteCategory.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="text-sm font-medium">
-                          {formatNumber(category.threadCount || 0)} Threads
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatNumber(category.postCount || 0)} Beiträge
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">

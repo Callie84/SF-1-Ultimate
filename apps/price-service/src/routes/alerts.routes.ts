@@ -2,15 +2,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { alertService } from '../services/alert.service';
-import { logger } from '../utils/logger';
+import { authMiddleware } from '../middleware/auth.middleware';
 
 const router = Router();
-
-// Auth middleware would be added here
-// For now, we expect userId from headers (set by gateway)
-const getUserId = (req: any): string => {
-  return req.headers['x-user-id'] as string;
-};
 
 const createAlertSchema = z.object({
   seedSlug: z.string().min(1),
@@ -26,25 +20,17 @@ const createAlertSchema = z.object({
  * POST /api/alerts
  * Create price alert
  */
-router.post('/', async (req, res, next) => {
+router.post('/', authMiddleware(), async (req: any, res, next) => {
   try {
-    const userId = getUserId(req);
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
     const validation = createAlertSchema.safeParse(req.body);
-    
     if (!validation.success) {
       return res.status(400).json({ error: validation.error.errors });
     }
-    
-    const alert = await alertService.createAlert({
-      userId,
-      ...validation.data
-    });
-    
+
+    const alert = await alertService.createAlert({ userId, ...validation.data });
     res.status(201).json({ alert });
   } catch (error: any) {
     if (error.message === 'Seed not found') {
@@ -58,18 +44,13 @@ router.post('/', async (req, res, next) => {
  * GET /api/alerts
  * Get user's alerts
  */
-router.get('/', async (req, res, next) => {
+router.get('/', authMiddleware(), async (req: any, res, next) => {
   try {
-    const userId = getUserId(req);
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
     const activeOnly = req.query.active !== 'false';
-    
     const alerts = await alertService.getUserAlerts(userId, activeOnly);
-    
     res.json({ alerts });
   } catch (error) {
     next(error);
@@ -80,16 +61,12 @@ router.get('/', async (req, res, next) => {
  * PATCH /api/alerts/:id/deactivate
  * Deactivate alert
  */
-router.patch('/:id/deactivate', async (req, res, next) => {
+router.patch('/:id/deactivate', authMiddleware(), async (req: any, res, next) => {
   try {
-    const userId = getUserId(req);
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
     await alertService.deactivateAlert(req.params.id, userId);
-    
     res.json({ success: true });
   } catch (error) {
     next(error);
@@ -100,16 +77,12 @@ router.patch('/:id/deactivate', async (req, res, next) => {
  * DELETE /api/alerts/:id
  * Delete alert
  */
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', authMiddleware(), async (req: any, res, next) => {
   try {
-    const userId = getUserId(req);
-    
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
     await alertService.deleteAlert(req.params.id, userId);
-    
     res.json({ success: true });
   } catch (error) {
     next(error);

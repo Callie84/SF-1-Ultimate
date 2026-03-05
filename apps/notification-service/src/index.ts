@@ -9,8 +9,11 @@ import notificationsRoutes from './routes/notifications.routes';
 import preferencesRoutes from './routes/preferences.routes';
 import { emailWorker } from './workers/email.worker';
 import { pushWorker } from './workers/push.worker';
+import { startQueueWorker } from './workers/queue.worker';
 import { errorHandler } from './middleware/error-handler';
 import { logger } from './utils/logger';
+import promClient from 'prom-client';
+promClient.collectDefaultMetrics({ prefix: 'sf1_' });
 
 const app = express();
 const httpServer = createServer(app);
@@ -25,6 +28,11 @@ app.use(cors({
 app.use(express.json());
 
 // Health Check
+app.get('/metrics', async (_req, res) => {
+  res.set('Content-Type', promClient.register.contentType);
+  res.end(await promClient.register.metrics());
+});
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
@@ -59,7 +67,8 @@ async function start() {
     initWebSocket(httpServer);
     
     // Start workers
-    logger.info('[Workers] Email and Push workers started');
+    startQueueWorker();
+    logger.info('[Workers] Email, Push and Queue workers started');
     
     httpServer.listen(PORT, () => {
       logger.info(`[Notification] Service running on port ${PORT}`);

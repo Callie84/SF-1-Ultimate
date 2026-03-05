@@ -7,17 +7,23 @@ const router = Router();
 router.get('/',
   async (req, res, next) => {
     try {
-      const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+      const limit = Math.min(parseInt(req.query.limit as string) || 12, 100);
       const skip = parseInt(req.query.skip as string) || 0;
       const sortBy = (req.query.sortBy as string) || 'recent';
-      
+      const status = (req.query.status as string) || undefined;
+      const environment = (req.query.environment as string) || undefined;
+      const filterUserId = (req.query.userId as string) || undefined;
+
       const result = await feedService.getPublicFeed({
         limit,
         skip,
         sortBy,
-        userId: req.user?.id
+        status,
+        environment,
+        userId: req.user?.id,
+        filterUserId,
       });
-      
+
       res.json(result);
     } catch (error) {
       next(error);

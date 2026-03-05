@@ -159,8 +159,12 @@ export function useVoteThread(threadId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (type: 'UPVOTE' | 'DOWNVOTE') => {
-      const data = await api.post(`/api/community/threads/${threadId}/vote`, { type });
+    mutationFn: async (type: 'upvote' | 'downvote') => {
+      const data = await api.post('/api/community/vote', {
+        targetId: threadId,
+        targetType: 'thread',
+        type,
+      });
       return data;
     },
     onSuccess: () => {
@@ -175,13 +179,43 @@ export function useVoteReply(replyId: string, threadId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (type: 'UPVOTE' | 'DOWNVOTE') => {
-      const data = await api.post(`/api/community/replies/${replyId}/vote`, { type });
+    mutationFn: async (type: 'upvote' | 'downvote') => {
+      const data = await api.post('/api/community/vote', {
+        targetId: replyId,
+        targetType: 'reply',
+        type,
+      });
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: communityKeys.replies(threadId) });
     },
+  });
+}
+
+// Get user's votes for a batch of item IDs (to show highlighted state)
+export function useUserVotesBatch(ids: string[]) {
+  return useQuery({
+    queryKey: [...communityKeys.all, 'votes', ids.join(',')],
+    queryFn: async () => {
+      const data = await api.post('/api/community/votes/batch', { targetIds: ids });
+      return (data as any).votes as Record<string, 'upvote' | 'downvote'>;
+    },
+    enabled: ids.length > 0,
+    staleTime: 30 * 1000,
+  });
+}
+
+// Search threads via community service
+export function useSearchThreads(query: string) {
+  return useQuery({
+    queryKey: [...communityKeys.all, 'search', query],
+    queryFn: async () => {
+      const data = await api.get(`/api/community/threads/search?q=${encodeURIComponent(query)}&limit=20`);
+      return (data as any) as { threads: any[]; total: number };
+    },
+    enabled: query.length >= 2,
+    staleTime: 30 * 1000,
   });
 }
 

@@ -21,8 +21,7 @@ export default function CategoryThreadsPage() {
   const { data: categoryData, isLoading: categoryLoading } = useQuery({
     queryKey: ['category', slug],
     queryFn: async () => {
-      const { data } = await api.get(`/api/community/categories/${slug}`);
-      return data;
+      return await api.get(`/api/community/categories/${slug}`);
     },
   });
 

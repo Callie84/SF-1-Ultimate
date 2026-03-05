@@ -4,17 +4,28 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { redis } from './config/redis';
 import aiRoutes from './routes/ai.routes';
+import adminRoutes from './routes/admin.routes';
 import { logger } from './utils/logger';
+import promClient from 'prom-client';
+promClient.collectDefaultMetrics({ prefix: 'sf1_' });
 
 const app = express();
 const PORT = process.env.PORT || 3010;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'https://seedfinderpro.de',
+  credentials: true
+}));
 app.use(express.json({ limit: '10mb' }));
 
 // Health Check
+app.get('/metrics', async (_req, res) => {
+  res.set('Content-Type', promClient.register.contentType);
+  res.end(await promClient.register.metrics());
+});
+
 app.get('/health', async (req, res) => {
   const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
   
@@ -29,6 +40,7 @@ app.get('/health', async (req, res) => {
 
 // Routes
 app.use('/api/ai', aiRoutes);
+app.use('/api/ai/admin', adminRoutes);
 
 // API Health Check (für externe Checks)
 app.get('/api/ai/health', async (req, res) => {
@@ -53,6 +65,11 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // Start
 async function start() {
+  if (!process.env.JWT_SECRET) {
+    logger.error('[AI] FATAL: JWT_SECRET environment variable is not set');
+    process.exit(1);
+  }
+
   try {
     app.listen(PORT, () => {
       logger.info(`[AI] Service running on port ${PORT}`);

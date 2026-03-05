@@ -29,7 +29,7 @@ export function AdvisorResults({ results, onReset }: AdvisorResultsProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="rounded-xl border bg-card p-6 text-center">
+      <div className="rounded-xl border bg-card p-4 sm:p-6 text-center">
         <h2 className="text-xl font-bold mb-1">Dein Grow-Plan</h2>
         <p className="text-sm text-muted-foreground">
           Personalisierte Empfehlungen basierend auf deinen Angaben
@@ -38,7 +38,7 @@ export function AdvisorResults({ results, onReset }: AdvisorResultsProps) {
 
       {/* Strain Recommendations */}
       {results.strainRecommendations.length > 0 && (
-        <div className="rounded-xl border bg-card p-6">
+        <div className="rounded-xl border bg-card p-4 sm:p-6">
           <h3 className="font-semibold mb-4 flex items-center gap-2">
             <Star className="h-5 w-5 text-primary" />
             Empfohlene Strains
@@ -79,7 +79,7 @@ export function AdvisorResults({ results, onReset }: AdvisorResultsProps) {
 
       {/* Setup Advice */}
       {results.setupAdvice.length > 0 && (
-        <div className="rounded-xl border bg-card p-6">
+        <div className="rounded-xl border bg-card p-4 sm:p-6">
           <h3 className="font-semibold mb-4 flex items-center gap-2">
             <Settings className="h-5 w-5 text-primary" />
             Setup-Empfehlungen
@@ -99,7 +99,7 @@ export function AdvisorResults({ results, onReset }: AdvisorResultsProps) {
 
       {/* Timeline */}
       {results.timeline.length > 0 && (
-        <div className="rounded-xl border bg-card p-6">
+        <div className="rounded-xl border bg-card p-4 sm:p-6">
           <h3 className="font-semibold mb-4 flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
             Grow-Timeline
@@ -131,7 +131,7 @@ export function AdvisorResults({ results, onReset }: AdvisorResultsProps) {
 
       {/* Pro Tips */}
       {results.tips.length > 0 && (
-        <div className="rounded-xl border bg-card p-6">
+        <div className="rounded-xl border bg-card p-4 sm:p-6">
           <h3 className="font-semibold mb-4 flex items-center gap-2">
             <Lightbulb className="h-5 w-5 text-primary" />
             Pro-Tipps

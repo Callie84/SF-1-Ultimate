@@ -29,7 +29,7 @@ export class EmailService {
   private loadTemplates(): void {
     const templateDir = join(__dirname, '../templates/email');
     
-    const templates = ['welcome', 'comment-reply', 'price-alert', 'digest'];
+    const templates = ['welcome', 'comment-reply', 'price-alert', 'digest', 'password-reset'];
     
     for (const name of templates) {
       try {

@@ -8,6 +8,17 @@ import { ScrapedProduct } from '../scrapers/base.scraper';
 
 export class PriceService {
   private readonly CACHE_TTL = 300; // 5 minutes
+
+  /**
+   * Get list of inactive seedbank slugs from Redis
+   */
+  private async getInactiveSeedbanks(): Promise<string[]> {
+    try {
+      return await redis.sMembers('set:inactive:seedbanks');
+    } catch {
+      return [];
+    }
+  }
   
   /**
    * Save scraped products to database
@@ -194,23 +205,29 @@ export class PriceService {
    * Get prices for specific seed
    */
   async getPricesForSeed(seedSlug: string): Promise<IPrice[]> {
-    const cacheKey = `prices:seed:${seedSlug}`;
-    
+    const inactiveSeedbanks = await this.getInactiveSeedbanks();
+    const cacheKey = `prices:seed:${seedSlug}:${inactiveSeedbanks.sort().join(',')}`;
+
     const cached = await redis.get(cacheKey);
     if (cached) {
       return JSON.parse(cached);
     }
-    
-    const prices = await Price.find({
+
+    const priceQuery: any = {
       seedSlug,
       inStock: true,
       validUntil: { $gt: new Date() }
-    })
+    };
+    if (inactiveSeedbanks.length > 0) {
+      priceQuery.seedbankSlug = { $nin: inactiveSeedbanks };
+    }
+
+    const prices = await Price.find(priceQuery)
       .sort({ price: 1 })
       .lean();
-    
+
     await redis.setEx(cacheKey, this.CACHE_TTL, JSON.stringify(prices));
-    
+
     return prices;
   }
   
@@ -301,9 +318,14 @@ export class PriceService {
       Seed.countDocuments(searchQuery)
     ]);
 
-    // Enrich seeds with their prices
+    // Enrich seeds with their prices (exclude inactive seedbanks)
+    const inactiveSeedbanks = await this.getInactiveSeedbanks();
     const enriched = await Promise.all(seeds.map(async (seed) => {
-      const prices = await Price.find({ seedId: seed._id })
+      const priceFilter: any = { seedId: seed._id };
+      if (inactiveSeedbanks.length > 0) {
+        priceFilter.seedbankSlug = { $nin: inactiveSeedbanks };
+      }
+      const prices = await Price.find(priceFilter)
         .sort({ price: 1 })
         .lean();
 
@@ -361,9 +383,20 @@ export class PriceService {
       ])
     ]);
 
+    // Filter inactive seedbanks from prices
+    const inactiveSeedbanks = await this.getInactiveSeedbanks();
+    const priceFilter: any = { seedId: { $in: seeds.map(s => s._id) } };
+    if (inactiveSeedbanks.length > 0) {
+      priceFilter.seedbankSlug = { $nin: inactiveSeedbanks };
+    }
+
     // Enrich with best price
     const enriched = await Promise.all(seeds.map(async (seed) => {
-      const prices = await Price.find({ seedId: seed._id })
+      const seedPriceFilter: any = { seedId: seed._id };
+      if (inactiveSeedbanks.length > 0) {
+        seedPriceFilter.seedbankSlug = { $nin: inactiveSeedbanks };
+      }
+      const prices = await Price.find(seedPriceFilter)
         .sort({ price: 1 })
         .limit(5)
         .lean();
