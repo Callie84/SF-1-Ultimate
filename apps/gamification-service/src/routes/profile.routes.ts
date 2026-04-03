@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { profileService } from '../services/profile.service';
 import { achievementService } from '../services/achievement.service';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
+import { cacheOrFetch } from '../utils/cache';
 
 const router = Router();
 
@@ -20,16 +21,13 @@ router.get('/leaderboard',
         return res.status(400).json({ error: 'Invalid metric' });
       }
 
-      const topUsers = await profileService.getTopUsers({
-        metric: metric as any,
-        limit
-      });
+      const cacheKey = `cache:leaderboard:${metric}:${limit}`;
+      const result = await cacheOrFetch(cacheKey, 5 * 60, () =>
+        profileService.getTopUsers({ metric: metric as any, limit })
+          .then(topUsers => ({ metric, users: topUsers, count: topUsers.length }))
+      );
 
-      res.json({
-        metric,
-        users: topUsers,
-        count: topUsers.length
-      });
+      res.json(result);
 
     } catch (error) {
       next(error);

@@ -27,9 +27,12 @@ export interface IThread extends Document {
   deletedBy?: string;
   deleteReason?: string;
   
+  // Media
+  imageUrls: string[];
+
   // Search
   searchText: string;
-  
+
   lastActivityAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -100,17 +103,19 @@ const ThreadSchema = new Schema<IThread>({
     index: true 
   },
   
-  isDeleted: { 
-    type: Boolean, 
+  imageUrls: [{ type: String }],
+
+  isDeleted: {
+    type: Boolean,
     default: false,
     index: true
   },
   deletedAt: Date,
   deletedBy: String,
   deleteReason: String,
-  
-  searchText: { 
-    type: String 
+
+  searchText: {
+    type: String
   },
   
   lastActivityAt: { 

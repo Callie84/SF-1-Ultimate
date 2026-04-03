@@ -27,7 +27,6 @@ const strainSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 strainSchema.index({ name: 'text', description: 'text' });
-strainSchema.index({ slug: 1 }, { unique: true });
 strainSchema.index({ type: 1 });
 strainSchema.index({ isActive: 1 });
 

@@ -27,16 +27,18 @@ interface UnreadCountResponse {
   count: number;
 }
 
-export function useNotifications(options?: { limit?: number; unreadOnly?: boolean }) {
+export function useNotifications(options?: { limit?: number; unreadOnly?: boolean; offset?: number }) {
   return useQuery<NotificationsResponse>({
     queryKey: ['notifications', options],
     queryFn: () => {
       const params = new URLSearchParams();
       if (options?.limit) params.set('limit', options.limit.toString());
       if (options?.unreadOnly) params.set('unreadOnly', 'true');
+      if (options?.offset) params.set('offset', options.offset.toString());
       return api.get<NotificationsResponse>(`/api/notifications?${params.toString()}`);
     },
-    staleTime: 30 * 1000, // 30 Sekunden
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
   });
 }
 
@@ -45,7 +47,7 @@ export function useUnreadCount() {
     queryKey: ['notifications', 'unread-count'],
     queryFn: () => api.get<UnreadCountResponse>('/api/notifications/unread-count'),
     staleTime: 30 * 1000,
-    refetchInterval: 60 * 1000, // Alle 60 Sekunden aktualisieren
+    refetchInterval: 30 * 1000, // Alle 30 Sekunden aktualisieren
   });
 }
 
@@ -80,6 +82,46 @@ export function useDeleteNotification() {
       api.delete(`/api/notifications/${notificationId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+}
+
+// ─── Notification Preferences ─────────────────────────────────────────────
+
+export type NotifChannels = { in_app: boolean; email: boolean; push: boolean };
+
+export interface NotificationPreferences {
+  enabled: boolean;
+  preferences: {
+    comment: NotifChannels;
+    reply: NotifChannels;
+    reaction: NotifChannels;
+    follow: NotifChannels;
+    mention: NotifChannels;
+    price_alert: NotifChannels;
+    milestone: NotifChannels;
+    badge: NotifChannels;
+    system: NotifChannels;
+  };
+  emailDigest: 'instant' | 'hourly' | 'daily' | 'never';
+  quietHours: { enabled: boolean; start?: string; end?: string };
+}
+
+export function useNotificationPreferences() {
+  return useQuery<{ preferences: NotificationPreferences }>({
+    queryKey: ['notification-preferences'],
+    queryFn: () => api.get('/api/preferences'),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useUpdateNotificationPreferences() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<NotificationPreferences>) =>
+      api.patch('/api/preferences', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
     },
   });
 }

@@ -18,6 +18,7 @@ export class ReplyService {
     threadId: string;
     content: string;
     parentId?: string;
+    imageUrls?: string[];
   }): Promise<IReply> {
     // Ban-Check
     await this.checkBan(userId);
@@ -52,6 +53,7 @@ export class ReplyService {
       userId,
       parentId: data.parentId,
       content: data.content.trim(),
+      imageUrls: (data.imageUrls || []).slice(0, 5),
       depth
     });
     

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,7 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [page, setPage] = useState(1);
 
-  const { data, isLoading, refetch } = useAdminUsers({
+  const { data, isLoading, isError, refetch } = useAdminUsers({
     page,
     limit: 20,
     search: searchQuery,
@@ -180,7 +181,7 @@ export default function AdminUsersPage() {
         {/* Users List */}
         <Card>
           <CardHeader>
-            <CardTitle>Benutzer ({data?.total || 0})</CardTitle>
+            <CardTitle>Benutzer ({isLoading ? '…' : data?.total ?? 0})</CardTitle>
             <CardDescription>Liste aller registrierten Benutzer</CardDescription>
           </CardHeader>
           <CardContent>
@@ -201,9 +202,11 @@ export default function AdminUsersPage() {
                       {/* Avatar */}
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">
                         {user.avatar ? (
-                          <img
+                          <Image
                             src={user.avatar}
-                            alt={user.username}
+                            alt={user.username ?? ''}
+                            width={48}
+                            height={48}
                             className="h-full w-full rounded-full object-cover"
                           />
                         ) : (

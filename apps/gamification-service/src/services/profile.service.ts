@@ -147,7 +147,7 @@ export class ProfileService {
     
     if (profile) {
       // Cache 5 Min
-      await redis.setex(cacheKey, 300, JSON.stringify(profile));
+      await redis.set(cacheKey, JSON.stringify(profile), { EX: 300 });
     }
     
     return profile;

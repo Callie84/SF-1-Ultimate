@@ -1,3 +1,18 @@
+import * as Sentry from '@sentry/node';
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV || 'production',
+  tracesSampleRate: 0.1,
+  beforeSend(event) {
+    if (event.request?.headers?.['authorization']) {
+      delete event.request.headers['authorization'];
+    }
+    if (event.request?.cookies) { event.request.cookies = {}; }
+    return event;
+  },
+});
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -12,9 +27,12 @@ import socialRoutes from './routes/social.routes';
 import feedRoutes from './routes/feed.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import remindersRoutes from './routes/reminders.routes';
+import feedingRoutes from './routes/feeding.routes';
+import internalRoutes from './routes/internal.routes';
 import { startReminderWorker } from './workers/reminder.worker';
 import { logger } from './utils/logger';
 import promClient from 'prom-client';
+import { globalRateLimit } from './middleware/rate-limit.middleware';
 promClient.collectDefaultMetrics({ prefix: 'sf1_' });
 
 const UPLOADS_DIR = '/app/uploads';
@@ -24,6 +42,8 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 
 const app = express();
 const PORT = process.env.PORT || 3003;
+
+app.use(globalRateLimit);
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }
@@ -67,7 +87,11 @@ app.use('/api/journal/grows', socialRoutes);
 app.use('/api/journal/feed', feedRoutes);
 app.use('/api/journal/analytics', analyticsRoutes);
 app.use('/api/journal/reminders', remindersRoutes);
+app.use('/api/journal/feeding', feedingRoutes);
+app.use('/api/journal/internal', internalRoutes);
 
+  // Sentry error handler (muss vor allen anderen Error-Handlern stehen)
+  Sentry.setupExpressErrorHandler(app);
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   logger.error('Unhandled error:', err);
   res.status(err.statusCode || 500).json({

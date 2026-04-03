@@ -1,11 +1,10 @@
 // /apps/auth-service/src/routes/admin.routes.ts
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { jwtService } from '../services/jwt.service';
+import { prisma } from '../config/database';
 import { redis } from '../config/redis';
 
 const router = Router();
-const prisma = new PrismaClient();
 
 // Admin Auth Middleware
 const adminMiddleware = async (req: Request, res: Response, next: Function) => {
@@ -193,6 +192,45 @@ router.get('/logs', adminMiddleware, async (req: Request, res: Response) => {
   } catch (error) {
     console.error('[Admin Logs] Error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/auth/admin/cache/clear
+ * Anwendungs-Cache in Redis leeren (keine Auth-Tokens)
+ */
+router.post('/cache/clear', adminMiddleware, async (req: Request, res: Response) => {
+  try {
+    // Nur Cache-Keys löschen, keine Auth-Tokens (email_verify:*, reset:*, system:logs)
+    const safePatterns = ['cache:*', 'feed:*', 'price_cache:*', 'stats:*', 'leaderboard:*'];
+    let deletedCount = 0;
+
+    for (const pattern of safePatterns) {
+      let cursor = 0;
+      do {
+        const result = await (redis as any).scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+        cursor = parseInt(result[0]);
+        const keys: string[] = result[1];
+        if (keys.length > 0) {
+          await redis.del(keys);
+          deletedCount += keys.length;
+        }
+      } while (cursor !== 0);
+    }
+
+    const logEntry = JSON.stringify({
+      id: `log_${Date.now()}`,
+      level: 'info',
+      service: 'auth',
+      message: `Cache geleert — ${deletedCount} Keys gelöscht`,
+      timestamp: new Date().toISOString(),
+    });
+    await redis.lPush('system:logs', logEntry).catch(() => {});
+
+    res.json({ success: true, deletedKeys: deletedCount });
+  } catch (error) {
+    console.error('[Admin Cache Clear] Error:', error);
+    res.status(500).json({ error: 'Cache-Leerung fehlgeschlagen' });
   }
 });
 

@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
+import { ShareButtons } from '@/components/share-buttons';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +18,8 @@ import { api } from '@/lib/api-client';
 import { formatRelativeTime } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { trackStrainViewed } from '@/lib/analytics';
+import { PriceHistoryChart } from '@/components/prices/price-history-chart';
 
 const typeColors: Record<string, string> = {
   indica: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
@@ -98,6 +102,10 @@ export function StrainDetailClient({ slug }: { slug: string }) {
   const [userComment, setUserComment] = useState('');
 
   const { data: strain, isLoading: strainLoading } = useStrain(slug);
+
+  useEffect(() => {
+    if (slug) trackStrainViewed(slug);
+  }, [slug]);
 
   const { data: seedsData, isLoading: seedsLoading } = useQuery({
     queryKey: ['seed-prices', strain?.name],
@@ -188,9 +196,11 @@ export function StrainDetailClient({ slug }: { slug: string }) {
         {/* Hero */}
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start">
           {strain.imageUrl ? (
-            <img
+            <Image
               src={strain.imageUrl}
               alt={strain.name}
+              width={128}
+              height={128}
               className="h-24 w-24 sm:h-32 sm:w-32 rounded-xl object-cover flex-shrink-0"
             />
           ) : (
@@ -217,6 +227,10 @@ export function StrainDetailClient({ slug }: { slug: string }) {
                 </span>
               </div>
             )}
+            <ShareButtons
+              title={`${strain.name} — Cannabis Strain auf SeedFinderPro`}
+              className="mt-3"
+            />
           </div>
         </div>
 
@@ -341,42 +355,53 @@ export function StrainDetailClient({ slug }: { slug: string }) {
                 </p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {priceEntries.map(({ seed, price }, idx) => (
-                  <div
-                    key={`${seed._id}-${idx}`}
-                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{seed.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {price.seedbank} · {price.packSize}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 ml-4 flex-shrink-0">
-                      <div className="text-right">
-                        <p className="font-bold text-primary">
-                          {price.price.toFixed(2)} {price.currency}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  {priceEntries.map(({ seed, price }, idx) => (
+                    <div
+                      key={`${seed._id}-${idx}`}
+                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{seed.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {price.seedbank} · {price.packSize}
                         </p>
-                        {price.inStock ? (
-                          <span className="text-xs text-green-600">Auf Lager</span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Nicht verfügbar</span>
-                        )}
                       </div>
-                      <Button size="sm" asChild>
-                        <a
-                          href={`/api/prices/click?url=${encodeURIComponent(price.url)}&seed=${encodeURIComponent(strain.slug)}&bank=${encodeURIComponent(price.seedbankSlug)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <ExternalLink className="h-4 w-4 mr-1" />
-                          Kaufen
-                        </a>
-                      </Button>
+                      <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                        <div className="text-right">
+                          <p className="font-bold text-primary">
+                            {price.price.toFixed(2)} {price.currency}
+                          </p>
+                          {price.inStock ? (
+                            <span className="text-xs text-green-600">Auf Lager</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Nicht verfügbar</span>
+                          )}
+                        </div>
+                        <Button size="sm" asChild>
+                          <a
+                            href={`/api/prices/affiliate/redirect?to=${encodeURIComponent(price.url)}&seedbank=${encodeURIComponent(price.seedbankSlug)}&strain=${encodeURIComponent(strain.slug)}&strainName=${encodeURIComponent(strain.name)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="h-4 w-4 mr-1" />
+                            Kaufen
+                          </a>
+                        </Button>
+                      </div>
                     </div>
+                  ))}
+                </div>
+                {/* Preisverlauf */}
+                {seedsData?.seeds?.[0]?.slug && (
+                  <div className="rounded-lg border p-4">
+                    <PriceHistoryChart
+                      seedSlug={seedsData.seeds[0].slug}
+                      seedName={strain.name}
+                    />
                   </div>
-                ))}
+                )}
               </div>
             )}
           </CardContent>

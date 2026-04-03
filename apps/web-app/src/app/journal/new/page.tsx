@@ -4,9 +4,10 @@ import { useRouter } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Search, X, Check } from 'lucide-react';
+import { Loader2, Search, X, Check, GitBranch } from 'lucide-react';
 import { toast } from 'sonner';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { trackGrowCreated } from '@/lib/analytics';
 
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ const createGrowSchema = z.object({
   startDate: z.string().optional(),
   isPublic: z.boolean().default(true),
   tags: z.array(z.string()).optional(),
+  motherGrowId: z.string().optional(),
 });
 
 type CreateGrowFormData = z.infer<typeof createGrowSchema>;
@@ -159,11 +161,27 @@ export default function NewGrowPage() {
   const createGrow = useCreateGrow();
   const isLoading = createGrow.isPending;
 
+  // Lese URL-Parameter für Klon-Vorausfüllung
+  const [urlMotherGrowId, setUrlMotherGrowId] = useState('');
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const mother = params.get('motherGrowId') || '';
+    const typeParam = params.get('type') || '';
+    if (mother) {
+      setUrlMotherGrowId(mother);
+      setValue('motherGrowId', mother);
+    }
+    if (typeParam === 'clone') {
+      setValue('type', 'clone');
+    }
+  }, []);
+
   const {
     register,
     handleSubmit,
     control,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<CreateGrowFormData>({
     resolver: zodResolver(createGrowSchema),
@@ -176,6 +194,8 @@ export default function NewGrowPage() {
     },
   });
 
+  const watchedType = watch('type');
+
   const onSubmit = async (data: CreateGrowFormData) => {
     try {
       const payload = {
@@ -186,6 +206,7 @@ export default function NewGrowPage() {
       };
 
       const result = await createGrow.mutateAsync(payload);
+      trackGrowCreated(data.strainName);
       toast.success('Grow erfolgreich erstellt!');
       router.push(`/journal/${result.grow?.id || result.grow?._id || ''}`);
     } catch (error: any) {
@@ -267,18 +288,6 @@ export default function NewGrowPage() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="breeder" className="text-sm font-medium">
-                  Breeder
-                </label>
-                <Input
-                  id="breeder"
-                  placeholder="z.B. GG Strains"
-                  {...register('breeder')}
-                  disabled={isLoading}
-                />
-              </div>
-
-              <div className="space-y-2">
                 <label htmlFor="type" className="text-sm font-medium">
                   Samen-Typ *
                 </label>
@@ -294,6 +303,38 @@ export default function NewGrowPage() {
                   <option value="clone">Steckling</option>
                 </select>
               </div>
+
+              {/* Mutterpflanze-Feld — nur wenn Typ=clone */}
+              {watchedType === 'clone' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    <GitBranch className="h-4 w-4" />
+                    Mutterpflanze (Grow-ID)
+                  </label>
+                  <Input
+                    placeholder="Grow-ID der Mutterpflanze (optional)"
+                    {...register('motherGrowId')}
+                    disabled={isLoading}
+                    defaultValue={urlMotherGrowId}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Verlinke diesen Grow mit seiner Mutterpflanze
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label htmlFor="breeder" className="text-sm font-medium">
+                  Breeder
+                </label>
+                <Input
+                  id="breeder"
+                  placeholder="z.B. GG Strains"
+                  {...register('breeder')}
+                  disabled={isLoading}
+                />
+              </div>
+
             </CardContent>
           </Card>
 

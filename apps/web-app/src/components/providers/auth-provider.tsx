@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import { apiClient } from '@/lib/api-client';
 import { User, LoginRequest, RegisterRequest, AuthResponse } from '@/types/auth';
+import { trackRegistration } from '@/lib/analytics';
 
 interface AuthContextType {
   user: User | null;
@@ -119,11 +120,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       Cookies.set('sf1_access_token', accessToken, { expires: 7 });
       Cookies.set('sf1_refresh_token', refreshToken, { expires: 30 });
 
-      // Update user state
+      // Update user state — Redirect wird von der Login-Seite selbst gesteuert
       setUser(data.user);
-
-      // Redirect to dashboard
-      router.push('/dashboard');
     } catch (error) {
       throw error;
     }
@@ -143,6 +141,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Update user state
       setUser(authData.user);
 
+      // Analytics: Registrierung tracken
+      trackRegistration();
+
       // Redirect to dashboard
       router.push('/dashboard');
     } catch (error) {
@@ -159,8 +160,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear tokens and user state
       Cookies.remove('sf1_access_token');
       Cookies.remove('sf1_refresh_token');
+      sessionStorage.removeItem('sf1_admin_unlocked');
       setUser(null);
-      
+
       // Redirect to login
       router.push('/auth/login');
     }

@@ -111,13 +111,14 @@ const feedWorker = new Worker(
         productsScraped: products.length,
       });
 
-      logger.info(`[FeedWorker] ${seedbank} fertig: ${result.seeds} Seeds, ${result.prices} Preise (${importTime}s)`);
+      logger.info(`[FeedWorker] ${seedbank} fertig: ${result.seeds} neue Seeds, ${result.prices} neue Preise, ${result.pricesUpdated} Preise aktualisiert (${importTime}s)`);
 
       return {
         seedbank,
         productsImported: products.length,
         seedsCreated: result.seeds,
         pricesCreated: result.prices,
+        pricesUpdated: result.pricesUpdated,
         duration: `${importTime}s`,
       };
 
@@ -262,6 +263,7 @@ export async function runFeedImportNow(seedbank: string): Promise<{
     productsImported: products.length,
     seedsCreated: result.seeds,
     pricesCreated: result.prices,
+    pricesUpdated: result.pricesUpdated,
   };
 }
 

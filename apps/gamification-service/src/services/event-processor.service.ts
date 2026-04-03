@@ -32,8 +32,11 @@ export class EventProcessorService {
         const item = await redis.brPop('queue:gamification', 5);
         
         if (!item) continue;
-        
-        const event = JSON.parse(item[1]);
+
+        const rawData = Array.isArray(item) ? item[1] : (item as any).element;
+        if (!rawData) continue;
+
+        const event = JSON.parse(rawData);
         
         await this.processEvent(event);
         

@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -195,9 +196,11 @@ export default function UserProfilePage() {
               {/* Avatar */}
               <Avatar className="h-32 w-32">
                 {profile.avatar ? (
-                  <img
+                  <Image
                     src={profile.avatar}
                     alt={profile.username}
+                    width={128}
+                    height={128}
                     className="h-full w-full rounded-full object-cover"
                   />
                 ) : (

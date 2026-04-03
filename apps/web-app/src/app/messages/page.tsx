@@ -32,9 +32,21 @@ import {
   useSendMessage,
   useMarkMessagesAsRead,
   useDeleteConversation,
+  useStartConversation,
   Conversation,
 } from '@/hooks/use-messages';
 import { useAuth } from '@/components/providers/auth-provider';
+import { useUserById } from '@/hooks/use-journal';
+
+function ParticipantName({ userId }: { userId: string }) {
+  const { data } = useUserById(userId);
+  return <>{data?.username ?? userId.substring(0, 8) + '...'}</>;
+}
+
+function ParticipantInitials({ userId }: { userId: string }) {
+  const { data } = useUserById(userId);
+  return <>{(data?.username ?? userId).substring(0, 2).toUpperCase()}</>;
+}
 
 function MessagesContent() {
   const router = useRouter();
@@ -52,6 +64,17 @@ function MessagesContent() {
   const sendMessage = useSendMessage();
   const markAsRead = useMarkMessagesAsRead();
   const deleteConversation = useDeleteConversation();
+  const startConversation = useStartConversation();
+
+  // Handle ?start=userId to auto-open or create a conversation
+  useEffect(() => {
+    const startUserId = searchParams.get('start');
+    if (!startUserId || selectedConversation) return;
+    startConversation.mutateAsync(startUserId).then((data: any) => {
+      const convId = data?.conversation?._id || data?._id;
+      if (convId) setSelectedConversation(convId);
+    }).catch(console.error);
+  }, []);
 
   const conversations = conversationsData?.conversations || [];
   const messages = messagesData?.messages || [];
@@ -175,12 +198,12 @@ function MessagesContent() {
                   >
                     <Avatar>
                       <AvatarFallback>
-                        {otherUser.substring(0, 2).toUpperCase()}
+                        <ParticipantInitials userId={otherUser} />
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <p className="font-medium truncate">{otherUser.substring(0, 8)}...</p>
+                        <p className="font-medium truncate"><ParticipantName userId={otherUser} /></p>
                         {conv.lastMessageAt && (
                           <span className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(conv.lastMessageAt), {
@@ -247,12 +270,12 @@ function MessagesContent() {
               </Button>
               <Avatar>
                 <AvatarFallback>
-                  {getOtherParticipant(selectedConv).substring(0, 2).toUpperCase()}
+                  <ParticipantInitials userId={getOtherParticipant(selectedConv)} />
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <p className="font-medium">
-                  {getOtherParticipant(selectedConv).substring(0, 8)}...
+                  <ParticipantName userId={getOtherParticipant(selectedConv)} />
                 </p>
               </div>
             </CardHeader>

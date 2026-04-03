@@ -19,6 +19,11 @@ const reviewSchema = z.object({
   note: z.string().max(1000).optional()
 });
 
+const resolveSchema = z.object({
+  action: z.enum(['dismiss', 'warn', 'delete', 'ban']),
+  note: z.string().max(1000).optional()
+});
+
 const banSchema = z.object({
   reason: z.string().min(10).max(1000),
   type: z.enum(['temporary', 'permanent']),
@@ -26,8 +31,8 @@ const banSchema = z.object({
 });
 
 /**
- * POST /api/community/reports
- * Content melden
+ * POST /api/community/moderation/reports
+ * Content melden (Auth required)
  */
 router.post('/reports',
   authMiddleware,
@@ -43,22 +48,23 @@ router.post('/reports',
 );
 
 /**
- * GET /api/community/reports
+ * GET /api/community/moderation/reports
  * Reports abrufen (Mod-Only)
  */
 router.get('/reports',
+  authMiddleware,
   moderatorMiddleware,
   async (req, res, next) => {
     try {
       const { status, targetType, limit, skip } = req.query;
-      
+
       const result = await moderationService.getReports({
         status: status as string,
         targetType: targetType as string,
         limit: parseInt(limit as string) || 50,
         skip: parseInt(skip as string) || 0
       });
-      
+
       res.json(result);
     } catch (error) {
       next(error);
@@ -67,10 +73,44 @@ router.get('/reports',
 );
 
 /**
- * PATCH /api/community/reports/:id/review
- * Report bearbeiten (Mod-Only)
+ * POST /api/community/moderation/reports/:id/resolve
+ * Report bearbeiten — Frontend-kompatible Action-Namen (Mod-Only)
+ */
+router.post('/reports/:id/resolve',
+  authMiddleware,
+  moderatorMiddleware,
+  validate(resolveSchema),
+  async (req, res, next) => {
+    try {
+      const actionMap: Record<string, 'none' | 'warning' | 'content_removed' | 'user_banned'> = {
+        dismiss: 'none',
+        warn: 'warning',
+        delete: 'content_removed',
+        ban: 'user_banned'
+      };
+
+      const report = await moderationService.reviewReport(
+        req.params.id,
+        req.user!.id,
+        {
+          action: actionMap[req.body.action],
+          note: req.body.note
+        }
+      );
+
+      res.json({ report });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * PATCH /api/community/moderation/reports/:id/review
+ * Report bearbeiten — interne Action-Namen (Mod-Only)
  */
 router.patch('/reports/:id/review',
+  authMiddleware,
   moderatorMiddleware,
   validate(reviewSchema),
   async (req, res, next) => {
@@ -80,7 +120,7 @@ router.patch('/reports/:id/review',
         req.user!.id,
         req.body
       );
-      
+
       res.json({ report });
     } catch (error) {
       next(error);
@@ -89,10 +129,11 @@ router.patch('/reports/:id/review',
 );
 
 /**
- * POST /api/community/bans
+ * POST /api/community/moderation/bans
  * User bannen (Mod-Only)
  */
 router.post('/bans',
+  authMiddleware,
   moderatorMiddleware,
   validate(z.object({
     userId: z.string().min(1),
@@ -101,13 +142,13 @@ router.post('/bans',
   async (req, res, next) => {
     try {
       const { userId, ...banData } = req.body;
-      
+
       const ban = await moderationService.banUser(
         userId,
         req.user!.id,
         banData
       );
-      
+
       res.status(201).json({ ban });
     } catch (error) {
       next(error);
@@ -116,10 +157,11 @@ router.post('/bans',
 );
 
 /**
- * DELETE /api/community/bans/:userId
+ * DELETE /api/community/moderation/bans/:userId
  * Ban aufheben (Mod-Only)
  */
 router.delete('/bans/:userId',
+  authMiddleware,
   moderatorMiddleware,
   async (req, res, next) => {
     try {
@@ -132,10 +174,11 @@ router.delete('/bans/:userId',
 );
 
 /**
- * POST /api/community/threads/:id/pin
+ * POST /api/community/moderation/threads/:id/pin
  * Thread pinnen/unpinnen (Mod-Only)
  */
 router.post('/threads/:id/pin',
+  authMiddleware,
   moderatorMiddleware,
   async (req, res, next) => {
     try {
@@ -143,7 +186,7 @@ router.post('/threads/:id/pin',
         req.params.id,
         req.user!.id
       );
-      
+
       res.json({ isPinned });
     } catch (error) {
       next(error);
@@ -152,10 +195,11 @@ router.post('/threads/:id/pin',
 );
 
 /**
- * POST /api/community/threads/:id/lock
+ * POST /api/community/moderation/threads/:id/lock
  * Thread locken/unlocken (Mod-Only)
  */
 router.post('/threads/:id/lock',
+  authMiddleware,
   moderatorMiddleware,
   async (req, res, next) => {
     try {
@@ -163,7 +207,7 @@ router.post('/threads/:id/lock',
         req.params.id,
         req.user!.id
       );
-      
+
       res.json({ isLocked });
     } catch (error) {
       next(error);
@@ -173,9 +217,10 @@ router.post('/threads/:id/lock',
 
 /**
  * GET /api/community/moderation/stats
- * Moderation-Dashboard (Mod-Only)
+ * Moderation-Dashboard Stats (Mod-Only)
  */
 router.get('/stats',
+  authMiddleware,
   moderatorMiddleware,
   async (req, res, next) => {
     try {

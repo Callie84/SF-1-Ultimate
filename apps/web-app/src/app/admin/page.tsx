@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,17 +30,43 @@ import {
   Store,
   Trophy,
   Bot,
+  HardDrive,
+  Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useAdminStats, useSystemHealth } from '@/hooks/use-admin';
 import { formatNumber } from '@/lib/utils';
+import api from '@/lib/api-client';
+import { toast } from 'sonner';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const { data: stats, isLoading: statsLoading } = useAdminStats();
   const { data: health, isLoading: healthLoading } = useSystemHealth();
+  const [cacheClearLoading, setCacheClearLoading] = useState(false);
+  const [cacheStats, setCacheStats] = useState<any>(null);
+
+  const handleCacheClear = async () => {
+    setCacheClearLoading(true);
+    try {
+      await (api as any).post('/api/gamification/admin/cache/clear');
+      const stats = await (api as any).get('/api/gamification/admin/cache/stats');
+      setCacheStats(stats);
+      toast.success('Cache erfolgreich geleert');
+    } catch {
+      toast.error('Cache-Leerung fehlgeschlagen');
+    } finally {
+      setCacheClearLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    (api as any).get('/api/gamification/admin/cache/stats')
+      .then((d: any) => setCacheStats(d))
+      .catch(() => {});
+  }, []);
 
   // Redirect non-admin users
   useEffect(() => {
@@ -221,9 +247,9 @@ export default function AdminDashboardPage() {
                     <div className="flex items-center gap-3">
                       <Server className="h-5 w-5 text-muted-foreground" />
                       <div>
-                        <div className="font-medium">{service.name}</div>
+                        <div className="font-medium">{service.label || service.name}</div>
                         <div className="text-xs text-muted-foreground">
-                          {service.latency}ms Latenz
+                          {service.status === 'healthy' ? `${service.latency}ms` : service.status}
                         </div>
                       </div>
                     </div>
@@ -343,6 +369,12 @@ export default function AdminDashboardPage() {
                 </Link>
               </Button>
               <Button variant="outline" className="justify-start" asChild>
+                <Link href="/admin/announcement">
+                  <Megaphone className="mr-2 h-4 w-4" />
+                  Popup-Ankündigung
+                </Link>
+              </Button>
+              <Button variant="outline" className="justify-start" asChild>
                 <Link href="/admin/categories">
                   <MessageSquare className="mr-2 h-4 w-4" />
                   Kategorien
@@ -379,9 +411,9 @@ export default function AdminDashboardPage() {
                 </Link>
               </Button>
               <Button variant="outline" className="justify-start" asChild>
-                <Link href="/admin/clicks">
+                <Link href="/admin/affiliate">
                   <MousePointerClick className="mr-2 h-4 w-4" />
-                  Affiliate-Klicks
+                  Affiliate-Dashboard
                 </Link>
               </Button>
               <Button variant="outline" className="justify-start" asChild>
@@ -401,6 +433,34 @@ export default function AdminDashboardPage() {
                   <Bot className="mr-2 h-4 w-4" />
                   AI-Monitoring
                 </Link>
+              </Button>
+              <Button variant="outline" className="justify-start" asChild>
+                <Link href="/admin/backup">
+                  <HardDrive className="mr-2 h-4 w-4" />
+                  Backup
+                </Link>
+              </Button>
+              <Button variant="outline" className="justify-start" asChild>
+                <Link href="/admin/monitoring">
+                  <Activity className="mr-2 h-4 w-4" />
+                  Monitoring
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start"
+                onClick={handleCacheClear}
+                disabled={cacheClearLoading}
+              >
+                {cacheClearLoading
+                  ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  : <Zap className="mr-2 h-4 w-4" />}
+                Cache leeren
+                {cacheStats && (
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {cacheStats.hitRate}% Hit
+                  </span>
+                )}
               </Button>
             </div>
           </CardContent>

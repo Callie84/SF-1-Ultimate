@@ -1,7 +1,9 @@
 import { Server as SocketServer } from 'socket.io';
 import { Server as HttpServer } from 'http';
-import { redis } from '../config/redis';
+import jwt from 'jsonwebtoken';
 import { logger } from '../utils/logger';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'sf1-super-secret-jwt-key-change-in-production';
 
 export class WebSocketService {
   private io: SocketServer;
@@ -26,10 +28,9 @@ export class WebSocketService {
       logger.debug(`[WS] Client connected: ${socket.id}`);
       
       // Auth
-      socket.on('auth', async (data: { userId: string; token: string }) => {
-        // Verify token via Auth Service or Redis
-        const isValid = await this.verifyToken(data.userId, data.token);
-        
+      socket.on('auth', (data: { userId: string; token: string }) => {
+        const isValid = this.verifyToken(data.userId, data.token);
+
         if (isValid) {
           // Join user room
           socket.join(`user:${data.userId}`);
@@ -53,17 +54,15 @@ export class WebSocketService {
   }
   
   /**
-   * Verify token
+   * Verify JWT token
    */
-  private async verifyToken(userId: string, token: string): Promise<boolean> {
-    // Check Redis session
-    const session = await redis.get(`session:${token}`);
-    
-    if (!session) return false;
-    
-    const sessionData = JSON.parse(session);
-    
-    return sessionData.userId === userId;
+  private verifyToken(userId: string, token: string): boolean {
+    try {
+      const payload = jwt.verify(token, JWT_SECRET) as { userId: string };
+      return payload.userId === userId;
+    } catch {
+      return false;
+    }
   }
   
   /**

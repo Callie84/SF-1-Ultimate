@@ -11,7 +11,23 @@ export interface Ad {
   altText: string;
   isActive: boolean;
   order: number;
+  // Buchungsdaten
+  clientName?: string;
+  clientEmail?: string;
+  startDate?: string;
+  endDate?: string;
+  budget?: number;
+  cpm?: number;
+  // Tracking
+  impressions: number;
+  clicks: number;
   createdAt: string;
+}
+
+export interface AdStat extends Ad {
+  ctr: number;
+  estimatedRevenue: number | null;
+  bookingStatus: 'aktiv' | 'geplant' | 'abgelaufen' | 'unbefristet';
 }
 
 // Aktive Ads laden (öffentlich)
@@ -70,5 +86,29 @@ export function useDeleteAd() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ads'] });
     },
+  });
+}
+
+// Buchungs-Statistiken (Admin)
+export function useAdStats() {
+  return useQuery<{ ads: AdStat[]; totals: { impressions: number; clicks: number; budget: number; activeBookings: number; scheduledBookings: number } }>({
+    queryKey: ['ads', 'stats'],
+    queryFn: () => api.get('/api/community/ads/stats'),
+    staleTime: 60 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+}
+
+// Impression tracken (fire-and-forget)
+export function useTrackImpression() {
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/api/community/ads/${id}/impression`, {}),
+  });
+}
+
+// Klick tracken
+export function useTrackClick() {
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/api/community/ads/${id}/click`, {}),
   });
 }

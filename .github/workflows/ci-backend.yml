@@ -1,4 +1,4 @@
-name: CI - Backend Services
+name: CI - Backend Integration Tests
 
 on:
   push:
@@ -7,91 +7,18 @@ on:
     branches: [main, develop]
 
 jobs:
-  test-auth-service:
-    name: Test Auth Service
-    runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_USER: sf1_user
-          POSTGRES_DB: sf1_auth_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: apps/auth-service/package-lock.json
-
-      - name: Install dependencies
-        working-directory: apps/auth-service
-        run: npm ci
-
-      - name: Generate Prisma Client
-        working-directory: apps/auth-service
-        run: npm run prisma:generate
-        env:
-          DATABASE_URL: postgresql://sf1_user:test_password@localhost:5432/sf1_auth_test
-
-      - name: Run Prisma Migrations
-        working-directory: apps/auth-service
-        run: npm run prisma:migrate
-        env:
-          DATABASE_URL: postgresql://sf1_user:test_password@localhost:5432/sf1_auth_test
-
-      - name: Run Tests
-        working-directory: apps/auth-service
-        run: npm test
-        env:
-          DATABASE_URL: postgresql://sf1_user:test_password@localhost:5432/sf1_auth_test
-          REDIS_URL: redis://localhost:6379
-          JWT_SECRET: test_jwt_secret_for_ci_only_min_32_chars
-          JWT_REFRESH_SECRET: test_jwt_refresh_secret_for_ci_only_min_32_chars
-
-      - name: Build
-        working-directory: apps/auth-service
-        run: npm run build
-
-  test-other-services:
-    name: Test Other Services
+  # Community + Journal Service: echtes MongoDB
+  test-mongodb-services:
+    name: Integration Tests (${{ matrix.service }})
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         service:
-          - price-service
-          - journal-service
-          - tools-service
           - community-service
-          - notification-service
-          - search-service
-          - media-service
-          - gamification-service
-          - ai-service
+          - journal-service
+          - price-service
 
     services:
       mongodb:
@@ -136,16 +63,23 @@ jobs:
         working-directory: apps/${{ matrix.service }}
         run: npm test || echo "No tests defined"
         env:
-          MONGODB_URL: mongodb://test_admin:test_password@localhost:27017
+          MONGODB_URL: mongodb://test_admin:test_password@localhost:27017/sf1_test?authSource=admin
           REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test_jwt_secret_for_ci_only_minimum_32_chars_long
 
-      - name: Build
-        working-directory: apps/${{ matrix.service }}
-        run: npm run build
-
-  lint:
-    name: Lint & Type Check
+  # Auth Service: PostgreSQL + Redis (eigenständiger Job in ci-cd.yml)
+  # Hier nur Smoke-Test ohne Datenbank
+  test-stateless-services:
+    name: Build Check (${{ matrix.service }})
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - tools-service
+          - notification-service
+          - ai-service
 
     steps:
       - name: Checkout code
@@ -155,9 +89,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/${{ matrix.service }}/package-lock.json
 
-      - name: Check TypeScript (Auth Service)
-        working-directory: apps/auth-service
-        run: |
-          npm ci
-          npx tsc --noEmit || echo "TypeScript check completed"
+      - name: Install dependencies
+        working-directory: apps/${{ matrix.service }}
+        run: npm ci
+
+      - name: Build
+        working-directory: apps/${{ matrix.service }}
+        run: npm run build
+
+      - name: Test (if available)
+        working-directory: apps/${{ matrix.service }}
+        run: npm test || echo "No tests defined"

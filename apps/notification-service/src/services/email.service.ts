@@ -29,7 +29,7 @@ export class EmailService {
   private loadTemplates(): void {
     const templateDir = join(__dirname, '../templates/email');
     
-    const templates = ['welcome', 'comment-reply', 'price-alert', 'digest', 'password-reset'];
+    const templates = ['welcome', 'comment-reply', 'price-alert', 'digest', 'password-reset', 'verify-email', 'account-deleted'];
     
     for (const name of templates) {
       try {
@@ -111,6 +111,46 @@ export class EmailService {
       { _id: notificationId },
       { 'deliveryStatus.email': success ? 'sent' : 'failed' }
     );
+  }
+
+  /**
+   * Send contact form email to admin
+   */
+  async sendContactForm(options: {
+    name: string;
+    email: string;
+    subject: string;
+    message: string;
+  }): Promise<boolean> {
+    const adminEmail = process.env.ADMIN_EMAIL || 'klingenpascal@gmail.com';
+    const html = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #667eea;">Neue Kontaktanfrage — SeedFinderPro</h2>
+        <table style="width:100%; border-collapse: collapse;">
+          <tr><td style="padding: 8px; font-weight:bold; width:100px;">Name:</td><td style="padding: 8px;">${options.name}</td></tr>
+          <tr><td style="padding: 8px; font-weight:bold;">E-Mail:</td><td style="padding: 8px;"><a href="mailto:${options.email}">${options.email}</a></td></tr>
+          <tr><td style="padding: 8px; font-weight:bold;">Betreff:</td><td style="padding: 8px;">${options.subject || '(kein Betreff)'}</td></tr>
+        </table>
+        <hr style="margin: 16px 0;" />
+        <p style="white-space: pre-wrap;">${options.message}</p>
+        <hr style="margin: 16px 0;" />
+        <p style="color: #999; font-size: 12px;">Gesendet über das Kontaktformular auf seedfinderpro.de</p>
+      </div>
+    `;
+    try {
+      await this.transporter.sendMail({
+        from: process.env.SMTP_FROM || 'SF-1 <noreply@seedfinderpro.de>',
+        to: adminEmail,
+        replyTo: options.email,
+        subject: `[Kontakt] ${options.subject || options.name}`,
+        html,
+      });
+      logger.info(`[Email] Contact form from ${options.email}`);
+      return true;
+    } catch (error) {
+      logger.error('[Email] Contact form failed:', error);
+      return false;
+    }
   }
 }
 

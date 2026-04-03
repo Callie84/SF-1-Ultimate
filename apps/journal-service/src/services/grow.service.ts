@@ -130,19 +130,21 @@ export class GrowService {
     harvestDate: Date;
     yieldWet?: number;
     yieldDry?: number;
+    growAreaM2?: number;
     quality?: number;
   }): Promise<IGrow | null> {
     const grow = await Grow.findOne({ _id: growId, userId });
-    
+
     if (!grow) {
       throw new AppError('NOT_FOUND', 404);
     }
-    
+
     grow.status = 'harvested';
     grow.harvestDate = data.harvestDate;
     grow.yieldWet = data.yieldWet;
     grow.yieldDry = data.yieldDry;
     grow.quality = data.quality;
+    if (data.growAreaM2 !== undefined) grow.growAreaM2 = data.growAreaM2;
     
     await grow.save();
     

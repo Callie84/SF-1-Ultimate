@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { apiClient } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
+import { PriceHistoryChart } from '@/components/prices/price-history-chart';
 
 interface PriceEntry {
   seedbank: string;
@@ -285,7 +286,7 @@ export default function PricesPage() {
                 </div>
               </div>
 
-              {/* Expanded: Show all prices */}
+              {/* Expanded: Show all prices + chart */}
               {expandedSeed === seed._id && seed.prices && seed.prices.length > 0 && (
                 <div className="border-t bg-muted/30">
                   {seed.prices.map((price, idx) => (
@@ -320,7 +321,7 @@ export default function PricesPage() {
                         </div>
                         {price.url && (
                           <a
-                            href={`/api/prices/click?url=${encodeURIComponent(price.url)}&seed=${encodeURIComponent(seed.slug)}&bank=${encodeURIComponent(price.seedbankSlug || price.seedbank)}`}
+                            href={`/api/prices/affiliate/redirect?to=${encodeURIComponent(price.url)}&seedbank=${encodeURIComponent(price.seedbankSlug || price.seedbank)}&strain=${encodeURIComponent(seed.slug)}&strainName=${encodeURIComponent(seed.name)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[10px] font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
@@ -333,6 +334,10 @@ export default function PricesPage() {
                       </div>
                     </div>
                   ))}
+                  {/* Preisverlauf-Chart */}
+                  <div className="px-4 py-4 border-t border-border/50">
+                    <PriceHistoryChart seedSlug={seed.slug} seedName={seed.name} />
+                  </div>
                 </div>
               )}
 
@@ -343,7 +348,7 @@ export default function PricesPage() {
                     Bestes Angebot: {seed.prices[0].seedbank}
                   </span>
                   <a
-                    href={`/api/prices/click?url=${encodeURIComponent(seed.prices[0].url)}&seed=${encodeURIComponent(seed.slug)}&bank=${encodeURIComponent(seed.prices[0].seedbankSlug || seed.prices[0].seedbank)}`}
+                    href={`/api/prices/affiliate/redirect?to=${encodeURIComponent(seed.prices[0].url)}&seedbank=${encodeURIComponent(seed.prices[0].seedbankSlug || seed.prices[0].seedbank)}&strain=${encodeURIComponent(seed.slug)}&strainName=${encodeURIComponent(seed.name)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"

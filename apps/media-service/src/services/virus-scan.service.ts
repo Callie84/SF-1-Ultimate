@@ -29,7 +29,7 @@ export class VirusScanService {
       this.clam = await new NodeClam().init(clamScanConfig);
       logger.info('[VirusScan] ClamAV initialized');
     } catch (error) {
-      logger.error('[VirusScan] Failed to initialize ClamAV:', error);
+      logger.warn('[VirusScan] ClamAV nicht verfügbar — Virus-Scan deaktiviert (kein clamav-Container). Uploads werden ohne Scan akzeptiert.');
       // Nicht kritisch - App läuft auch ohne Virus-Scan
     }
   }

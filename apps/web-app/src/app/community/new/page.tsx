@@ -15,6 +15,8 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { useCategories, useCreateThread } from '@/hooks/use-community';
 import { useAuth } from '@/components/providers/auth-provider';
+import { trackPostCreated } from '@/lib/analytics';
+import { ImageUploadWidget } from '@/components/community/image-upload-widget';
 
 const createThreadSchema = z.object({
   title: z.string().min(5, 'Titel muss mindestens 5 Zeichen haben').max(200, 'Titel zu lang'),
@@ -52,6 +54,7 @@ function NewThreadForm() {
 
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
 
   const {
     register,
@@ -104,7 +107,9 @@ function NewThreadForm() {
         content: data.content,
         categoryId: data.categoryId,
         tags: tags.length > 0 ? tags : undefined,
-      });
+        imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+      } as any);
+      trackPostCreated('thread');
       toast.success('Thread erfolgreich erstellt!');
       router.push(`/community/thread/${result.thread?.id || result.thread?._id}`);
     } catch (error: any) {
@@ -203,6 +208,10 @@ function NewThreadForm() {
               {errors.content && (
                 <p className="text-sm text-destructive">{errors.content.message}</p>
               )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Bilder (optional)</label>
+              <ImageUploadWidget onChange={setImageUrls} maxImages={5} />
             </div>
           </CardContent>
         </Card>

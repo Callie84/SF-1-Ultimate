@@ -26,6 +26,7 @@ export interface RegisterRequest {
   username: string;
   password: string;
   displayName?: string;
+  ageVerified: boolean;
 }
 
 export interface AuthResponse {

@@ -1,3 +1,18 @@
+import * as Sentry from '@sentry/node';
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV || 'production',
+  tracesSampleRate: 0.1,
+  beforeSend(event) {
+    if (event.request?.headers?.['authorization']) {
+      delete event.request.headers['authorization'];
+    }
+    if (event.request?.cookies) { event.request.cookies = {}; }
+    return event;
+  },
+});
+
 // /apps/community-service/src/index.ts
 import express from 'express';
 import cors from 'cors';
@@ -15,15 +30,21 @@ import messagesRoutes from './routes/messages.routes';
 import followsRoutes from './routes/follows.routes';
 import adsRoutes from './routes/ads.routes';
 import seedbankReviewsRoutes from './routes/seedbank-reviews.routes';
+import announcementRoutes from './routes/announcement.routes';
+import fontVotesRoutes from './routes/font-votes.routes';
+import internalRoutes from './routes/internal.routes';
 import { errorHandler } from './utils/errors';
 import { logger } from './utils/logger';
 import promClient from 'prom-client';
+import { globalRateLimit } from './middleware/rate-limit.middleware';
 promClient.collectDefaultMetrics({ prefix: 'sf1_' });
 
 const app = express();
 const PORT = process.env.PORT || 3005;
 
 // Middleware
+app.use(globalRateLimit);
+
 app.use(helmet());
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'https://seedfinderpro.de',
@@ -66,8 +87,13 @@ app.use('/api/community/messages', messagesRoutes);
 app.use('/api/community/follows', followsRoutes);
 app.use('/api/community/ads', adsRoutes);
 app.use('/api/community/seedbank-reviews', seedbankReviewsRoutes);
+app.use('/api/community/announcement', announcementRoutes);
+app.use('/api/community/font-votes', fontVotesRoutes);
+app.use('/api/community/internal', internalRoutes);
 
 // Error Handler
+  // Sentry error handler (muss vor allen anderen Error-Handlern stehen)
+  Sentry.setupExpressErrorHandler(app);
 app.use(errorHandler);
 
 // Start

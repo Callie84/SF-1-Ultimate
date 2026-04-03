@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { priceService } from '../services/price.service';
 import { logger } from '../utils/logger';
 import { redis } from '../config/redis';
+import { Price } from '../models/Price.model';
 
 const router = Router();
 
@@ -165,6 +166,84 @@ router.get('/compare', async (req, res, next) => {
     const comparisons = await priceService.comparePrices(slugs);
     
     res.json({ comparisons });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/prices/history/:seedSlug
+ * Get price history for a seed over time
+ * Query: days=7|30|90 (default 30), packSize (optional filter)
+ */
+router.get('/history/:seedSlug', async (req, res, next) => {
+  try {
+    const { seedSlug } = req.params;
+    const days = req.query.days === 'all' ? 0 : (parseInt(req.query.days as string) || 30);
+    const packSizeFilter = req.query.packSize as string | undefined;
+
+    const cacheKey = `price-history:${seedSlug}:${days}:${packSizeFilter || ''}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return res.json(JSON.parse(cached));
+    }
+
+    const filter: Record<string, unknown> = { seedSlug };
+    if (days > 0) {
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      filter.scrapedAt = { $gte: since };
+    }
+    if (packSizeFilter) {
+      filter.packSize = packSizeFilter;
+    }
+
+    const entries = await Price
+      .find(filter, 'seedbank packSize price currency scrapedAt')
+      .sort({ scrapedAt: 1 })
+      .limit(2000)
+      .lean();
+
+    // Group by seedbank+packSize to get distinct series
+    const seriesMap: Record<string, { date: string; price: number }[]> = {};
+    for (const e of entries) {
+      const key = `${e.seedbank} (${e.packSize})`;
+      if (!seriesMap[key]) seriesMap[key] = [];
+      seriesMap[key].push({
+        date: (e.scrapedAt as Date).toISOString().slice(0, 10),
+        price: e.price,
+      });
+    }
+
+    // Aggregate: take min price per (key, day)
+    const aggregated: Record<string, Record<string, number>> = {};
+    for (const [key, points] of Object.entries(seriesMap)) {
+      aggregated[key] = {};
+      for (const p of points) {
+        if (aggregated[key][p.date] === undefined || p.price < aggregated[key][p.date]) {
+          aggregated[key][p.date] = p.price;
+        }
+      }
+    }
+
+    // Get all unique dates sorted
+    const allDates = [...new Set(entries.map((e) => (e.scrapedAt as Date).toISOString().slice(0, 10)))].sort();
+
+    // Build chart-ready series
+    const series = Object.entries(aggregated).map(([name, byDate]) => ({
+      name,
+      data: allDates.map((d) => ({
+        date: d,
+        price: byDate[d] ?? null,
+      })),
+    }));
+
+    // Available pack sizes for filter
+    const packSizes = [...new Set(entries.map((e) => e.packSize))].sort();
+
+    const result = { series, dates: allDates, packSizes };
+    await redis.set(cacheKey, JSON.stringify(result), 'EX', 60 * 30); // 30min cache
+    res.json(result);
   } catch (error) {
     next(error);
   }

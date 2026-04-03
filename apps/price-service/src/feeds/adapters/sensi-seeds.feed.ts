@@ -12,8 +12,8 @@ export class SensiSeedsFeed extends BaseFeed {
 
   private categoryUrls = [
     '/de/feminisierte-samen',
-    '/de/autoflowering-samen',
-    '/de/regulaere-samen',
+    '/de/autoflowering',
+    '/de/regulare',
   ];
 
   generateAffiliateUrl(productUrl: string): string | undefined {

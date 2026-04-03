@@ -6,6 +6,20 @@ import { generateSlug } from '../utils/helpers';
 import { logger } from '../utils/logger';
 import { ScrapedProduct } from '../scrapers/base.scraper';
 
+/**
+ * Parst THC/CBD-Werte aus Strings wie "20%", "16-24%", "Sehr hoch (über 20%)"
+ * Gibt den Durchschnitt bei Bereichen zurück, sonst den ersten gefundenen Zahlenwert.
+ */
+function parsePercentage(value: unknown): number | undefined {
+  if (typeof value === 'number') return isNaN(value) ? undefined : value;
+  if (typeof value !== 'string') return undefined;
+  const nums = value.match(/\d+(?:[.,]\d+)?/g);
+  if (!nums || nums.length === 0) return undefined;
+  const values = nums.map(n => parseFloat(n.replace(',', '.')));
+  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+  return isNaN(avg) ? undefined : Math.round(avg * 10) / 10;
+}
+
 export class PriceService {
   private readonly CACHE_TTL = 300; // 5 minutes
 
@@ -27,9 +41,10 @@ export class PriceService {
     products: ScrapedProduct[],
     seedbankSlug: string,
     scraperId: string
-  ): Promise<{ seeds: number; prices: number }> {
+  ): Promise<{ seeds: number; prices: number; pricesUpdated: number }> {
     let seedsCreated = 0;
     let pricesCreated = 0;
+    let pricesUpdated = 0;
     
     for (const product of products) {
       try {
@@ -45,8 +60,8 @@ export class PriceService {
             breeder: product.breeder || 'Unknown',
             type: product.type,
             genetics: product.genetics,
-            thc: product.thc,
-            cbd: product.cbd,
+            thc: parsePercentage(product.thc),
+            cbd: parsePercentage(product.cbd),
             floweringTime: product.floweringTime,
             imageUrl: product.imageUrl,
             viewCount: 0,
@@ -57,8 +72,8 @@ export class PriceService {
           seedsCreated++;
         } else {
           // Update seed data if missing
-          if (!seed.thc && product.thc) seed.thc = product.thc;
-          if (!seed.cbd && product.cbd) seed.cbd = product.cbd;
+          if (!seed.thc && product.thc) seed.thc = parsePercentage(product.thc);
+          if (!seed.cbd && product.cbd) seed.cbd = parsePercentage(product.cbd);
           if (!seed.floweringTime && product.floweringTime) seed.floweringTime = product.floweringTime;
           if (!seed.genetics && product.genetics) seed.genetics = product.genetics;
           if (!seed.imageUrl && product.imageUrl) seed.imageUrl = product.imageUrl;
@@ -87,6 +102,7 @@ export class PriceService {
           existingPrice.validUntil = validUntil;
           
           await existingPrice.save();
+          pricesUpdated++;
         } else {
           // Create new
           const newPrice = new Price({
@@ -126,9 +142,9 @@ export class PriceService {
       }
     }
     
-    logger.info(`[PriceService] Saved ${seedsCreated} seeds, ${pricesCreated} new prices`);
-    
-    return { seeds: seedsCreated, prices: pricesCreated };
+    logger.info(`[PriceService] Saved ${seedsCreated} new seeds, ${pricesCreated} new prices, ${pricesUpdated} prices updated`);
+
+    return { seeds: seedsCreated, prices: pricesCreated, pricesUpdated };
   }
   
   /**

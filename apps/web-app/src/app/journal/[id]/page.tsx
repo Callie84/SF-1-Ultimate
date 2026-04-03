@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
+import Image from 'next/image';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,10 +22,11 @@ import {
   Globe,
   Lock,
   ExternalLink,
+  GitBranch,
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate, formatRelativeTime } from '@/lib/utils';
-import { useGrow, useEntries, useDeleteEntry, useHarvestGrow, useToggleVisibility } from '@/hooks/use-journal';
+import { useGrow, useEntries, useDeleteEntry, useHarvestGrow, useToggleVisibility, useGrowClones } from '@/hooks/use-journal';
 import { toast } from 'sonner';
 
 const statusColors: Record<string, string> = {
@@ -61,18 +63,22 @@ export default function GrowDetailPage() {
   const [showHarvestForm, setShowHarvestForm] = useState(false);
   const [harvestData, setHarvestData] = useState({
     harvestDate: new Date().toISOString().split('T')[0],
+    yieldWet: '',
     yieldDry: '',
+    growAreaM2: '',
     quality: '4',
   });
 
   const { data: growData, isLoading: growLoading, error: growError } = useGrow(id);
   const { data: entriesData, isLoading: entriesLoading } = useEntries(id);
+  const { data: clonesData } = useGrowClones(id);
   const deleteEntry = useDeleteEntry(id);
   const harvestGrow = useHarvestGrow(id);
   const toggleVisibility = useToggleVisibility(id);
 
   const grow = growData?.grow;
   const entries = entriesData?.entries || [];
+  const clones = (clonesData as any)?.clones || [];
 
   const handleDeleteEntry = async (entryId: string) => {
     if (!confirm('Eintrag wirklich löschen?')) return;
@@ -88,7 +94,9 @@ export default function GrowDetailPage() {
     try {
       await harvestGrow.mutateAsync({
         harvestDate: new Date(harvestData.harvestDate).toISOString(),
+        yieldWet: harvestData.yieldWet ? parseFloat(harvestData.yieldWet) : undefined,
         yieldDry: harvestData.yieldDry ? parseFloat(harvestData.yieldDry) : undefined,
+        growAreaM2: harvestData.growAreaM2 ? parseFloat(harvestData.growAreaM2) : undefined,
         quality: parseInt(harvestData.quality),
       });
       toast.success('Grow als geerntet markiert!');
@@ -250,6 +258,18 @@ export default function GrowDetailPage() {
                     />
                   </div>
                   <div className="space-y-1">
+                    <label className="text-xs font-medium">Nassgewicht (g)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      placeholder="z.B. 120"
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                      value={harvestData.yieldWet}
+                      onChange={e => setHarvestData(d => ({ ...d, yieldWet: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
                     <label className="text-xs font-medium">Trockengewicht (g)</label>
                     <input
                       type="number"
@@ -262,6 +282,18 @@ export default function GrowDetailPage() {
                     />
                   </div>
                   <div className="space-y-1">
+                    <label className="text-xs font-medium">Anbaufläche (m²)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="z.B. 0.25"
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                      value={harvestData.growAreaM2}
+                      onChange={e => setHarvestData(d => ({ ...d, growAreaM2: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
                     <label className="text-xs font-medium">Qualität (1-5)</label>
                     <select
                       className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
@@ -293,6 +325,51 @@ export default function GrowDetailPage() {
               </div>
             )}
 
+            {/* Harvest Results — visible when harvested */}
+            {grow.status === 'harvested' && (grow.yieldDry || grow.yieldWet) && (
+              <div className="mt-4 rounded-lg border border-green-200 bg-green-50/50 p-4">
+                <h3 className="text-sm font-semibold text-green-800 mb-3">Ernte-Ergebnisse</h3>
+                <div className="flex flex-wrap gap-3">
+                  {grow.yieldWet && (
+                    <div className="text-center rounded-md bg-background border px-3 py-2">
+                      <div className="text-lg font-bold">{grow.yieldWet}g</div>
+                      <div className="text-xs text-muted-foreground">Nassgewicht</div>
+                    </div>
+                  )}
+                  {grow.yieldDry && (
+                    <div className="text-center rounded-md bg-background border px-3 py-2">
+                      <div className="text-lg font-bold text-green-700">{grow.yieldDry}g</div>
+                      <div className="text-xs text-muted-foreground">Trockengewicht</div>
+                    </div>
+                  )}
+                  {grow.efficiency && (
+                    <div className="text-center rounded-md bg-background border px-3 py-2">
+                      <div className="text-lg font-bold text-blue-700">{grow.efficiency} g/W</div>
+                      <div className="text-xs text-muted-foreground">Effizienz</div>
+                    </div>
+                  )}
+                  {grow.yieldPerM2 && (
+                    <div className="text-center rounded-md bg-background border px-3 py-2">
+                      <div className="text-lg font-bold text-purple-700">{grow.yieldPerM2} g/m²</div>
+                      <div className="text-xs text-muted-foreground">Flächenertrag</div>
+                    </div>
+                  )}
+                  {grow.quality && (
+                    <div className="text-center rounded-md bg-background border px-3 py-2">
+                      <div className="text-lg font-bold text-yellow-600">{'★'.repeat(grow.quality)}{'☆'.repeat(5 - grow.quality)}</div>
+                      <div className="text-xs text-muted-foreground">Qualität</div>
+                    </div>
+                  )}
+                  {grow.harvestDate && (
+                    <div className="text-center rounded-md bg-background border px-3 py-2">
+                      <div className="text-lg font-bold">{new Date(grow.harvestDate).toLocaleDateString('de-DE')}</div>
+                      <div className="text-xs text-muted-foreground">Erntedatum</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Stats Row */}
             <div className="mt-6 flex flex-wrap gap-6 text-sm">
               <div className="flex items-center gap-2">
@@ -314,6 +391,56 @@ export default function GrowDetailPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Klon-Abschnitt */}
+        {(grow.motherGrowId || clones.length > 0) && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <GitBranch className="h-4 w-4" />
+                Klon-Stammbaum
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {grow.motherGrowId && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Mutterpflanze:</span>
+                  <Link
+                    href={`/journal/${grow.motherGrowId}`}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Zum Mutter-Grow →
+                  </Link>
+                </div>
+              )}
+              {clones.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-xs text-muted-foreground font-medium">
+                    {clones.length} Klon{clones.length !== 1 ? 'e' : ''} von diesem Grow:
+                  </span>
+                  <div className="space-y-1">
+                    {clones.map((clone: any) => (
+                      <Link
+                        key={clone._id}
+                        href={`/journal/${clone._id}`}
+                        className="flex items-center justify-between rounded-md border px-3 py-2 hover:bg-muted/50 transition-colors"
+                      >
+                        <span className="text-sm font-medium">{clone.strainName}</span>
+                        <span className="text-xs text-muted-foreground capitalize">{clone.status}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <Button variant="outline" size="sm" asChild className="mt-2">
+                <Link href={`/journal/new?motherGrowId=${id}&type=clone`}>
+                  <GitBranch className="h-3.5 w-3.5 mr-1.5" />
+                  Klon anlegen
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Action Bar */}
         <div className="flex items-center justify-between">
@@ -429,7 +556,7 @@ export default function GrowDetailPage() {
                                   className="h-20 w-20 sm:h-24 sm:w-24 flex-shrink-0 rounded-lg overflow-hidden bg-muted"
                                 >
                                   {photoUrl ? (
-                                    <img src={photoUrl} alt={`Foto ${pidx + 1}`} className="h-full w-full object-cover" />
+                                    <Image src={photoUrl} alt={`Foto ${pidx + 1}`} width={96} height={96} className="h-full w-full object-cover" />
                                   ) : (
                                     <div className="h-full w-full flex items-center justify-center">
                                       <Sprout className="h-6 w-6 text-muted-foreground/40" />

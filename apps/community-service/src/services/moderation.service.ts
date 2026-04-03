@@ -53,27 +53,27 @@ export class ModerationService {
   }
   
   /**
-   * Reports abrufen (Mod-Only)
+   * Reports abrufen (Mod-Only) — angereichert mit Content-Daten
    */
   async getReports(options: {
     status?: string;
     targetType?: string;
     limit?: number;
     skip?: number;
-  } = {}): Promise<{ reports: IReport[]; total: number }> {
+  } = {}): Promise<{ reports: any[]; total: number }> {
     const query: any = {};
-    
+
     if (options.status) {
       query.status = options.status;
     }
-    
+
     if (options.targetType) {
       query.targetType = options.targetType;
     }
-    
+
     const limit = Math.min(options.limit || 50, 200);
     const skip = options.skip || 0;
-    
+
     const [reports, total] = await Promise.all([
       Report.find(query)
         .sort({ createdAt: -1 })
@@ -82,8 +82,38 @@ export class ModerationService {
         .lean(),
       Report.countDocuments(query)
     ]);
-    
-    return { reports, total };
+
+    // Content anreichern
+    const enriched = await Promise.all(reports.map(async (report) => {
+      let content: any = null;
+      let contentUrl: string | null = null;
+
+      try {
+        if (report.targetType === 'thread') {
+          const thread = await Thread.findById(report.targetId)
+            .select('title content userId')
+            .lean() as any;
+          if (thread) {
+            content = { title: thread.title, content: thread.content, userId: thread.userId };
+            contentUrl = `/community/thread/${report.targetId}`;
+          }
+        } else if (report.targetType === 'reply') {
+          const reply = await Reply.findById(report.targetId)
+            .select('content userId threadId')
+            .lean() as any;
+          if (reply) {
+            content = { content: reply.content, userId: reply.userId };
+            contentUrl = `/community/thread/${reply.threadId}`;
+          }
+        }
+      } catch {
+        // Inhalt nicht gefunden (bereits gelöscht)
+      }
+
+      return { ...report, content, contentUrl };
+    }));
+
+    return { reports: enriched, total };
   }
   
   /**

@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
-import { useAdminReports, useResolveReport } from '@/hooks/use-admin';
+import { useAdminReports, useResolveReport, useModerationStats } from '@/hooks/use-admin';
 import { formatRelativeTime } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -41,6 +41,7 @@ export default function AdminModerationPage() {
   });
 
   const resolveReport = useResolveReport();
+  const { data: statsData } = useModerationStats();
 
   // Redirect non-admin users
   useEffect(() => {
@@ -140,6 +141,36 @@ export default function AdminModerationPage() {
             </p>
           </div>
         </div>
+
+        {/* Stats */}
+        {statsData?.stats && (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-bold text-orange-500">{statsData.stats.pendingReports}</div>
+                <p className="text-xs text-muted-foreground">Offene Meldungen</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-bold text-destructive">{statsData.stats.activeBans}</div>
+                <p className="text-xs text-muted-foreground">Aktive Sperren</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-bold">{statsData.stats.reportsToday}</div>
+                <p className="text-xs text-muted-foreground">Meldungen heute</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-bold">{statsData.stats.bansToday}</div>
+                <p className="text-xs text-muted-foreground">Sperren heute</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Filters */}
         <Card>

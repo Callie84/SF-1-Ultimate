@@ -2,6 +2,7 @@
 import { meiliClient, INDEXES } from '../config/meilisearch';
 import { logger } from '../utils/logger';
 import mongoose from 'mongoose';
+import { Pool } from 'pg';
 
 export interface IndexDocument {
   id: string;
@@ -273,19 +274,37 @@ export class IndexingService {
   }
   
   /**
-   * Users aus PostgreSQL indexieren
+   * Users aus PostgreSQL (auth-service DB) indexieren
    */
   async reindexUsers(): Promise<void> {
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     try {
       logger.info('[Indexing] Starting user reindex...');
-      
-      // TODO: PostgreSQL-Connection zum Auth-Service
-      // Für jetzt: Placeholder
-      
-      logger.info('[Indexing] User reindex: TODO');
+
+      const { rows: users } = await pool.query(`
+        SELECT id, username, email, bio, avatar, role, "isVerified", "createdAt"
+        FROM "User"
+        WHERE "isActive" = true AND "isBanned" = false
+      `);
+
+      const documents = users.map(u => ({
+        id: u.id,
+        username: u.username,
+        bio: u.bio || '',
+        avatar: u.avatar || null,
+        role: u.role,
+        isVerified: u.isVerified,
+        createdAt: new Date(u.createdAt).getTime(),
+      }));
+
+      await this.indexDocuments('USERS', documents);
+
+      logger.info(`[Indexing] Reindexed ${documents.length} users`);
     } catch (error) {
       logger.error('[Indexing] User reindex failed:', error);
       throw error;
+    } finally {
+      await pool.end();
     }
   }
   
@@ -299,7 +318,7 @@ export class IndexingService {
     await this.reindexStrains();
     await this.reindexThreads();
     await this.reindexGrows();
-    // await this.reindexUsers(); // TODO
+    await this.reindexUsers();
 
     logger.info('[Indexing] Full reindex completed');
   }
