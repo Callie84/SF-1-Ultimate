@@ -311,6 +311,10 @@ export class PriceService {
     const limit = Math.min(options.limit || 50, 200);
     const skip = options.skip || 0;
 
+    const cacheKey = `search:${query}:${options.type || ''}:${options.breeder || ''}:${limit}:${skip}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
     const searchQuery: any = {
       $or: [
         { name: { $regex: query, $options: 'i' } },
@@ -318,12 +322,8 @@ export class PriceService {
       ]
     };
 
-    if (options.type) {
-      searchQuery.type = options.type;
-    }
-    if (options.breeder) {
-      searchQuery.breeder = options.breeder;
-    }
+    if (options.type) searchQuery.type = options.type;
+    if (options.breeder) searchQuery.breeder = options.breeder;
 
     const [seeds, total] = await Promise.all([
       Seed.find(searchQuery)
@@ -334,33 +334,39 @@ export class PriceService {
       Seed.countDocuments(searchQuery)
     ]);
 
-    // Enrich seeds with their prices (exclude inactive seedbanks)
+    // Alle Preise für diese Seeds in EINER Query laden (statt N+1)
     const inactiveSeedbanks = await this.getInactiveSeedbanks();
-    const enriched = await Promise.all(seeds.map(async (seed) => {
-      const priceFilter: any = { seedId: seed._id };
-      if (inactiveSeedbanks.length > 0) {
-        priceFilter.seedbankSlug = { $nin: inactiveSeedbanks };
-      }
-      const prices = await Price.find(priceFilter)
-        .sort({ price: 1 })
-        .lean();
+    const priceFilter: any = { seedId: { $in: seeds.map(s => s._id) } };
+    if (inactiveSeedbanks.length > 0) {
+      priceFilter.seedbankSlug = { $nin: inactiveSeedbanks };
+    }
+    const allPrices = await Price.find(priceFilter).sort({ price: 1 }).lean();
 
-      return {
-        ...seed,
-        prices: prices.map(p => ({
-          seedbank: p.seedbank,
-          seedbankSlug: p.seedbankSlug,
-          price: p.price,
-          currency: p.currency || 'EUR',
-          seedCount: p.seedCount || 1,
-          packSize: p.packSize,
-          url: p.url,
-          inStock: p.inStock ?? true,
-        }))
-      };
+    // Preise per seedId gruppieren (in JS — keine weiteren DB-Queries)
+    const pricesBySeedId: Record<string, typeof allPrices> = {};
+    for (const p of allPrices) {
+      const id = p.seedId.toString();
+      if (!pricesBySeedId[id]) pricesBySeedId[id] = [];
+      pricesBySeedId[id].push(p);
+    }
+
+    const enriched = seeds.map((seed) => ({
+      ...seed,
+      prices: (pricesBySeedId[seed._id.toString()] || []).map(p => ({
+        seedbank: p.seedbank,
+        seedbankSlug: p.seedbankSlug,
+        price: p.price,
+        currency: p.currency || 'EUR',
+        seedCount: p.seedCount || 1,
+        packSize: p.packSize,
+        url: p.url,
+        inStock: p.inStock ?? true,
+      }))
     }));
 
-    return { seeds: enriched, total };
+    const result = { seeds: enriched, total };
+    await redis.setEx(cacheKey, this.CACHE_TTL, JSON.stringify(result));
+    return result;
   }
 
   /**
@@ -376,6 +382,10 @@ export class PriceService {
     const limit = Math.min(options.limit || 24, 100);
     const skip = options.skip || 0;
 
+    const cacheKey = `browse:${options.type || ''}:${options.breeder || ''}:${options.sort || 'price'}:${limit}:${skip}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
     const query: any = { priceCount: { $gt: 0 } };
     if (options.type) query.type = options.type;
     if (options.breeder) query.breeder = options.breeder;
@@ -385,56 +395,60 @@ export class PriceService {
     else if (options.sort === 'name') sortObj = { name: 1 };
     else if (options.sort === 'popular') sortObj = { viewCount: -1 };
 
-    const [seeds, total, breedersAgg] = await Promise.all([
-      Seed.find(query)
-        .sort(sortObj)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Seed.countDocuments(query),
-      Seed.aggregate([
+    // Breeders-Liste separat mit langem Cache (ändert sich selten)
+    const breedersCacheKey = 'browse:breeders';
+    let breeders: string[];
+    const cachedBreeders = await redis.get(breedersCacheKey);
+    if (cachedBreeders) {
+      breeders = JSON.parse(cachedBreeders);
+    } else {
+      const breedersAgg = await Seed.aggregate([
         { $match: { priceCount: { $gt: 0 } } },
         { $group: { _id: '$breeder', count: { $sum: 1 } } },
         { $sort: { count: -1 } }
-      ])
+      ]);
+      breeders = breedersAgg.map((b: any) => b._id);
+      await redis.setEx(breedersCacheKey, 3600, JSON.stringify(breeders)); // 1h
+    }
+
+    const [seeds, total] = await Promise.all([
+      Seed.find(query).sort(sortObj).skip(skip).limit(limit).lean(),
+      Seed.countDocuments(query),
     ]);
 
-    // Filter inactive seedbanks from prices
+    // Alle Preise für diese Seeds in EINER Query laden (statt N+1)
     const inactiveSeedbanks = await this.getInactiveSeedbanks();
-    const priceFilter: any = { seedId: { $in: seeds.map(s => s._id) } };
+    const priceFilter: any = { seedId: { $in: seeds.map(s => s._id) }, inStock: true };
     if (inactiveSeedbanks.length > 0) {
       priceFilter.seedbankSlug = { $nin: inactiveSeedbanks };
     }
+    const allPrices = await Price.find(priceFilter).sort({ price: 1 }).lean();
 
-    // Enrich with best price
-    const enriched = await Promise.all(seeds.map(async (seed) => {
-      const seedPriceFilter: any = { seedId: seed._id };
-      if (inactiveSeedbanks.length > 0) {
-        seedPriceFilter.seedbankSlug = { $nin: inactiveSeedbanks };
-      }
-      const prices = await Price.find(seedPriceFilter)
-        .sort({ price: 1 })
-        .limit(5)
-        .lean();
+    // Preise per seedId gruppieren (in JS — keine weiteren DB-Queries)
+    const pricesBySeedId: Record<string, typeof allPrices> = {};
+    for (const p of allPrices) {
+      const id = p.seedId.toString();
+      if (!pricesBySeedId[id]) pricesBySeedId[id] = [];
+      pricesBySeedId[id].push(p);
+    }
 
-      return {
-        ...seed,
-        prices: prices.map(p => ({
-          seedbank: p.seedbank,
-          seedbankSlug: p.seedbankSlug,
-          price: p.price,
-          currency: p.currency || 'EUR',
-          seedCount: p.seedCount || 1,
-          packSize: p.packSize,
-          url: p.url,
-          inStock: p.inStock ?? true,
-        }))
-      };
+    const enriched = seeds.map((seed) => ({
+      ...seed,
+      prices: (pricesBySeedId[seed._id.toString()] || []).slice(0, 5).map(p => ({
+        seedbank: p.seedbank,
+        seedbankSlug: p.seedbankSlug,
+        price: p.price,
+        currency: p.currency || 'EUR',
+        seedCount: p.seedCount || 1,
+        packSize: p.packSize,
+        url: p.url,
+        inStock: p.inStock ?? true,
+      }))
     }));
 
-    const breeders = breedersAgg.map((b: any) => b._id);
-
-    return { seeds: enriched, total, breeders };
+    const result = { seeds: enriched, total, breeders };
+    await redis.setEx(cacheKey, this.CACHE_TTL, JSON.stringify(result));
+    return result;
   }
   
   /**
