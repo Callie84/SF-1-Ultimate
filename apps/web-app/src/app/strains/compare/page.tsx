@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -118,9 +119,11 @@ function ComparisonCard({
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           {strain.imageUrl ? (
-            <img
+            <Image
               src={strain.imageUrl}
               alt={strain.name}
+              width={48}
+              height={48}
               className="h-12 w-12 rounded-lg object-cover"
             />
           ) : (

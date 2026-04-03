@@ -1,14 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api-client';
 
+type AdminFilters = Record<string, string | number | boolean | undefined>;
+
 // Query Keys
 export const adminKeys = {
   all: ['admin'] as const,
   stats: () => [...adminKeys.all, 'stats'] as const,
-  users: (filters?: any) => [...adminKeys.all, 'users', filters] as const,
+  users: (filters?: AdminFilters) => [...adminKeys.all, 'users', filters] as const,
   user: (id: string) => [...adminKeys.all, 'user', id] as const,
-  threads: (filters?: any) => [...adminKeys.all, 'threads', filters] as const,
-  reports: (filters?: any) => [...adminKeys.all, 'reports', filters] as const,
+  threads: (filters?: AdminFilters) => [...adminKeys.all, 'threads', filters] as const,
+  reports: (filters?: AdminFilters) => [...adminKeys.all, 'reports', filters] as const,
   systemHealth: () => [...adminKeys.all, 'system-health'] as const,
 };
 
@@ -24,15 +26,16 @@ export function useAdminStats() {
   });
 }
 
-// System Health
+// System Health — aggregiert über Next.js API Route /api/health
 export function useSystemHealth() {
   return useQuery({
     queryKey: adminKeys.systemHealth(),
     queryFn: async () => {
-      const data = await api.get('/api/admin/health');
-      return data;
+      const res = await fetch('/api/health', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Health check failed');
+      return res.json();
     },
-    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchInterval: 15000,
   });
 }
 
@@ -70,7 +73,7 @@ export function useUpdateUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ userId, updates }: { userId: string; updates: any }) => {
+    mutationFn: async ({ userId, updates }: { userId: string; updates: Record<string, string | boolean> }) => {
       const data = await api.patch(`/api/auth/admin/users/${userId}`, updates);
       return data;
     },
@@ -108,6 +111,18 @@ export function useAdminReports(filters?: { status?: string; type?: string }) {
       const data = await api.get(`/api/community/moderation/reports?${params}`);
       return data;
     },
+  });
+}
+
+// Moderation Stats
+export function useModerationStats() {
+  return useQuery({
+    queryKey: [...adminKeys.all, 'moderation-stats'] as const,
+    queryFn: async () => {
+      const data = await api.get('/api/community/moderation/stats');
+      return data;
+    },
+    refetchInterval: 30000,
   });
 }
 

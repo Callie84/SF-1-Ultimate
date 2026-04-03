@@ -4,6 +4,7 @@ import { Achievement } from '../models/Achievement.model';
 import { Badge } from '../models/Badge.model';
 import { UserProfile } from '../models/UserProfile.model';
 import { logger } from '../utils/logger';
+import { cacheOrFetch, invalidateCache } from '../utils/cache';
 
 const router = Router();
 
@@ -60,8 +61,11 @@ router.patch('/achievements/:id/toggle', requireAdmin, async (req, res) => {
  */
 router.get('/badges', requireAdmin, async (req, res) => {
   try {
-    const badges = await Badge.find({}).sort({ category: 1 }).lean();
-    res.json({ badges });
+    const result = await cacheOrFetch('cache:badges:all', 60 * 60, async () => {
+      const badges = await Badge.find({}).sort({ category: 1 }).lean();
+      return { badges };
+    });
+    res.json(result);
   } catch (error: any) {
     logger.error('[Admin] Badges Fehler:', error);
     res.status(500).json({ error: error.message });
@@ -102,6 +106,38 @@ router.get('/stats', requireAdmin, async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[Admin] Gamification-Stats Fehler:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/gamification/admin/cache/clear
+ * Alle Cache-Keys löschen + Hit/Miss-Counter zurücksetzen
+ */
+router.post('/cache/clear', requireAdmin, async (req, res) => {
+  try {
+    await invalidateCache('cache:*');
+    res.json({ success: true, message: 'Alle Cache-Keys gelöscht' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/gamification/admin/cache/stats
+ * Cache Hit/Miss-Statistiken
+ */
+router.get('/cache/stats', requireAdmin, async (req, res) => {
+  try {
+    const { redis } = await import('../config/redis');
+    const [hits, misses] = await Promise.all([
+      redis.get('cache:hits').then(v => parseInt(v || '0')),
+      redis.get('cache:misses').then(v => parseInt(v || '0')),
+    ]);
+    const total = hits + misses;
+    const hitRate = total > 0 ? Math.round((hits / total) * 100) : 0;
+    res.json({ hits, misses, total, hitRate });
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });

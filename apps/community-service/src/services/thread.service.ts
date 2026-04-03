@@ -7,6 +7,7 @@ import { redis } from '../config/redis';
 import { AppError } from '../utils/errors';
 import { logger } from '../utils/logger';
 import { gamificationHooks } from './gamification-hooks';
+import { sanitizeHtml, stripHtml } from '../utils/sanitize';
 
 export class ThreadService {
   /**
@@ -17,6 +18,7 @@ export class ThreadService {
     title: string;
     content: string;
     tags?: string[];
+    imageUrls?: string[];
   }): Promise<IThread> {
     // Ban-Check
     await this.checkBan(userId);
@@ -31,9 +33,10 @@ export class ThreadService {
     const thread = new Thread({
       userId,
       categoryId: data.categoryId,
-      title: data.title.trim(),
-      content: data.content.trim(),
+      title: stripHtml(data.title.trim()),
+      content: sanitizeHtml(data.content.trim()),
       tags: data.tags || [],
+      imageUrls: (data.imageUrls || []).slice(0, 5),
       lastActivityAt: new Date()
     });
     
@@ -70,17 +73,17 @@ export class ThreadService {
     tag?: string;
   }): Promise<{ threads: IThread[]; total: number }> {
     const query: any = { isDeleted: false };
-    
+
     if (options.categoryId) {
-      query.categoryId = options.categoryId;
+      query.categoryId = String(options.categoryId);
     }
-    
+
     if (options.userId) {
-      query.userId = options.userId;
+      query.userId = String(options.userId);
     }
-    
+
     if (options.tag) {
-      query.tags = options.tag;
+      query.tags = String(options.tag);
     }
     
     const limit = Math.min(options.limit || 20, 100);
@@ -187,8 +190,8 @@ export class ThreadService {
       throw new AppError('THREAD_LOCKED', 403);
     }
     
-    if (data.title) thread.title = data.title.trim();
-    if (data.content) thread.content = data.content.trim();
+    if (data.title) thread.title = stripHtml(data.title.trim());
+    if (data.content) thread.content = sanitizeHtml(data.content.trim());
     if (data.tags) thread.tags = data.tags;
     
     await thread.save();
@@ -310,7 +313,7 @@ export class ThreadService {
     };
     
     if (options.categoryId) {
-      searchQuery.categoryId = options.categoryId;
+      searchQuery.categoryId = String(options.categoryId);
     }
     
     const limit = Math.min(options.limit || 20, 100);

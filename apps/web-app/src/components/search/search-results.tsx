@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { MessageSquare, Heart, Eye, Calendar, User, Sprout, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import type { SearchResult } from '@/types/search';
@@ -35,9 +36,11 @@ function ResultCard({ result }: { result: SearchResult }) {
           <div className="flex items-start gap-4">
             {/* Image */}
             {result.imageUrl && (
-              <img
+              <Image
                 src={result.imageUrl}
                 alt={result.title}
+                width={80}
+                height={80}
                 className="h-20 w-20 flex-shrink-0 rounded-lg object-cover"
               />
             )}

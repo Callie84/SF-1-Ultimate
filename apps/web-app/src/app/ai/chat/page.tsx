@@ -4,8 +4,9 @@ import { useState, useRef, useEffect } from 'react';
 import { ChatMessages } from '@/components/ai/chat-messages';
 import { ChatInput } from '@/components/ai/chat-input';
 import { apiClient } from '@/lib/api-client';
-import { Loader2, Plus, MessageSquare, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Plus, MessageSquare, Trash2, ChevronDown, ChevronUp, FlaskConical } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useFeatureFlag } from '@/hooks/use-feature-flags';
 
 interface Message {
   id: string;
@@ -21,11 +22,14 @@ interface Session {
 }
 
 export default function AiChatPage() {
+  const aiChatV2 = useFeatureFlag('ai_chat_v2');
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'assistant',
-      content: 'Hey! Ich bin dein SF-1 AI Assistant. Stell mir Fragen zu Cannabis-Anbau, Strains, Problemen oder was auch immer du wissen möchtest!',
+      content: aiChatV2
+        ? 'Hey! Ich bin dein SF-1 AI Assistant v2 — mit erweitertem Wissen und besserem Kontext. Stell mir Fragen zu Cannabis-Anbau, Strains, Problemen oder was auch immer du wissen möchtest!'
+        : 'Hey! Ich bin dein SF-1 AI Assistant. Stell mir Fragen zu Cannabis-Anbau, Strains, Problemen oder was auch immer du wissen möchtest!',
       timestamp: new Date(),
     },
   ]);
@@ -177,7 +181,15 @@ export default function AiChatPage() {
             AI
           </div>
           <div className="min-w-0">
-            <h1 className="text-base sm:text-lg font-bold">AI Chat</h1>
+            <h1 className="text-base sm:text-lg font-bold flex items-center gap-2">
+              AI Chat
+              {aiChatV2 && (
+                <span className="inline-flex items-center gap-1 text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-full px-2 py-0.5">
+                  <FlaskConical className="h-3 w-3" />
+                  v2 Beta
+                </span>
+              )}
+            </h1>
             <p className="text-xs text-muted-foreground flex items-center gap-1.5">
               <span className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></span>
               Online

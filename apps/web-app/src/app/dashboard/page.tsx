@@ -1,6 +1,7 @@
 'use client';
 
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
+import { ZoneBanner } from '@/components/ads/zone-banner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,11 @@ import { useAuth } from '@/components/providers/auth-provider';
 import { useGrows } from '@/hooks/use-journal';
 import { useGamificationProfile } from '@/hooks/use-gamification';
 import { useUpcomingReminders, useOverdueReminders, useCompleteReminder, useSkipReminder, type ReminderType } from '@/hooks/use-reminders';
+import { useState } from 'react';
+import api from '@/lib/api-client';
+import { toast } from 'sonner';
+import { OnboardingChecklist } from '@/components/onboarding-checklist';
+import { useFeatureFlag } from '@/hooks/use-feature-flags';
 
 const REMINDER_TYPE_CONFIG: Record<ReminderType, { label: string; color: string; icon: React.ReactNode }> = {
   watering: { label: 'Gießen', color: 'bg-blue-500', icon: <Droplets className="h-3 w-3" /> },
@@ -40,6 +46,20 @@ const REMINDER_TYPE_CONFIG: Record<ReminderType, { label: string; color: string;
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const [sendingVerification, setSendingVerification] = useState(false);
+  const premiumEnabled = useFeatureFlag('premium_features');
+
+  const handleSendVerification = async () => {
+    setSendingVerification(true);
+    try {
+      await api.post('/api/auth/send-verification-email', {});
+      toast.success('Verifizierungs-E-Mail gesendet – prüfe deinen Posteingang');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Fehler beim Senden der E-Mail');
+    } finally {
+      setSendingVerification(false);
+    }
+  };
   const { data, isLoading } = useGrows();
   const { data: gamification } = useGamificationProfile(user?.id);
   const { data: upcomingData, isLoading: remindersLoading } = useUpcomingReminders(3);
@@ -117,6 +137,24 @@ export default function DashboardPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <ZoneBanner zoneId="dashboard-top" />
+
+        {/* E-Mail-Verifizierungs-Banner */}
+        {user && !user.isVerified && (
+          <div className="flex items-center justify-between rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm">
+            <span className="text-yellow-700 dark:text-yellow-400">
+              Bitte bestätige deine E-Mail-Adresse ({user.email}), um alle Funktionen zu nutzen.
+            </span>
+            <button
+              onClick={handleSendVerification}
+              disabled={sendingVerification}
+              className="ml-4 flex-shrink-0 rounded-md bg-yellow-500 px-3 py-1 text-xs font-medium text-white hover:bg-yellow-600 transition-colors disabled:opacity-50"
+            >
+              {sendingVerification ? 'Wird gesendet…' : 'Bestätigungs-Mail senden'}
+            </button>
+          </div>
+        )}
+
         {/* Welcome Header */}
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">
@@ -126,6 +164,25 @@ export default function DashboardPage() {
             Hier ist eine Übersicht deiner Growing-Aktivitäten
           </p>
         </div>
+
+        {/* Onboarding Checklist — nur für neue Nutzer */}
+        <OnboardingChecklist />
+
+        {/* Premium-Features Banner — nur wenn Flag aktiv */}
+        {premiumEnabled && (
+          <div className="flex items-center justify-between rounded-lg border border-yellow-500/40 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Zap className="h-5 w-5 text-yellow-400 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-yellow-300">Premium jetzt verfügbar</p>
+                <p className="text-xs text-muted-foreground">Mehr Grows, erweiterte Statistiken und kein Tracking.</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" className="border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 flex-shrink-0">
+              Mehr erfahren
+            </Button>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

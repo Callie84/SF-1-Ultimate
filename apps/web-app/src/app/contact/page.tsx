@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Mail, Send, Loader2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import api from '@/lib/api-client';
 
 export default function ContactPage() {
   const [sending, setSending] = useState(false);
@@ -21,11 +22,15 @@ export default function ContactPage() {
       return;
     }
     setSending(true);
-    // Simulate sending
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setSending(false);
-    setSent(true);
-    toast.success('Nachricht gesendet! Wir melden uns bald bei dir.');
+    try {
+      await api.post('/api/notifications/contact', form);
+      setSent(true);
+      toast.success('Nachricht gesendet! Wir melden uns bald bei dir.');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Fehler beim Senden. Bitte versuche es später erneut.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (

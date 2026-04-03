@@ -9,21 +9,47 @@
 
 ---
 
-## 🆕 Recent Updates (Januar 2026)
+## ⚙️ Betrieb (Produktionsserver)
 
-**Major Fixes & Improvements:**
-- ✅ **Auth-Service komplett repariert** - user.service.ts implementiert mit argon2id Hashing
-- ✅ **Frontend Authentication behoben** - API Client Response Handling korrigiert
-- ✅ **Token Rotation implementiert** - Erhöhte Security für Refresh-Tokens
-- ✅ **Production Health-Checks** - Echte DB/Redis Checks statt Placeholders
-- ✅ **Umfassende Setup-Dokumentation** - SETUP.md mit Schritt-für-Schritt Anleitung
-- ✅ **Security-Warnungen** - .env.example mit kritischen Hinweisen erweitert
-- ✅ **Alle Services Production-Ready** - 99% funktionsfähig, 0 blockierende Fehler
+```bash
+# Service-Status
+make ps
 
-**Security Upgrades:**
-- 🔒 bcrypt → argon2id (OWASP-empfohlen)
-- 🔒 Token Rotation (verhindert Reuse-Angriffe)
-- 🔒 Graceful Shutdown (verhindert Datenverlust)
+# Logs verfolgen
+make logs
+make logs-frontend
+
+# Einzelne Services neu starten
+make restart-auth
+make restart-community
+make restart-frontend   # ~8 Min (Next.js Build)
+
+# Backup manuell triggern
+make backup
+make backup-list
+
+# Datenbank-Shells
+make shell-mongo
+make shell-postgres
+make shell-redis
+```
+
+Alle verfügbaren Befehle: `make help`
+
+---
+
+## 🆕 Recent Updates (März 2026 — Sessions 55–62)
+
+**Aktuelle Features (Stand März 2026):**
+- ✅ **SEO** — JSON-LD + OpenGraph + dynamische Sitemap (206 URLs)
+- ✅ **CI/CD** — GitHub Actions (Lint, TypeCheck, SSH-Deploy)
+- ✅ **TypeScript Strict** — alle `any`-Typen eliminiert, Shared-Types-Package
+- ✅ **Stripe Premium** — Monats- und Jahres-Abo (4,99€ / 39,99€/Jahr)
+- ✅ **Affiliate-Dashboard** — MongoDB-persistentes Click-Tracking, Admin-Stats
+- ✅ **Next.js Image** — alle `<img>` auf `<Image>` migriert, WebP/AVIF aktiviert
+- ✅ **Sentry** — Error Tracking in allen Services (Frontend + Backend)
+- ✅ **Rate Limiting** — Redis-basiert, global + service-spezifisch
+- ✅ **Beta-Modus** — 50 Registrierungen bis 07.04.2026
 
 ---
 

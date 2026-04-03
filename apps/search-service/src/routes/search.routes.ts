@@ -329,6 +329,9 @@ router.post('/reindex/:index',
         case 'grows':
           await indexingService.reindexGrows();
           break;
+        case 'users':
+          await indexingService.reindexUsers();
+          break;
         case 'all':
           await indexingService.reindexAll();
           break;

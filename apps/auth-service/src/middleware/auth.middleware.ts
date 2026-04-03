@@ -63,7 +63,7 @@ export const authMiddleware = (trustTraefik: boolean = true) => {
       // Wenn Request von Traefik kommt (erkennbar an X-Forwarded-For Header),
       // dann hat Traefik bereits Auth-Service aufgerufen und X-User-* gesetzt
       
-      if (trustTraefik && req.headers['x-forwarded-for']) {
+      if (trustTraefik && req.headers['x-forwarded-for'] && req.headers['x-user-id']) {
         const userId = req.headers['x-user-id'] as string;
         const userRole = req.headers['x-user-role'] as string;
         const userEmail = req.headers['x-user-email'] as string;
@@ -353,9 +353,30 @@ setInterval(() => {
   }
 }, 300000); // Cleanup alle 5 Minuten
 
+/**
+ * requirePremium — prüft ob User aktives Premium-Abo hat.
+ * MUSS NACH authMiddleware verwendet werden.
+ * Gibt HTTP 402 zurück wenn kein Premium.
+ */
+export const requirePremium = (req: AuthRequest, res: Response, next: NextFunction) => {
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Authentifizierung erforderlich' });
+  }
+  if (!user.premium) {
+    return res.status(402).json({
+      error: 'Premium-Mitgliedschaft erforderlich',
+      code: 'PREMIUM_REQUIRED',
+      upgradeUrl: '/premium',
+    });
+  }
+  next();
+};
+
 export default {
   authMiddleware,
   adminMiddleware,
   optionalAuthMiddleware,
-  rateLimitMiddleware
+  rateLimitMiddleware,
+  requirePremium,
 };

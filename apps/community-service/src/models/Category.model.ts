@@ -55,9 +55,8 @@ const CategorySchema = new Schema<ICategory>({
     type: Boolean, 
     default: true 
   },
-  parentId: { 
-    type: String, 
-    index: true 
+  parentId: {
+    type: String
   },
   moderators: [{ 
     type: String 
@@ -67,7 +66,6 @@ const CategorySchema = new Schema<ICategory>({
 });
 
 // Indexes
-CategorySchema.index({ slug: 1 });
 CategorySchema.index({ order: 1, isActive: 1 });
 CategorySchema.index({ parentId: 1 });
 

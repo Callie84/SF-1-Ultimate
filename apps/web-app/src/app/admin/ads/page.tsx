@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input';
 import { AdCarousel } from '@/components/ads/ad-carousel';
 import {
   Plus,
-  Trash2,
   Edit,
   Save,
   X,
@@ -22,10 +21,16 @@ import {
   ExternalLink,
   Megaphone,
   LayoutDashboard,
+  BarChart2,
+  TrendingUp,
+  MousePointerClick,
+  Euro,
+  Calendar,
+  User,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
-import { useAllAds, useCreateAd, useUpdateAd, useDeleteAd, Ad } from '@/hooks/use-ads';
+import { useAllAds, useCreateAd, useUpdateAd, useDeleteAd, useAdStats, Ad } from '@/hooks/use-ads';
 import { useAdZones, useSaveAdZones, ZoneConfig } from '@/hooks/use-ad-zones';
 import { AdZoneEditor } from '@/components/admin/AdZoneEditor';
 import { toast } from 'sonner';
@@ -39,6 +44,12 @@ const EMPTY_FORM = {
   altText: '',
   isActive: true,
   order: 0,
+  clientName: '',
+  clientEmail: '',
+  startDate: '',
+  endDate: '',
+  budget: '' as string | number,
+  cpm: '' as string | number,
 };
 
 export default function AdminAdsPage() {
@@ -48,23 +59,27 @@ export default function AdminAdsPage() {
   const createAd = useCreateAd();
   const updateAd = useUpdateAd();
   const deleteAd = useDeleteAd();
+  const { data: statsData, isLoading: statsLoading } = useAdStats();
   const { data: zonesData } = useAdZones();
   const saveZones = useSaveAdZones();
 
-  const [mainTab, setMainTab] = useState<'ads' | 'zones'>('ads');
+  const [mainTab, setMainTab] = useState<'ads' | 'buchungen' | 'zones'>('ads');
   const [activeTab, setActiveTab] = useState<'rectangle' | 'square'>('rectangle');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [localZones, setLocalZones] = useState<ZoneConfig[] | null>(null);
+  const [localSidebarWidth, setLocalSidebarWidth] = useState<number | null>(null);
 
   // Sync localZones from backend when loaded
   const currentZones: ZoneConfig[] = localZones ?? (zonesData?.zones as ZoneConfig[]) ?? [];
+  const currentSidebarWidth: number = localSidebarWidth ?? zonesData?.sidebarWidth ?? 256;
 
   const handleSaveZones = async () => {
     try {
-      await saveZones.mutateAsync(currentZones);
+      await saveZones.mutateAsync({ zones: currentZones, sidebarWidth: currentSidebarWidth });
       setLocalZones(null);
+      setLocalSidebarWidth(null);
       toast.success('Zonen-Layout gespeichert');
     } catch {
       toast.error('Fehler beim Speichern');
@@ -116,6 +131,12 @@ export default function AdminAdsPage() {
       altText: ad.altText,
       isActive: ad.isActive,
       order: ad.order,
+      clientName: ad.clientName || '',
+      clientEmail: ad.clientEmail || '',
+      startDate: ad.startDate ? ad.startDate.split('T')[0] : '',
+      endDate: ad.endDate ? ad.endDate.split('T')[0] : '',
+      budget: ad.budget || '',
+      cpm: ad.cpm || '',
     });
     setEditingId(ad._id);
     setShowForm(true);
@@ -128,11 +149,20 @@ export default function AdminAdsPage() {
     }
 
     try {
+      const payload = {
+        ...form,
+        budget: form.budget !== '' ? Number(form.budget) : undefined,
+        cpm: form.cpm !== '' ? Number(form.cpm) : undefined,
+        startDate: form.startDate || undefined,
+        endDate: form.endDate || undefined,
+        clientName: form.clientName || undefined,
+        clientEmail: form.clientEmail || undefined,
+      };
       if (editingId) {
-        await updateAd.mutateAsync({ id: editingId, updates: form });
+        await updateAd.mutateAsync({ id: editingId, updates: payload });
         toast.success('Anzeige aktualisiert');
       } else {
-        await createAd.mutateAsync(form as any);
+        await createAd.mutateAsync(payload as any);
         toast.success('Anzeige erstellt');
       }
       setShowForm(false);
@@ -198,7 +228,16 @@ export default function AdminAdsPage() {
             }`}
           >
             <Megaphone className="h-4 w-4" />
-            Anzeigen verwalten
+            Anzeigen
+          </button>
+          <button
+            onClick={() => setMainTab('buchungen')}
+            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              mainTab === 'buchungen' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <BarChart2 className="h-4 w-4" />
+            Buchungen & Stats
           </button>
           <button
             onClick={() => setMainTab('zones')}
@@ -210,6 +249,130 @@ export default function AdminAdsPage() {
             Zonen-Layout
           </button>
         </div>
+
+        {/* ── Buchungen & Stats Tab ── */}
+        {mainTab === 'buchungen' && (
+          <div className="space-y-4">
+            {/* KPI-Karten */}
+            {statsData && (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                      <TrendingUp className="h-4 w-4" />Impressionen
+                    </div>
+                    <p className="text-2xl font-bold">{statsData.totals.impressions.toLocaleString('de')}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                      <MousePointerClick className="h-4 w-4" />Klicks
+                    </div>
+                    <p className="text-2xl font-bold">{statsData.totals.clicks.toLocaleString('de')}</p>
+                    <p className="text-xs text-muted-foreground">
+                      CTR: {statsData.totals.impressions > 0
+                        ? ((statsData.totals.clicks / statsData.totals.impressions) * 100).toFixed(2)
+                        : '0.00'}%
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                      <Euro className="h-4 w-4" />Gebuchtes Budget
+                    </div>
+                    <p className="text-2xl font-bold">{statsData.totals.budget.toLocaleString('de', { style: 'currency', currency: 'EUR' })}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+                      <Calendar className="h-4 w-4" />Buchungen
+                    </div>
+                    <p className="text-2xl font-bold">{statsData.totals.activeBookings}</p>
+                    <p className="text-xs text-muted-foreground">{statsData.totals.scheduledBookings} geplant</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Buchungstabelle */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Alle Buchungen</CardTitle>
+                <CardDescription>Impressionen, Klicks und CTR pro Anzeige</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                {statsLoading ? (
+                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/30">
+                          <th className="text-left px-4 py-2 font-medium text-muted-foreground">Anzeige</th>
+                          <th className="text-left px-4 py-2 font-medium text-muted-foreground">Kunde</th>
+                          <th className="text-left px-4 py-2 font-medium text-muted-foreground">Zeitraum</th>
+                          <th className="text-right px-4 py-2 font-medium text-muted-foreground">Impr.</th>
+                          <th className="text-right px-4 py-2 font-medium text-muted-foreground">Klicks</th>
+                          <th className="text-right px-4 py-2 font-medium text-muted-foreground">CTR</th>
+                          <th className="text-right px-4 py-2 font-medium text-muted-foreground">Budget</th>
+                          <th className="text-center px-4 py-2 font-medium text-muted-foreground">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {(statsData?.ads || []).map((ad) => (
+                          <tr key={ad._id} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="font-medium truncate max-w-[160px]">{ad.title}</div>
+                              <div className="text-xs text-muted-foreground">{ad.type === 'rectangle' ? 'Rechteck' : 'Quadrat'}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              {ad.clientName ? (
+                                <div>
+                                  <div className="flex items-center gap-1 text-sm"><User className="h-3 w-3" />{ad.clientName}</div>
+                                  {ad.clientEmail && <div className="text-xs text-muted-foreground">{ad.clientEmail}</div>}
+                                </div>
+                              ) : <span className="text-muted-foreground text-xs">—</span>}
+                            </td>
+                            <td className="px-4 py-3 text-xs text-muted-foreground">
+                              {ad.startDate ? new Date(ad.startDate).toLocaleDateString('de') : '—'}
+                              {' → '}
+                              {ad.endDate ? new Date(ad.endDate).toLocaleDateString('de') : '∞'}
+                            </td>
+                            <td className="px-4 py-3 text-right font-medium">{(ad.impressions || 0).toLocaleString('de')}</td>
+                            <td className="px-4 py-3 text-right font-medium">{(ad.clicks || 0).toLocaleString('de')}</td>
+                            <td className="px-4 py-3 text-right text-muted-foreground">{ad.ctr}%</td>
+                            <td className="px-4 py-3 text-right">
+                              {ad.budget ? <span>{ad.budget.toLocaleString('de', { style: 'currency', currency: 'EUR' })}</span> : <span className="text-muted-foreground text-xs">—</span>}
+                              {ad.estimatedRevenue !== null && ad.cpm && (
+                                <div className="text-xs text-green-600">+{ad.estimatedRevenue}€ (CPM)</div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`text-[11px] rounded-full px-2 py-0.5 font-medium ${
+                                ad.bookingStatus === 'aktiv' ? 'bg-green-500/10 text-green-600' :
+                                ad.bookingStatus === 'geplant' ? 'bg-blue-500/10 text-blue-600' :
+                                ad.bookingStatus === 'abgelaufen' ? 'bg-muted text-muted-foreground' :
+                                'bg-yellow-500/10 text-yellow-600'
+                              }`}>
+                                {ad.bookingStatus}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {(!statsData?.ads || statsData.ads.length === 0) && (
+                      <div className="py-10 text-center text-muted-foreground text-sm">Noch keine Buchungsdaten</div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* ── Zonen-Layout Tab ── */}
         {mainTab === 'zones' && (
@@ -226,7 +389,9 @@ export default function AdminAdsPage() {
             <CardContent className="space-y-4">
               <AdZoneEditor
                 zones={currentZones}
+                sidebarWidth={currentSidebarWidth}
                 onChange={(z) => setLocalZones(z)}
+                onSidebarWidthChange={(w) => setLocalSidebarWidth(w)}
               />
               <div className="flex items-center gap-3 pt-2 border-t">
                 <Button
@@ -240,15 +405,15 @@ export default function AdminAdsPage() {
                   )}
                   Layout speichern &amp; anwenden
                 </Button>
-                {localZones && (
+                {(localZones || localSidebarWidth !== null) && (
                   <button
-                    onClick={() => setLocalZones(null)}
+                    onClick={() => { setLocalZones(null); setLocalSidebarWidth(null); }}
                     className="text-sm text-muted-foreground hover:text-foreground"
                   >
                     Zurücksetzen
                   </button>
                 )}
-                {localZones && (
+                {(localZones || localSidebarWidth !== null) && (
                   <span className="text-xs text-amber-600 font-medium">● Ungespeicherte Änderungen</span>
                 )}
               </div>
@@ -378,6 +543,66 @@ export default function AdminAdsPage() {
                 </div>
               </div>
 
+              {/* Buchungsdaten */}
+              <div className="border-t pt-4 space-y-3">
+                <p className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <User className="h-4 w-4" />Buchungsdaten (optional)
+                </p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Kundenname</label>
+                    <Input
+                      placeholder="Firma / Kontaktperson"
+                      value={form.clientName}
+                      onChange={(e) => setForm({ ...form, clientName: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Kunden-E-Mail</label>
+                    <Input
+                      type="email"
+                      placeholder="kunde@beispiel.de"
+                      value={form.clientEmail}
+                      onChange={(e) => setForm({ ...form, clientEmail: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />Startdatum</label>
+                    <Input
+                      type="date"
+                      value={form.startDate}
+                      onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />Enddatum</label>
+                    <Input
+                      type="date"
+                      value={form.endDate}
+                      onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium flex items-center gap-1"><Euro className="h-3.5 w-3.5" />Budget (€)</label>
+                    <Input
+                      type="number"
+                      placeholder="0.00"
+                      value={form.budget}
+                      onChange={(e) => setForm({ ...form, budget: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium flex items-center gap-1"><TrendingUp className="h-3.5 w-3.5" />CPM (€/1000)</label>
+                    <Input
+                      type="number"
+                      placeholder="z.B. 5.00"
+                      value={form.cpm}
+                      onChange={(e) => setForm({ ...form, cpm: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -440,123 +665,95 @@ export default function AdminAdsPage() {
           ))}
         </div>
 
-        {/* Ad-Liste */}
-        <Card>
-          <CardHeader>
-            <CardTitle>
+        {/* Ad-Liste als Karten mit X-Button */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-sm text-muted-foreground">
               {activeTab === 'rectangle' ? 'Rechteck-Banner' : 'Quadrat-Banner'} ({displayAds.length})
-            </CardTitle>
-            <CardDescription>
-              {activeTab === 'rectangle'
-                ? 'Erscheinen oben im Hauptbereich als horizontales Banner'
-                : 'Erscheinen in der linken Sidebar als quadratische Banner'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : displayAds.length > 0 ? (
-              <div className="space-y-3">
-                {displayAds.map((ad) => (
-                  <div
-                    key={ad._id}
-                    className={`flex items-center gap-4 rounded-lg border p-3 ${
-                      !ad.isActive ? 'opacity-50 bg-muted/30' : ''
-                    }`}
-                  >
-                    {/* Bild-Vorschau */}
-                    <div
-                      className={`flex-shrink-0 overflow-hidden rounded border bg-muted ${
-                        ad.type === 'rectangle' ? 'w-24 h-8' : 'w-12 h-12'
-                      }`}
-                    >
-                      {ad.imageUrl ? (
-                        <img
-                          src={ad.imageUrl}
-                          alt={ad.altText || ad.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
-                          <Image className="h-4 w-4" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{ad.title}</div>
-                      <div className="text-xs text-muted-foreground truncate">{ad.link}</div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className={`text-[10px] rounded-full px-1.5 py-0.5 font-medium ${
-                          ad.isActive
-                            ? 'bg-green-500/10 text-green-600'
-                            : 'bg-muted text-muted-foreground'
-                        }`}>
-                          {ad.isActive ? 'Aktiv' : 'Inaktiv'}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">
-                          Reihenfolge: {ad.order}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleToggleActive(ad)}
-                        title={ad.isActive ? 'Deaktivieren' : 'Aktivieren'}
-                      >
-                        {ad.isActive ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-green-600" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => openEdit(ad)}
-                        title="Bearbeiten"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(ad._id, ad.title)}
-                        title="Löschen"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-                <Megaphone className="mb-3 h-10 w-10 opacity-20" />
-                <p className="text-sm">Noch keine {activeTab === 'rectangle' ? 'Rechteck-' : 'Quadrat-'}Anzeigen</p>
-                <Button
-                  variant="outline"
-                  className="mt-4"
-                  onClick={() => openCreate(activeTab)}
+            </h2>
+          </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : displayAds.length > 0 ? (
+            <div className={`grid gap-4 ${activeTab === 'rectangle' ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'}`}>
+              {displayAds.map((ad) => (
+                <div
+                  key={ad._id}
+                  className={`group relative rounded-xl border bg-card overflow-hidden shadow-sm transition-opacity ${!ad.isActive ? 'opacity-40' : ''}`}
                 >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Erste Anzeige erstellen
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  {/* Banner-Bild */}
+                  <div className={`relative w-full bg-muted ${activeTab === 'rectangle' ? 'h-[90px]' : 'aspect-square'}`}>
+                    {ad.imageUrl ? (
+                      <img
+                        src={ad.imageUrl}
+                        alt={ad.altText || ad.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
+                        <Image className="h-8 w-8" />
+                      </div>
+                    )}
+
+                    {/* X-Button oben rechts — löschen */}
+                    <button
+                      onClick={() => handleDelete(ad._id, ad.title)}
+                      className="absolute top-1.5 right-1.5 z-10 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                      title="Anzeige löschen"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+
+                    {/* Stift-Button oben links — bearbeiten */}
+                    <button
+                      onClick={() => openEdit(ad)}
+                      className="absolute top-1.5 left-1.5 z-10 h-6 w-6 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary"
+                      title="Bearbeiten"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </button>
+
+                    {/* Aktiv/Inaktiv-Badge */}
+                    <span className={`absolute bottom-1.5 left-1.5 text-[10px] rounded-full px-1.5 py-0.5 font-medium ${
+                      ad.isActive ? 'bg-green-600 text-white' : 'bg-black/50 text-white'
+                    }`}>
+                      {ad.isActive ? 'Aktiv' : 'Inaktiv'}
+                    </span>
+                  </div>
+
+                  {/* Info-Zeile unter dem Bild */}
+                  <div className="px-3 py-2 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{ad.title}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{ad.link}</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggleActive(ad)}
+                      title={ad.isActive ? 'Deaktivieren' : 'Aktivieren'}
+                      className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {ad.isActive
+                        ? <EyeOff className="h-3.5 w-3.5" />
+                        : <Eye className="h-3.5 w-3.5 text-green-600" />}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground border rounded-xl bg-muted/20">
+              <Megaphone className="mb-3 h-10 w-10 opacity-20" />
+              <p className="text-sm">Noch keine {activeTab === 'rectangle' ? 'Rechteck-' : 'Quadrat-'}Anzeigen</p>
+              <Button variant="outline" className="mt-4" onClick={() => openCreate(activeTab)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Erste Anzeige erstellen
+              </Button>
+            </div>
+          )}
+        </div>
 
         </> /* Ende ads Tab */}
 

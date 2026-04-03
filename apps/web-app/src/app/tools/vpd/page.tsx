@@ -18,11 +18,12 @@ export default function VPDCalculatorPage() {
   };
 
   const getVPDStatus = (vpd: number) => {
-    if (vpd < 0.4) return { text: 'Zu niedrig', color: 'text-blue-400', desc: 'Erhohe Temperatur oder senke Luftfeuchtigkeit' };
-    if (vpd < 0.8) return { text: 'Vegetativ optimal', color: 'text-green-500', desc: 'Perfekt fur Wachstumsphase' };
-    if (vpd < 1.2) return { text: 'Blute optimal', color: 'text-emerald-500', desc: 'Perfekt fur Blutephase' };
-    if (vpd < 1.6) return { text: 'Erhoht', color: 'text-yellow-500', desc: 'Noch ok, aber an der oberen Grenze' };
-    return { text: 'Zu hoch', color: 'text-red-500', desc: 'Senke Temperatur oder erhohe Luftfeuchtigkeit' };
+    if (vpd < 0.4) return { text: 'Zu niedrig', color: 'text-blue-400', desc: 'Erhöhe Temperatur oder senke Luftfeuchtigkeit' };
+    if (vpd < 0.8) return { text: 'Setzlinge / Klone optimal', color: 'text-green-500', desc: 'Perfekt für Jungpflanzen und Stecklinge' };
+    if (vpd < 1.2) return { text: 'Vegetativ optimal', color: 'text-emerald-500', desc: 'Perfekt für die Wachstumsphase' };
+    if (vpd < 1.6) return { text: 'Blüte optimal', color: 'text-yellow-500', desc: 'Optimal für die Blütephase' };
+    if (vpd < 2.0) return { text: 'Erhöht', color: 'text-orange-500', desc: 'An der oberen Grenze – beobachte auf Stress' };
+    return { text: 'Zu hoch', color: 'text-red-500', desc: 'Senke Temperatur oder erhöhe Luftfeuchtigkeit' };
   };
 
   const status = result !== null ? getVPDStatus(result) : null;
@@ -131,7 +132,7 @@ export default function VPDCalculatorPage() {
             <ul className="space-y-1.5">
               <li className="flex items-start gap-2">
                 <span className="text-primary mt-0.5">•</span>
-                <span><strong className="text-foreground">Setzlinge:</strong> 0.4 - 0.8 kPa</span>
+                <span><strong className="text-foreground">Setzlinge / Klone:</strong> 0.4 - 0.8 kPa</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-primary mt-0.5">•</span>
@@ -139,7 +140,11 @@ export default function VPDCalculatorPage() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-primary mt-0.5">•</span>
-                <span><strong className="text-foreground">Blute:</strong> 1.0 - 1.5 kPa</span>
+                <span><strong className="text-foreground">Blüte:</strong> 1.2 - 1.6 kPa</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary mt-0.5">•</span>
+                <span><strong className="text-foreground">Maximum:</strong> 2.0 kPa</span>
               </li>
             </ul>
           </div>

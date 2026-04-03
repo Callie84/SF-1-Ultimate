@@ -230,23 +230,24 @@ export default function LandingPage() {
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[
-              { name: 'VPD Calculator', desc: 'Vapor Pressure Deficit optimieren' },
-              { name: 'EC/PPM Calculator', desc: 'Nährstoff-Konzentration berechnen' },
-              { name: 'DLI Calculator', desc: 'Daily Light Integral' },
-              { name: 'PPFD Calculator', desc: 'Lichtintensität optimal einstellen' },
-              { name: 'Stromkosten', desc: 'Betriebskosten kalkulieren' },
-              { name: 'CO₂ Calculator', desc: 'CO₂-Ergänzung optimieren' },
+              { name: 'VPD Calculator', desc: 'Vapor Pressure Deficit optimieren', href: '/tools/vpd' },
+              { name: 'EC/PPM Calculator', desc: 'Nährstoff-Konzentration berechnen', href: '/tools/ec' },
+              { name: 'DLI Calculator', desc: 'Daily Light Integral', href: '/tools/dli' },
+              { name: 'PPFD Calculator', desc: 'Lichtintensität optimal einstellen', href: '/tools/ppfd' },
+              { name: 'Stromkosten', desc: 'Betriebskosten kalkulieren', href: '/tools/power' },
+              { name: 'CO₂ Calculator', desc: 'CO₂-Ergänzung optimieren', href: '/tools/co2' },
             ].map((tool) => (
-              <div
+              <Link
                 key={tool.name}
-                className="flex items-center gap-3 rounded-lg border bg-background p-4 opacity-60 cursor-not-allowed"
+                href={tool.href}
+                className="flex items-center gap-3 rounded-lg border bg-background p-4 hover:bg-accent hover:border-primary transition-colors"
               >
                 <Zap className="h-6 w-6 text-primary flex-shrink-0" />
                 <div>
                   <div className="font-semibold">{tool.name}</div>
                   <div className="text-sm text-muted-foreground">{tool.desc}</div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -286,10 +287,11 @@ export default function LandingPage() {
               <Sprout className="h-5 w-5 text-primary" />
               <span>© 2026 SeedFinderPro. Alle Rechte vorbehalten.</span>
             </div>
-            <div className="flex gap-6 text-sm">
-              <Link href="/about" className="text-muted-foreground hover:text-primary">Über uns</Link>
+            <div className="flex flex-wrap gap-6 text-sm justify-center md:justify-end">
+              <Link href="/impressum" className="text-muted-foreground hover:text-primary">Impressum</Link>
               <Link href="/privacy" className="text-muted-foreground hover:text-primary">Datenschutz</Link>
               <Link href="/terms" className="text-muted-foreground hover:text-primary">AGB</Link>
+              <Link href="/about" className="text-muted-foreground hover:text-primary">Über uns</Link>
               <Link href="/contact" className="text-muted-foreground hover:text-primary">Kontakt</Link>
             </div>
           </div>

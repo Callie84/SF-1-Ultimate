@@ -31,13 +31,35 @@ model User {
   provider      AuthProvider  @default(LOCAL)
   providerId    String?
   
-  // Premium
-  premiumUntil  DateTime?
+  // Premium / Stripe
+  premiumUntil        DateTime?
+  stripeCustomerId    String?   @unique
+  stripeSubscriptionId String?  @unique
+  stripePriceId       String?
+  subscriptionStatus  String?   // active | canceled | past_due | trialing
   
   // Profile
   avatar        String?
   bio           String?
-  
+  displayName   String?
+
+  // Privacy
+  profilePublic Boolean       @default(true)
+  showEmail     Boolean       @default(false)
+  showGrows     Boolean       @default(true)
+
+  // 2FA / TOTP
+  totpSecret    String?       // Base32-kodierter TOTP-Secret
+  totpEnabled   Boolean       @default(false)
+  totpBackupCodes String[]    @default([]) // Einmal-Codes (gehasht)
+
+  // Altersverifikation (Session 70)
+  ageVerified   Boolean       @default(false)
+
+  // Onboarding (Session 74)
+  onboardingCompleted Boolean @default(false)
+  onboardingStep      Int     @default(0)
+
   // Status
   isVerified    Boolean       @default(false)
   isActive      Boolean       @default(true)
@@ -52,6 +74,7 @@ model User {
   
   @@index([email])
   @@index([username])
+  @@index([provider, providerId]) // Session 52: OAuth-Login-Lookup
 }
 
 model Session {

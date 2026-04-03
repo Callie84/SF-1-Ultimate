@@ -74,6 +74,21 @@ const ENV_FILTERS = [
   { value: 'greenhouse', label: 'Greenhouse', icon: Leaf },
 ];
 
+const MEDIUM_FILTERS = [
+  { value: 'all', label: 'Alle' },
+  { value: 'soil', label: 'Erde' },
+  { value: 'coco', label: 'Coco' },
+  { value: 'hydro', label: 'Hydro' },
+  { value: 'aero', label: 'Aero' },
+];
+
+const DIFFICULTY_FILTERS = [
+  { value: 'all', label: 'Alle' },
+  { value: 'beginner', label: 'Anfänger' },
+  { value: 'intermediate', label: 'Mittel' },
+  { value: 'expert', label: 'Experte' },
+];
+
 function GrowCard({ grow }: { grow: any }) {
   const { user } = useAuth();
   const { data: reactions } = useGrowReactions(grow._id);
@@ -193,6 +208,8 @@ export default function GrowsPage() {
   const [sortBy, setSortBy] = useState('recent');
   const [statusFilter, setStatusFilter] = useState('all');
   const [envFilter, setEnvFilter] = useState('all');
+  const [mediumFilter, setMediumFilter] = useState('all');
+  const [difficultyFilter, setDifficultyFilter] = useState('all');
   const { user } = useAuth();
 
   const isFollowingTab = sortBy === 'following';
@@ -201,6 +218,8 @@ export default function GrowsPage() {
     sortBy: isFollowingTab ? 'recent' : sortBy,
     status: statusFilter,
     environment: envFilter,
+    medium: mediumFilter,
+    difficulty: difficultyFilter,
   });
   const followingFeed = useFollowingFeed(isFollowingTab && !!user);
 
@@ -210,7 +229,7 @@ export default function GrowsPage() {
   const grows = data?.pages.flatMap((p: any) => p.grows) || [];
   const total = (data?.pages[0] as any)?.total || 0;
 
-  const hasActiveFilters = !isFollowingTab && (statusFilter !== 'all' || envFilter !== 'all');
+  const hasActiveFilters = !isFollowingTab && (statusFilter !== 'all' || envFilter !== 'all' || mediumFilter !== 'all' || difficultyFilter !== 'all');
 
   return (
     <DashboardLayout>
@@ -275,9 +294,29 @@ export default function GrowsPage() {
                 {label}
               </FilterChip>
             ))}
+            <span className="ml-2 text-xs text-muted-foreground">Substrat:</span>
+            {MEDIUM_FILTERS.map(({ value, label }) => (
+              <FilterChip
+                key={value}
+                active={mediumFilter === value}
+                onClick={() => setMediumFilter(value)}
+              >
+                {label}
+              </FilterChip>
+            ))}
+            <span className="ml-2 text-xs text-muted-foreground">Level:</span>
+            {DIFFICULTY_FILTERS.map(({ value, label }) => (
+              <FilterChip
+                key={value}
+                active={difficultyFilter === value}
+                onClick={() => setDifficultyFilter(value)}
+              >
+                {label}
+              </FilterChip>
+            ))}
             {hasActiveFilters && (
               <button
-                onClick={() => { setStatusFilter('all'); setEnvFilter('all'); }}
+                onClick={() => { setStatusFilter('all'); setEnvFilter('all'); setMediumFilter('all'); setDifficultyFilter('all'); }}
                 className="ml-1 text-xs text-muted-foreground hover:text-foreground underline"
               >
                 Filter zurücksetzen

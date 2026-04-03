@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Info } from 'lucide-react';
+import { trackCalculatorUsed } from '@/lib/analytics';
 
 interface CalculatorField {
   name: string;
@@ -60,6 +61,7 @@ export function Calculator({
   const handleCalculate = () => {
     const calculated = calculate(values);
     setResult(calculated);
+    trackCalculatorUsed(title);
   };
 
   const status = result !== null && getStatus ? getStatus(result as any) : null;

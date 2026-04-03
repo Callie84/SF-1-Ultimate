@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAds, Ad } from '@/hooks/use-ads';
+import { useAds, Ad, useTrackImpression, useTrackClick } from '@/hooks/use-ads';
 
 interface AdCarouselProps {
   type: 'rectangle' | 'square';
@@ -26,6 +27,8 @@ const PLACEHOLDER_ADS: Record<'rectangle' | 'square', Ad[]> = {
       altText: 'Werbefläche',
       isActive: true,
       order: 0,
+      impressions: 0,
+      clicks: 0,
       createdAt: '',
     },
   ],
@@ -40,6 +43,8 @@ const PLACEHOLDER_ADS: Record<'rectangle' | 'square', Ad[]> = {
       altText: 'Werbefläche',
       isActive: true,
       order: 0,
+      impressions: 0,
+      clicks: 0,
       createdAt: '',
     },
   ],
@@ -75,6 +80,9 @@ export function AdCarousel({
   const { data } = useAds(type);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const trackImpression = useTrackImpression();
+  const trackClick = useTrackClick();
+  const impressedIds = useRef<Set<string>>(new Set());
 
   const ads = (data?.ads && data.ads.length > 0) ? data.ads : PLACEHOLDER_ADS[type];
   const isPlaceholder = !data?.ads || data.ads.length === 0;
@@ -98,7 +106,18 @@ export function AdCarousel({
   // Reset index wenn sich die Ads ändern
   useEffect(() => {
     setCurrentIndex(0);
+    impressedIds.current.clear();
   }, [type, data]);
+
+  // Impression tracken wenn neue Ad sichtbar (einmalig pro Ad-ID)
+  useEffect(() => {
+    if (!ads || isPlaceholder) return;
+    const ad = ads[currentIndex];
+    if (!ad || impressedIds.current.has(ad._id)) return;
+    impressedIds.current.add(ad._id);
+    trackImpression.mutate(ad._id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, ads, isPlaceholder]);
 
   if (total === 0) return null;
 
@@ -141,11 +160,13 @@ export function AdCarousel({
                 className="block w-full h-full"
                 aria-label={ad.altText || ad.title}
                 title={ad.title}
+                onClick={() => trackClick.mutate(ad._id)}
               >
-                <img
+                <Image
                   src={ad.imageUrl}
                   alt={ad.altText || ad.title}
-                  className="w-full h-full object-cover rounded-lg"
+                  fill
+                  className="object-cover rounded-lg"
                   draggable={false}
                 />
                 {/* "Anzeige" Label */}

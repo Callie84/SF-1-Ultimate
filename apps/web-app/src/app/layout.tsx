@@ -4,6 +4,10 @@ import { ThemeProvider } from '@/components/providers/theme-provider';
 import { QueryProvider } from '@/components/providers/query-provider';
 import { AuthProvider } from '@/components/providers/auth-provider';
 import { Toaster } from '@/components/ui/sonner';
+import { CookieBanner } from '@/components/cookie-banner';
+import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
+import { OnboardingModal } from '@/components/onboarding-modal';
+import Script from 'next/script';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -41,9 +45,13 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: '/icon.svg',
-    shortcut: '/icon.svg',
-    apple: '/icon.svg',
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    shortcut: '/icon-192x192.png',
+    apple: '/apple-touch-icon.png',
   },
 };
 
@@ -54,17 +62,29 @@ export default function RootLayout({
 }) {
   return (
     <html lang="de" suppressHydrationWarning>
+      <head>
+        <Script
+          defer
+          data-domain="seedfinderpro.de"
+          src="https://analytics.seedfinderpro.de/js/script.js"
+          strategy="afterInteractive"
+        />
+      </head>
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="dark"
+          enableSystem={false}
+          themes={['light', 'dark', 'theme-nature', 'theme-midnight', 'theme-earth', 'theme-neon']}
           disableTransitionOnChange
         >
           <QueryProvider>
             <AuthProvider>
               {children}
               <Toaster />
+              <CookieBanner />
+              <PwaInstallPrompt />
+              <OnboardingModal />
             </AuthProvider>
           </QueryProvider>
         </ThemeProvider>

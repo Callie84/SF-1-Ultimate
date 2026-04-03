@@ -25,12 +25,75 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
+import api from '@/lib/api-client';
 import { toast } from 'sonner';
+
+function EmailTestForm() {
+  const [to, setTo] = useState('');
+  const [template, setTemplate] = useState('welcome');
+  const [sending, setSending] = useState(false);
+
+  const handleSend = async () => {
+    if (!to) return;
+    setSending(true);
+    try {
+      await api.post('/api/notifications/admin/test-email', { to, template });
+      toast.success(`Test-E-Mail (${template}) an ${to} gesendet`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Fehler beim Senden');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="flex gap-2 flex-wrap">
+      <Input
+        type="email"
+        placeholder="empfaenger@example.com"
+        value={to}
+        onChange={(e) => setTo(e.target.value)}
+        className="flex-1 min-w-[200px]"
+      />
+      <select
+        value={template}
+        onChange={(e) => setTemplate(e.target.value)}
+        className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+      >
+        <option value="welcome">Willkommen</option>
+        <option value="password-reset">Passwort-Reset</option>
+        <option value="comment-reply">Kommentar-Antwort</option>
+        <option value="price-alert">Preis-Alarm</option>
+        <option value="digest">Digest</option>
+      </select>
+      <Button onClick={handleSend} disabled={sending || !to} variant="outline" size="sm">
+        {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Senden'}
+      </Button>
+    </div>
+  );
+}
 
 export default function AdminSettingsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
+  const [indexStats, setIndexStats] = useState<{ strains: number; threads: number; grows: number } | null>(null);
+
+  useEffect(() => {
+    if (user?.role === 'ADMIN') {
+      Promise.allSettled([
+        api.get('/api/search/stats/STRAINS'),
+        api.get('/api/search/stats/THREADS'),
+        api.get('/api/search/stats/GROWS'),
+      ]).then(([strains, threads, grows]) => {
+        setIndexStats({
+          strains: strains.status === 'fulfilled' ? (strains.value as any)?.index?.numberOfDocuments ?? '-' : '-',
+          threads: threads.status === 'fulfilled' ? (threads.value as any)?.index?.numberOfDocuments ?? '-' : '-',
+          grows: grows.status === 'fulfilled' ? (grows.value as any)?.index?.numberOfDocuments ?? '-' : '-',
+        });
+      });
+    }
+  }, [user]);
 
   // Redirect non-admin users
   useEffect(() => {
@@ -69,11 +132,10 @@ export default function AdminSettingsPage() {
   const handleReindexSearch = async () => {
     setIsSaving(true);
     try {
-      // TODO: API Call to reindex
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      toast.success('Suchindex wird neu aufgebaut...');
-    } catch (error) {
-      toast.error('Fehler beim Reindexieren');
+      await api.post('/api/search/reindex/all', {});
+      toast.success('Suchindex wird neu aufgebaut (Strains, Threads, Grows, Users)');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Fehler beim Reindexieren');
     } finally {
       setIsSaving(false);
     }
@@ -82,11 +144,10 @@ export default function AdminSettingsPage() {
   const handleClearCache = async () => {
     setIsSaving(true);
     try {
-      // TODO: API Call to clear cache
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success('Cache wurde geleert');
-    } catch (error) {
-      toast.error('Fehler beim Cache leeren');
+      const res = await api.post('/api/auth/admin/cache/clear', {});
+      toast.success(`Cache geleert — ${res.deletedKeys} Keys gelöscht`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Fehler beim Cache leeren');
     } finally {
       setIsSaving(false);
     }
@@ -173,15 +234,15 @@ export default function AdminSettingsPage() {
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               <div className="p-4 border rounded-lg text-center">
-                <p className="text-2xl font-bold">184</p>
+                <p className="text-2xl font-bold">{indexStats ? indexStats.strains : '…'}</p>
                 <p className="text-sm text-muted-foreground">Strains indexiert</p>
               </div>
               <div className="p-4 border rounded-lg text-center">
-                <p className="text-2xl font-bold">-</p>
+                <p className="text-2xl font-bold">{indexStats ? indexStats.threads : '…'}</p>
                 <p className="text-sm text-muted-foreground">Threads indexiert</p>
               </div>
               <div className="p-4 border rounded-lg text-center">
-                <p className="text-2xl font-bold">-</p>
+                <p className="text-2xl font-bold">{indexStats ? indexStats.grows : '…'}</p>
                 <p className="text-sm text-muted-foreground">Grows indexiert</p>
               </div>
             </div>
@@ -258,32 +319,38 @@ export default function AdminSettingsPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Mail className="h-5 w-5" />
-              <CardTitle>E-Mail</CardTitle>
+              <CardTitle>E-Mail (SMTP)</CardTitle>
             </div>
-            <CardDescription>SMTP-Konfiguration für E-Mails</CardDescription>
+            <CardDescription>Brevo SMTP — konfiguriert via .env</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="smtpHost">SMTP Host</Label>
-                <Input id="smtpHost" placeholder="smtp.example.com" />
+            <div className="grid gap-3 text-sm">
+              <div className="flex justify-between py-2 border-b">
+                <span className="text-muted-foreground">Provider</span>
+                <span className="font-medium">Brevo (smtp-relay.brevo.com)</span>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="smtpPort">SMTP Port</Label>
-                <Input id="smtpPort" type="number" placeholder="587" />
+              <div className="flex justify-between py-2 border-b">
+                <span className="text-muted-foreground">Port</span>
+                <span className="font-mono">2525</span>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="smtpUser">SMTP Benutzer</Label>
-                <Input id="smtpUser" placeholder="user@example.com" />
+              <div className="flex justify-between py-2 border-b">
+                <span className="text-muted-foreground">Absender</span>
+                <span className="font-mono">noreply@seedfinderpro.de</span>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="smtpPass">SMTP Passwort</Label>
-                <Input id="smtpPass" type="password" placeholder="••••••••" />
+              <div className="flex justify-between py-2 border-b">
+                <span className="text-muted-foreground">Templates</span>
+                <span>welcome, password-reset, digest, comment-reply, price-alert</span>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground">
-              E-Mail-Versand ist aktuell nicht konfiguriert
-            </p>
+
+            <div className="rounded-lg border bg-green-500/5 border-green-500/20 p-3 text-sm text-green-700 dark:text-green-400">
+              E-Mail-Versand ist aktiv und konfiguriert.
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <p className="text-sm font-medium">Test-E-Mail senden</p>
+              <EmailTestForm />
+            </div>
           </CardContent>
         </Card>
 

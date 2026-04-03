@@ -9,6 +9,16 @@ export interface IAd extends Document {
   altText: string;
   isActive: boolean;
   order: number;
+  // Buchungsdaten
+  clientName?: string;
+  clientEmail?: string;
+  startDate?: Date;
+  endDate?: Date;
+  budget?: number;
+  cpm?: number;
+  // Tracking
+  impressions: number;
+  clicks: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,6 +63,16 @@ const AdSchema = new Schema<IAd>(
       type: Number,
       default: 0,
     },
+    // Buchungsdaten
+    clientName: { type: String, trim: true },
+    clientEmail: { type: String, trim: true },
+    startDate: { type: Date },
+    endDate: { type: Date },
+    budget: { type: Number },
+    cpm: { type: Number },
+    // Tracking
+    impressions: { type: Number, default: 0 },
+    clicks: { type: Number, default: 0 },
   },
   {
     timestamps: true,

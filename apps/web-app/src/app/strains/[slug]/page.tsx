@@ -39,6 +39,11 @@ export async function generateMetadata(
     ? strain.description.slice(0, 155)
     : `${strain.name} — Typ: ${strain.type}. THC: ${strain.thc ?? '–'}%, CBD: ${strain.cbd ?? '–'}%. Jetzt Preise vergleichen auf SeedFinderPro.`;
 
+  const ogImageUrl = `${BASE_URL}/api/og?type=Strain&title=${encodeURIComponent(title)}&sub=${encodeURIComponent(`THC: ${strain.thc ?? '–'}% · CBD: ${strain.cbd ?? '–'}% · ${strain.type ?? ''}`)}`;
+  const ogImage = strain.imageUrl
+    ? { url: strain.imageUrl, alt: strain.name }
+    : { url: ogImageUrl, width: 1200, height: 630, alt: title };
+
   return {
     title,
     description: desc,
@@ -50,13 +55,13 @@ export async function generateMetadata(
       description: desc,
       url: `${BASE_URL}/strains/${params.slug}`,
       type: 'website',
-      images: strain.imageUrl ? [{ url: strain.imageUrl, alt: strain.name }] : [],
+      images: [ogImage],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description: desc,
-      images: strain.imageUrl ? [strain.imageUrl] : [],
+      images: [strain.imageUrl || ogImageUrl],
     },
   };
 }

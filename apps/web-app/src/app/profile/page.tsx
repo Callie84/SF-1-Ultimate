@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import Image from 'next/image';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -145,9 +146,11 @@ export default function ProfilePage() {
               <div className="relative">
                 <div className="flex h-32 w-32 items-center justify-center rounded-full bg-primary/10 text-primary text-4xl font-bold overflow-hidden">
                   {user.avatar ? (
-                    <img
+                    <Image
                       src={user.avatar}
-                      alt={user.username}
+                      alt={user.username ?? ''}
+                      width={128}
+                      height={128}
                       className="h-full w-full rounded-full object-cover"
                     />
                   ) : (
@@ -307,7 +310,7 @@ export default function ProfilePage() {
                         className="h-2 bg-primary rounded-full transition-all"
                         style={{
                           width: `${Math.min(
-                            100 - Math.round((gamification.profile.xpToNextLevel / (gamification.profile.xpToNextLevel + gamification.profile.xp)) * 100),
+                            Math.round((gamification.profile.xp / (gamification.profile.xp + gamification.profile.xpToNextLevel)) * 100),
                             100
                           )}%`,
                         }}

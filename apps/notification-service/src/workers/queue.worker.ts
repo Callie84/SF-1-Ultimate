@@ -1,9 +1,10 @@
 /**
- * Queue Worker - Verarbeitet Nachrichten aus queue:notifications + queue:email (Redis-Listen)
+ * Queue Worker - Verarbeitet Nachrichten aus queue:notifications + queue:email + queue:push (Redis-Listen)
  */
 import { redis } from '../config/redis';
 import { notificationService } from '../services/notification.service';
 import { emailService } from '../services/email.service';
+import { pushService } from '../services/push.service';
 import { logger } from '../utils/logger';
 
 let running = false;
@@ -98,11 +99,60 @@ async function processMessage(raw: string): Promise<void> {
         data: msg.data,
       });
 
+    } else if (msg.type === 'level:up') {
+      const { newLevel, oldLevel } = msg.data;
+      await notificationService.create({
+        userId: msg.userId,
+        type: 'milestone',
+        title: `Level ${newLevel} erreicht! 🎉`,
+        message: `Glückwunsch! Du bist von Level ${oldLevel} auf Level ${newLevel} aufgestiegen.`,
+        relatedUrl: '/profile',
+        data: msg.data,
+      });
+
+    } else if (msg.type === 'badge:awarded') {
+      const { badgeId } = msg.data;
+      await notificationService.create({
+        userId: msg.userId,
+        type: 'badge',
+        title: `Neues Badge erhalten!`,
+        message: `Du hast das Badge "${badgeId}" freigeschaltet.`,
+        relatedUrl: '/profile',
+        data: msg.data,
+      });
+
+    } else if (msg.type === 'achievement:unlocked') {
+      const { achievementId } = msg.data;
+      await notificationService.create({
+        userId: msg.userId,
+        type: 'milestone',
+        title: `Achievement freigeschaltet!`,
+        message: `Du hast das Achievement "${achievementId}" abgeschlossen.`,
+        relatedUrl: '/profile',
+        data: msg.data,
+      });
+
     } else {
       logger.warn(`[QueueWorker] Unknown message type: ${msg.type}`);
     }
   } catch (error) {
     logger.error('[QueueWorker] Failed to process message:', error);
+  }
+}
+
+async function processPushQueue(): Promise<void> {
+  for (let i = 0; i < 10; i++) {
+    const raw = await redis.rPop('queue:push');
+    if (!raw) break;
+    let item: { notificationId: string };
+    try { item = JSON.parse(raw); } catch { continue; }
+
+    try {
+      await pushService.send(item.notificationId);
+      logger.info(`[QueueWorker] Push sent for notification ${item.notificationId}`);
+    } catch (err) {
+      logger.error('[QueueWorker] Push processing error:', err);
+    }
   }
 }
 
@@ -121,6 +171,12 @@ async function poll(): Promise<void> {
     await processEmailQueue();
   } catch (error) {
     logger.error('[QueueWorker] Email poll error:', error);
+  }
+
+  try {
+    await processPushQueue();
+  } catch (error) {
+    logger.error('[QueueWorker] Push poll error:', error);
   }
 }
 

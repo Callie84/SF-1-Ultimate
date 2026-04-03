@@ -124,6 +124,58 @@ function transformApiResponse(apiResponse: ApiSearchResponse, searchQuery: strin
   };
 }
 
+// Transform single-index API response to frontend format
+function transformIndexResponse(
+  response: ApiSearchResult,
+  searchQuery: string,
+  tab: 'strains' | 'threads' | 'grows'
+): SearchResponse {
+  const results: SearchResult[] = [];
+
+  response.hits.forEach((hit: any) => {
+    if (tab === 'strains') {
+      results.push({
+        id: hit.id || hit._id,
+        type: 'STRAIN',
+        title: hit.name,
+        description: hit.description?.substring(0, 200),
+        imageUrl: hit.imageUrl,
+        url: `/strains/${hit.slug || hit.id}`,
+        metadata: { thc: hit.thc, cbd: hit.cbd, type: hit.type },
+        score: 1,
+      });
+    } else if (tab === 'threads') {
+      results.push({
+        id: hit.id || hit._id,
+        type: 'THREAD',
+        title: hit.title,
+        description: hit.content?.substring(0, 200),
+        url: `/community/thread/${hit.id || hit._id}`,
+        metadata: { replies: hit.replyCount, views: hit.viewCount },
+        score: 1,
+      });
+    } else if (tab === 'grows') {
+      results.push({
+        id: hit.id || hit._id,
+        type: 'GROW',
+        title: hit.strainName || hit.name || 'Grow',
+        description: hit.notes?.substring(0, 200),
+        url: `/grows/${hit.id || hit._id}`,
+        metadata: { status: hit.status, environment: hit.environment },
+        score: 1,
+      });
+    }
+  });
+
+  return {
+    results,
+    total: response.totalHits,
+    query: searchQuery,
+    took: response.processingTimeMs,
+    facets: { types: {} }
+  };
+}
+
 function SearchPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -137,18 +189,39 @@ function SearchPageContent() {
   const [activeTab, setActiveTab] = useState<'all' | 'strains' | 'threads' | 'grows'>('all');
 
   // Perform search
-  const performSearch = async (searchQuery: string, currentFilters: SearchFiltersType, currentPage: number) => {
+  const performSearch = async (
+    searchQuery: string,
+    currentFilters: SearchFiltersType,
+    currentPage: number,
+    tab: 'all' | 'strains' | 'threads' | 'grows' = activeTab
+  ) => {
     if (!searchQuery.trim()) return;
+
+    const LIMIT = 20;
+    const offset = (currentPage - 1) * LIMIT;
 
     setIsLoading(true);
     try {
-      const params = new URLSearchParams({
-        q: searchQuery,
-        limit: '20',
-      });
+      let transformedResults: SearchResponse;
 
-      const response: ApiSearchResponse = await apiClient.get(`/api/search?${params.toString()}`);
-      const transformedResults = transformApiResponse(response, searchQuery);
+      if (tab === 'all') {
+        // All-Search: top 5 pro Kategorie, kein Paging
+        const params = new URLSearchParams({ q: searchQuery, limit: '5' });
+        const response: ApiSearchResponse = await apiClient.get(`/api/search?${params.toString()}`);
+        transformedResults = transformApiResponse(response, searchQuery);
+      } else {
+        // Kategorie-spezifische Suche mit echter Paginierung
+        const indexMap = { strains: 'strains', threads: 'threads', grows: 'grows' } as const;
+        const indexName = indexMap[tab];
+        const params = new URLSearchParams({
+          q: searchQuery,
+          limit: String(LIMIT),
+          offset: String(offset),
+        });
+        const response: ApiSearchResult = await apiClient.get(`/api/search/${indexName}?${params.toString()}`);
+        transformedResults = transformIndexResponse(response, searchQuery, tab);
+      }
+
       setResults(transformedResults);
     } catch (error) {
       console.error('Search failed:', error);
@@ -196,7 +269,8 @@ function SearchPageContent() {
     performSearch(query, filters, 1);
   };
 
-  const totalPages = results?.total ? Math.ceil(results.total / 20) : 0;
+  // Paginierung nur bei Kategorie-Tabs (nicht "All")
+  const totalPages = (activeTab !== 'all' && results?.total) ? Math.ceil(results.total / 20) : 0;
 
   return (
     <div className="space-y-6">
@@ -288,7 +362,12 @@ function SearchPageContent() {
           ].map(({ key, label, count, icon: Icon }) => (
             <button
               key={key}
-              onClick={() => setActiveTab(key as typeof activeTab)}
+              onClick={() => {
+                const newTab = key as typeof activeTab;
+                setActiveTab(newTab);
+                setPage(1);
+                performSearch(query, filters, 1, newTab);
+              }}
               className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === key
                   ? 'border-primary text-primary'
@@ -326,13 +405,7 @@ function SearchPageContent() {
             </div>
           ) : results ? (
             <>
-              <SearchResults results={(results.results || []).filter(r => {
-                if (activeTab === 'all') return true;
-                if (activeTab === 'strains') return r.type === 'STRAIN';
-                if (activeTab === 'threads') return r.type === 'THREAD';
-                if (activeTab === 'grows') return r.type === 'GROW';
-                return true;
-              })} />
+              <SearchResults results={results.results || []} />
 
               {/* Pagination */}
               {totalPages > 1 && (
@@ -343,7 +416,7 @@ function SearchPageContent() {
                     onClick={() => handlePageChange(page - 1)}
                     disabled={page === 1}
                   >
-                    Zuruck
+                    Zurück
                   </Button>
 
                   <div className="flex items-center gap-1">
@@ -396,7 +469,7 @@ function SearchPageContent() {
               <Search className="mx-auto h-10 w-10 text-muted-foreground/30" />
               <h3 className="mt-3 font-semibold">Starte deine Suche</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Suche nach Strains, Forum-Threads, Grow-Tagebuchern oder Usern
+                Suche nach Strains, Forum-Threads, Grow-Tagebüchern oder Usern
               </p>
             </div>
           )}

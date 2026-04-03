@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +24,47 @@ import { useCategories } from '@/hooks/use-community';
 import { useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/hooks/use-admin';
 import { formatNumber } from '@/lib/utils';
 import { toast } from 'sonner';
+import Picker from '@emoji-mart/react';
+import data from '@emoji-mart/data';
+
+function EmojiPicker({ value, onChange }: { value: string; onChange: (emoji: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex h-10 w-full items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent transition-colors"
+      >
+        <span className="text-xl leading-none">{value || '➕'}</span>
+        <span className="text-muted-foreground">{value ? 'Emoji ändern…' : 'Emoji wählen…'}</span>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1">
+          <Picker
+            data={data}
+            locale="de"
+            onEmojiSelect={(e: any) => { onChange(e.native); setOpen(false); }}
+            theme="auto"
+            previewPosition="none"
+            skinTonePosition="none"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminCategoriesPage() {
   const router = useRouter();
@@ -209,10 +250,9 @@ export default function AdminCategoriesPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Icon (Emoji)</label>
-                  <Input
-                    placeholder="z.B. 🌱"
+                  <EmojiPicker
                     value={newCategory.icon}
-                    onChange={(e) => setNewCategory({ ...newCategory, icon: e.target.value })}
+                    onChange={(emoji) => setNewCategory({ ...newCategory, icon: emoji })}
                   />
                 </div>
               </div>
@@ -300,10 +340,9 @@ export default function AdminCategoriesPage() {
                           <div className="grid gap-3 md:grid-cols-2">
                             <div className="space-y-1">
                               <label className="text-xs font-medium text-muted-foreground">Icon (Emoji)</label>
-                              <Input
+                              <EmojiPicker
                                 value={editForm.icon}
-                                onChange={(e) => setEditForm({ ...editForm, icon: e.target.value })}
-                                placeholder="🌱"
+                                onChange={(emoji) => setEditForm({ ...editForm, icon: emoji })}
                               />
                             </div>
                           </div>

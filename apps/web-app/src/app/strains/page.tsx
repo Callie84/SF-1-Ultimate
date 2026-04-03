@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -166,9 +167,11 @@ export default function StrainsPage() {
                     <CardContent className="pt-4">
                       <div className="flex items-start gap-3">
                         {strain.imageUrl ? (
-                          <img
+                          <Image
                             src={strain.imageUrl}
                             alt={strain.name}
+                            width={64}
+                            height={64}
                             className="h-16 w-16 rounded-lg object-cover"
                           />
                         ) : (

@@ -1,8 +1,6 @@
 import { Notification, INotification } from '../models/Notification.model';
 import { Preference } from '../models/Preference.model';
-import { Device } from '../models/Device.model';
 import { emailService } from './email.service';
-import { pushService } from './push.service';
 import { websocketService } from './websocket.service';
 import { redis } from '../config/redis';
 import { logger } from '../utils/logger';

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api-client';
-import { Thread, Reply } from '@/types/community';
+import { Thread, Reply, ApiThread, ApiReply, ThreadListResponse } from '@/types/community';
 
 // Query Keys
 export const communityKeys = {
@@ -23,7 +23,7 @@ export function useCategories() {
 }
 
 // Get threads (optionally filtered by category)
-export function useThreads(categoryId?: string, filters?: any) {
+export function useThreads(categoryId?: string, filters?: Record<string, string | number | boolean>) {
   return useQuery({
     queryKey: communityKeys.threads(categoryId),
     queryFn: async () => {
@@ -199,7 +199,7 @@ export function useUserVotesBatch(ids: string[]) {
     queryKey: [...communityKeys.all, 'votes', ids.join(',')],
     queryFn: async () => {
       const data = await api.post('/api/community/votes/batch', { targetIds: ids });
-      return (data as any).votes as Record<string, 'upvote' | 'downvote'>;
+      return (data as { votes: Record<string, 'upvote' | 'downvote'> }).votes;
     },
     enabled: ids.length > 0,
     staleTime: 30 * 1000,
@@ -212,7 +212,7 @@ export function useSearchThreads(query: string) {
     queryKey: [...communityKeys.all, 'search', query],
     queryFn: async () => {
       const data = await api.get(`/api/community/threads/search?q=${encodeURIComponent(query)}&limit=20`);
-      return (data as any) as { threads: any[]; total: number };
+      return data as ThreadListResponse;
     },
     enabled: query.length >= 2,
     staleTime: 30 * 1000,
@@ -231,6 +231,21 @@ export function useAcceptReply(threadId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: communityKeys.replies(threadId) });
       queryClient.invalidateQueries({ queryKey: communityKeys.thread(threadId) });
+    },
+  });
+}
+
+// Inhalt melden (Thread oder Reply)
+export function useReportContent() {
+  return useMutation({
+    mutationFn: async (data: {
+      targetId: string;
+      targetType: 'thread' | 'reply';
+      reason: 'spam' | 'abuse' | 'harassment' | 'illegal' | 'misinformation' | 'other';
+      description?: string;
+    }) => {
+      const result = await api.post('/api/community/moderation/reports', data);
+      return result;
     },
   });
 }

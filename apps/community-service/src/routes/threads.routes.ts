@@ -5,6 +5,7 @@ import { threadService } from '../services/thread.service';
 import { replyService } from '../services/reply.service';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 import { validate } from '../middleware/validate';
+import { cacheOrFetch, invalidateCache } from '../utils/cache';
 
 const router = Router();
 
@@ -13,7 +14,8 @@ const createThreadSchema = z.object({
   categoryId: z.string().min(1),
   title: z.string().min(5).max(200),
   content: z.string().min(10).max(10000),
-  tags: z.array(z.string().max(30)).max(5).optional()
+  tags: z.array(z.string().max(30)).max(5).optional(),
+  imageUrls: z.array(z.string().url()).max(5).optional()
 });
 
 const updateThreadSchema = z.object({
@@ -32,6 +34,7 @@ router.post('/',
   async (req, res, next) => {
     try {
       const thread = await threadService.create(req.user!.id, req.body);
+      await invalidateCache('cache:threads:*');
       res.status(201).json({ thread });
     } catch (error) {
       next(error);
@@ -48,15 +51,31 @@ router.get('/',
   async (req, res, next) => {
     try {
       const { categoryId, userId, sort, limit, skip, tag } = req.query;
+      const parsedLimit = parseInt(limit as string) || 20;
+      const parsedSkip = parseInt(skip as string) || 0;
+      const parsedSort = (sort as string) || 'latest';
 
-      const result = await threadService.getThreads({
-        categoryId: categoryId as string,
-        userId: userId as string,
-        sort: (sort as any) || 'latest',
-        limit: parseInt(limit as string) || 20,
-        skip: parseInt(skip as string) || 0,
-        tag: tag as string
-      });
+      // Trending-Cache (10min) nur für default/trending ohne User-Filter
+      const isCacheable = parsedSort === 'trending' && !userId && parsedSkip === 0;
+      const cacheKey = `cache:threads:trending:${categoryId || 'all'}:${parsedLimit}`;
+
+      const result = isCacheable
+        ? await cacheOrFetch(cacheKey, 10 * 60, () =>
+            threadService.getThreads({
+              categoryId: categoryId as string,
+              sort: 'trending',
+              limit: parsedLimit,
+              skip: 0,
+            })
+          )
+        : await threadService.getThreads({
+            categoryId: categoryId as string,
+            userId: userId as string,
+            sort: parsedSort as any,
+            limit: parsedLimit,
+            skip: parsedSkip,
+            tag: tag as string,
+          });
 
       res.json(result);
     } catch (error) {

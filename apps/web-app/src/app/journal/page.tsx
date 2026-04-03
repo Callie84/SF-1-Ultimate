@@ -1,9 +1,10 @@
 'use client';
 
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
+import { ZoneBanner } from '@/components/ads/zone-banner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Calendar, Sprout, Eye, Heart, MessageSquare, Loader2, BarChart3 } from 'lucide-react';
+import { Plus, Calendar, Sprout, Eye, Heart, MessageSquare, Loader2, BarChart3, Bell, Beaker } from 'lucide-react';
 import Link from 'next/link';
 import { formatRelativeTime } from '@/lib/utils';
 import { useGrows } from '@/hooks/use-journal';
@@ -50,6 +51,7 @@ export default function JournalPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <ZoneBanner zoneId="journal-top" />
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -60,9 +62,21 @@ export default function JournalPage() {
           </div>
           <div className="flex gap-2 flex-shrink-0">
             <Button variant="outline" size="sm" asChild>
+              <Link href="/journal/reminders">
+                <Bell className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Kalender</span>
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
               <Link href="/journal/stats">
                 <BarChart3 className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Statistiken</span>
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/journal/feeding">
+                <Beaker className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Nährstoffpläne</span>
               </Link>
             </Button>
             <Button size="sm" asChild>

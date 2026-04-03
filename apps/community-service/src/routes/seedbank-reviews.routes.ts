@@ -20,6 +20,8 @@ const reviewSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 reviewSchema.index({ seedbankSlug: 1, userId: 1 }, { unique: true });
+reviewSchema.index({ seedbankSlug: 1, createdAt: -1 }); // Session 52
+reviewSchema.index({ userId: 1, createdAt: -1 }); // Session 52
 
 const SeedbankReview = mongoose.models.SeedbankReview || mongoose.model('SeedbankReview', reviewSchema);
 

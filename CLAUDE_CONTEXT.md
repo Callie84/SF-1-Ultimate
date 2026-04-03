@@ -1,6 +1,6 @@
 # SF-1 Ultimate - Claude Code Kontext
 
-**Letzte Aktualisierung:** 2026-03-05 (Session 23 - Landing Page Sicherheit + Auto-Logout + Werbe-Zonen-Editor ✅ | Session 22 - Seedbanks ✅ | Session 20 - Feed-Filter ✅)
+**Letzte Aktualisierung:** 2026-03-06 (Session 32 - Hetzner S3 ✅ | Session 31 - SMTP/E-Mail ✅ | Session 30 - Forum-Moderation ✅ | Session 29 - Backup ✅)
 **Vollständige Dokumentation:** `DOKUMENTATION.md` im Projekt-Root
 **Projekt:** seedfinderpro.de - Cannabis Growing Community Platform
 
@@ -48,6 +48,7 @@ Eine Fullstack Cannabis-Community-Plattform mit:
 | media-service | 3008 | /api/media/* | ✅ |
 | gamification-service | 3009 | /api/gamification/* | ✅ |
 | ai-service | 3010 | /api/ai/* | ✅ |
+| backup-service | 3011 | /api/backup/* | ✅ |
 
 ---
 
@@ -398,8 +399,13 @@ Eine Fullstack Cannabis-Community-Plattform mit:
 | `/admin/grows` | Grow-Verwaltung (Suche, Status-Filter, Löschen) |
 | `/admin/logs` | System-Logs (Level/Service-Filter, Aktualisieren) |
 | `/admin/ads` | Werbeanzeigen (Rechteck 728×90 + Quadrat 300×300, Karussell) |
-| `/admin/scraper` | **NEU** Feed-Importer Dashboard (11 Affiliate-Feeds, Queue-Stats, Sofort/Queue-Import) |
-| `/admin/settings` | Admin-Einstellungen |
+| `/admin/scraper` | Feed-Importer Dashboard (11 Affiliate-Feeds, Queue-Stats, Sofort/Queue-Import) |
+| `/admin/seedbanks` | Seedbank-Verwaltung |
+| `/admin/achievements` | Gamification-Achievements |
+| `/admin/ai` | AI-Service Übersicht |
+| `/admin/clicks` | Click-Tracking & Affiliate-Stats |
+| `/admin/backup` | Backup-Automatisierung (tägl. 02:00, 7 Tage Retention) |
+| `/admin/settings` | Admin-Einstellungen + SMTP-Test |
 
 ---
 
@@ -468,10 +474,13 @@ function transformApiResponse(apiResponse) {
 4. ~~**Follow-System**~~ ✅ Implementiert (Session 5 - Feature 3)
 5. ~~**Strain-Vergleich**~~ ✅ Implementiert (Session 5 - Feature 4)
 6. ~~**System-Logs**~~ ✅ Implementiert (Session 7 - Admin Logs Page)
-7. **Grow-Kalender/Erinnerungen** - Termine und Tasks
-8. **Ernte-Statistiken** - Detaillierte Auswertungen
-9. **Seedbank-Verwaltung** - Preise, Scraper-Status
-10. **AI-Service Monitoring** - Token-Verbrauch, Kosten
+7. ~~**Forum-Moderations-Workflow**~~ ✅ Implementiert (Session 30)
+8. ~~**SMTP / E-Mail-System**~~ ✅ Implementiert (Session 31 — Brevo, Welcome, Reset, Admin-Test)
+9. ~~**Hetzner Object Storage**~~ ✅ Implementiert (Session 32 — war bereits fertig, getestet)
+10. **Grow-Kalender/Erinnerungen** - Termine und Tasks (Session 33)
+11. **Ernte-Statistiken** - Detaillierte Auswertungen (Session 34)
+12. **AI-Service Monitoring** - Token-Verbrauch, Kosten (Session 35)
+13. **UptimeRobot & Monitoring** - Health-Checks, Alerts (Session 36)
 
 ---
 
@@ -1234,30 +1243,86 @@ curl https://seedfinderpro.de/api/[service]/health
   - `CommentItem` — Reply-Formular (parentId übergeben)
   - Grow-Owner Link: `useUserById(grow.userId)` → `von @username` → `/profile/:username`
 
-### 🚀 NÄCHSTE SESSION — Sofort weitermachen mit:
+---
 
-#### Priorität 1: Neue Features nach Wahl
+### Session 21 - Notification-Center, Werbeanzeigen-Buchungssystem (2026-03-04/05)
+- Notification-Center komplett überarbeitet (WebSocket, Badge, Dropdown, Preferences)
+- Quiet-Hours implementiert
+- WebSocket-Auth-Fix
+- Werbeanzeigen-Buchungssystem (Impressionen, Klicks, CTR, Budget, Kundeninfos)
+
+### Session 22 - Seedbanks (2026-03-05)
+- Seedbank-Übersichtsseite mit Bewertungen, Preisen, Filter
+- `/admin/seedbanks` Verwaltungsseite
+
+### Session 23 - Landing Page + Auto-Logout + Werbe-Zonen-Editor (2026-03-05)
+- Landing Page mit SEO-optimierten Inhalten
+- Auto-Logout nach Inaktivität (30 Min)
+- Werbe-Zonen-Editor (4 Slots: content-top/bottom, sidebar-top/bottom)
+- `AdZoneConfig` Model in MongoDB (community-service)
+
+### Session 24 - Notification-Center Upgrade (2026-03-05)
+- Notification-Dropdown komplett überarbeitet
+- Einstellungen für Notification-Typen
+- Quiet-Hours UI
+
+### Session 25-28 - Diverse Fixes & Erweiterungen (2026-03-05)
+- Booking-System für Werbeanzeigen
+- Affiliate-Click-Tracking (`/admin/clicks`)
+- Achievements-Admin (`/admin/achievements`)
+- AI-Service Monitoring (`/admin/ai`)
+
+### Session 29 - Backup-Automatisierung (2026-03-05)
+- Neuer `backup-service` (Port 3011, Container: sf1-backup, IP: 172.28.0.24)
+- MongoDB (`mongodump`) + PostgreSQL (`pg_dump`) täglich 02:00
+- 7 Backups Retention, `.tar.gz` in `/root/SF-1-Ultimate-/backups/`
+- REST-API: GET /status, GET /backups, POST /trigger, DELETE /:name
+- Admin-UI: `/admin/backup`
+- Dockerfile: node:20-slim + mongodb-database-tools + postgresql-client
+
+### Session 30 - Forum-Moderations-Workflow (2026-03-06)
+- **Bug-Fix:** `moderatorMiddleware` ohne `authMiddleware` → req.user war nie gesetzt
+- **Bug-Fix:** Frontend rief `/resolve` auf, Backend hatte `/review` — Action-Mapping-Mismatch
+- `POST /api/community/moderation/reports/:id/resolve` Endpoint (Frontend-Actions → Backend-Actions)
+- `getReports()` enriched mit Thread/Reply-Content + contentUrl
+- `ReportButton`-Komponente (inline, Flag-Icon, Grund-Auswahl)
+- ReportButton in Thread-Detail-Seite (für Threads und Replies)
+- `useReportContent`, `useModerationStats` Hooks
+- Admin-Moderation-Seite: Stats-Karten (Offene Meldungen, Aktive Sperren, Heute)
+
+### Session 31 - SMTP / E-Mail-System (2026-03-06)
+- Brevo SMTP bereits konfiguriert (`smtp-relay.brevo.com:2525`)
+- 5 HTML-Templates vorhanden: welcome, password-reset, digest, comment-reply, price-alert
+- Willkommens-E-Mail bei Registrierung (fire-and-forget in auth-service)
+- `POST /api/notifications/admin/test-email` Endpoint (JWT Admin)
+- Admin-Settings: E-Mail-Status-Info + Test-Formular (Empfänger + Template-Auswahl)
+- Passwort-Reset-Flow vollständig (forgot-password + reset-password Frontend + Backend)
+
+### Session 32 - Hetzner Object Storage (2026-03-06)
+- **Ergebnis: Bereits vollständig implementiert**
+- S3Client mit `forcePathStyle:true` für Hetzner
+- Photo-Upload: sharp → 3 Größen (original 2048px / medium 800px / thumb 300px) → S3
+- S3 getestet: `fsn1.your-objectstorage.com/sf1-uploads` erreichbar, Upload + Delete funktioniert
+- Avatar-Upload für auth-service ebenfalls auf S3
+- Lokaler `/app/uploads` leer — alle Fotos auf S3
 
 ---
 
-### Braucht externe Accounts (User muss liefern)
+## Nächste Schritte (Session 33+)
 
-| Feature | Benötigt |
+| Session | Feature |
 |---------|---------|
-| E-Mail-Versand | SMTP_HOST, SMTP_USER, SMTP_PASS (z.B. Brevo) in .env |
-| Hetzner Storage Box | FTP-Credentials für automatische Backups |
-| UptimeRobot | Account für Monitoring |
-| S3 Medien-Storage | S3_ACCESS_KEY, S3_SECRET, S3_BUCKET (für Production) |
+| 33 | Grow-Kalender & Erinnerungen |
+| 34 | Ernte-Statistiken & Auswertungen |
+| 35 | AI-Service Monitoring |
+| 36 | UptimeRobot & Monitoring |
+| 37 | Polish & Performance |
 
----
-
-## Nächste Schritte
-
-**Nächste Session starten:**
-1. `"Lies CLAUDE_CONTEXT.md und mach weiter"` → startet mit Explore-Feed Pagination
-2. `"Reply-Funktion für Kommentare"` → direkt Priorität 2
-3. `"Like-Benachrichtigung"` → direkt Priorität 3
-4. `"SMTP einrichten"` → erfordert Zugangsdaten vom User
+**Externe Dienste: alle konfiguriert ✅**
+- SMTP: Brevo (`smtp-relay.brevo.com:2525`) ✅
+- S3: Hetzner (`fsn1.your-objectstorage.com`) ✅
+- Backup: Täglich 02:00 automatisch ✅
+- UptimeRobot: noch nicht eingerichtet
 
 **Vollständige Dokumentation aller Sessions:** `DOKUMENTATION.md` im Projekt-Root
 

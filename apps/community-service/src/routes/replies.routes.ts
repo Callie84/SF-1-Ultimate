@@ -11,7 +11,8 @@ const router = Router();
 const createReplySchema = z.object({
   threadId: z.string().min(1),
   content: z.string().min(1).max(5000),
-  parentId: z.string().optional()
+  parentId: z.string().optional(),
+  imageUrls: z.array(z.string().url()).max(5).optional()
 });
 
 const updateReplySchema = z.object({

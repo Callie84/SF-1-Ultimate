@@ -30,6 +30,10 @@ interface GrowStats {
     totalYieldDry: number;
     avgYieldDry: number;
     maxYieldDry: number;
+    avgEfficiency: number | null;
+    maxEfficiency: number | null;
+    avgYieldPerM2: number | null;
+    maxYieldPerM2: number | null;
     avgQuality: number;
     avgDurationDays: number;
   };
@@ -37,6 +41,9 @@ interface GrowStats {
     strainName: string;
     yieldDry: number;
     yieldWet?: number;
+    efficiency?: number;
+    yieldPerM2?: number;
+    lightWattage?: number;
     quality: number;
     harvestDate: string;
     environment: string;
@@ -204,6 +211,20 @@ export default function JournalStatsPage() {
                       <div className="text-2xl font-bold">{stats.harvest.avgDurationDays}</div>
                       <div className="text-xs text-muted-foreground">Tage</div>
                     </div>
+                    {stats.harvest.avgEfficiency && (
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">Ø Effizienz</div>
+                        <div className="text-2xl font-bold text-blue-700">{stats.harvest.avgEfficiency} g/W</div>
+                        <div className="text-xs text-muted-foreground">Max: {stats.harvest.maxEfficiency} g/W</div>
+                      </div>
+                    )}
+                    {stats.harvest.avgYieldPerM2 && (
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">Ø Flächenertrag</div>
+                        <div className="text-2xl font-bold text-purple-700">{stats.harvest.avgYieldPerM2} g/m²</div>
+                        <div className="text-xs text-muted-foreground">Max: {stats.harvest.maxYieldPerM2} g/m²</div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -301,6 +322,12 @@ export default function JournalStatsPage() {
                           </div>
                           <div className="text-right flex-shrink-0">
                             <div className="font-bold text-sm">{grow.yieldDry}g</div>
+                            {grow.efficiency && (
+                              <div className="text-xs text-blue-600">{grow.efficiency} g/W</div>
+                            )}
+                            {grow.yieldPerM2 && (
+                              <div className="text-xs text-purple-600">{grow.yieldPerM2} g/m²</div>
+                            )}
                             {grow.quality && <QualityStars quality={grow.quality} />}
                           </div>
                         </div>

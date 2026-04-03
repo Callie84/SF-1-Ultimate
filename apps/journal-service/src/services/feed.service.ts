@@ -30,11 +30,14 @@ export class FeedService {
     sortBy: string;
     status?: string;
     environment?: string;
+    medium?: string;
+    lightType?: string;
+    difficulty?: string;
     userId?: string;
     filterUserId?: string;
   }): Promise<{ grows: any[]; total: number }> {
-    const hasFilters = options.status || options.environment || options.filterUserId;
-    const cacheKey = `feed:public:${options.sortBy}:${options.limit}:${options.skip}:${options.status || ''}:${options.environment || ''}:${options.filterUserId || ''}`;
+    const hasFilters = options.status || options.environment || options.filterUserId || options.medium || options.lightType || options.difficulty;
+    const cacheKey = `feed:public:${options.sortBy}:${options.limit}:${options.skip}:${options.status || ''}:${options.environment || ''}:${options.medium || ''}:${options.lightType || ''}:${options.difficulty || ''}:${options.filterUserId || ''}`;
 
     if (!hasFilters) {
       const cached = await redis.get(cacheKey);
@@ -62,6 +65,18 @@ export class FeedService {
 
     if (options.environment && options.environment !== 'all') {
       filter.environment = options.environment;
+    }
+
+    if (options.medium && options.medium !== 'all') {
+      filter.medium = options.medium;
+    }
+
+    if (options.lightType && options.lightType !== 'all') {
+      filter.lightType = options.lightType;
+    }
+
+    if (options.difficulty && options.difficulty !== 'all') {
+      filter.difficulty = options.difficulty;
     }
 
     if (options.filterUserId) {

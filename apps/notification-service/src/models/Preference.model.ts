@@ -82,10 +82,10 @@ const PreferenceSchema = new Schema<IPreference>({
     }
   },
   
-  emailDigest: { 
-    type: String, 
-    enum: ['instant', 'hourly', 'daily', 'never'], 
-    default: 'instant' 
+  emailDigest: {
+    type: String,
+    enum: ['instant', 'hourly', 'daily', 'never'],
+    default: 'never'
   },
   emailDigestTime: String,
   

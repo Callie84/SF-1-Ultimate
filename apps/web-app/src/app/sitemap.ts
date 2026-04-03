@@ -1,18 +1,18 @@
 import type { MetadataRoute } from 'next';
 
 const BASE_URL = 'https://seedfinderpro.de';
+const COMMUNITY_URL = process.env.COMMUNITY_SERVICE_URL || 'http://community-service:3005';
+const JOURNAL_URL = process.env.JOURNAL_SERVICE_URL || 'http://journal-service:3003';
 
 async function getStrainSlugs(): Promise<string[]> {
   try {
-    // Fetch all strains from community-service (server-side, direct service call)
-    const communityServiceUrl = process.env.COMMUNITY_SERVICE_URL || 'http://community-service:3005';
     let allSlugs: string[] = [];
     let page = 1;
     const limit = 100;
 
     while (true) {
       const res = await fetch(
-        `${communityServiceUrl}/api/community/strains?page=${page}&limit=${limit}&active=true`,
+        `${COMMUNITY_URL}/api/community/strains?page=${page}&limit=${limit}&active=true`,
         { next: { revalidate: 3600 } } // cache 1 hour
       );
       if (!res.ok) break;
@@ -32,8 +32,64 @@ async function getStrainSlugs(): Promise<string[]> {
   }
 }
 
+async function getPublicGrowIds(): Promise<{ id: string; updatedAt?: string }[]> {
+  try {
+    let all: { id: string; updatedAt?: string }[] = [];
+    let skip = 0;
+    const limit = 100;
+    while (true) {
+      const res = await fetch(
+        `${JOURNAL_URL}/api/journal/grows/public?limit=${limit}&skip=${skip}`,
+        { next: { revalidate: 3600 } }
+      );
+      if (!res.ok) break;
+      const data = await res.json();
+      const grows = data.grows || [];
+      all = [
+        ...all,
+        ...grows.map((g: any) => ({ id: g._id || g.id, updatedAt: g.updatedAt })),
+      ];
+      if (grows.length < limit) break;
+      skip += limit;
+    }
+    return all;
+  } catch {
+    return [];
+  }
+}
+
+async function getPublicThreadIds(): Promise<{ id: string; updatedAt?: string }[]> {
+  try {
+    let all: { id: string; updatedAt?: string }[] = [];
+    let skip = 0;
+    const limit = 100;
+    while (true) {
+      const res = await fetch(
+        `${COMMUNITY_URL}/api/community/threads?limit=${limit}&skip=${skip}&sort=latest`,
+        { next: { revalidate: 3600 } }
+      );
+      if (!res.ok) break;
+      const data = await res.json();
+      const threads = data.threads || [];
+      all = [
+        ...all,
+        ...threads.map((t: any) => ({ id: t._id || t.id, updatedAt: t.updatedAt })),
+      ];
+      if (threads.length < limit) break;
+      skip += limit;
+    }
+    return all;
+  } catch {
+    return [];
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const strainSlugs = await getStrainSlugs();
+  const [strainSlugs, growIds, threadIds] = await Promise.all([
+    getStrainSlugs(),
+    getPublicGrowIds(),
+    getPublicThreadIds(),
+  ]);
 
   const staticPages: MetadataRoute.Sitemap = [
     {
@@ -53,6 +109,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.9,
+    },
+    {
+      url: `${BASE_URL}/grows`,
+      lastModified: new Date(),
+      changeFrequency: 'hourly',
+      priority: 0.85,
+    },
+    {
+      url: `${BASE_URL}/seedbanks`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.75,
     },
     {
       url: `${BASE_URL}/community`,
@@ -141,5 +209,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...strainPages];
+  const growPages: MetadataRoute.Sitemap = growIds.map(({ id, updatedAt }) => ({
+    url: `${BASE_URL}/grows/${id}`,
+    lastModified: updatedAt ? new Date(updatedAt) : new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.6,
+  }));
+
+  const threadPages: MetadataRoute.Sitemap = threadIds.map(({ id, updatedAt }) => ({
+    url: `${BASE_URL}/community/thread/${id}`,
+    lastModified: updatedAt ? new Date(updatedAt) : new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.55,
+  }));
+
+  return [...staticPages, ...strainPages, ...growPages, ...threadPages];
 }

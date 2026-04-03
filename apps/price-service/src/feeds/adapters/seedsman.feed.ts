@@ -156,6 +156,7 @@ export class SeedsmanFeed extends BaseFeed {
           headers: {
             'Content-Type': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Store': 'default',
           },
         });
 
