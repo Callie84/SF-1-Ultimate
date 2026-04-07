@@ -43,7 +43,10 @@ echo "" | tee -a "${LOG_FILE}"
 echo "▶ [2/4] Functional Tests laufen..." | tee -a "${LOG_FILE}"
 echo "" | tee -a "${LOG_FILE}"
 
-node "${SCRIPT_DIR}/functional-tests.mjs" 2>&1 | tee -a "${LOG_FILE}" || FUNCTIONAL_EXIT=$?
+# JWT-Secret aus Auth-Service Container holen (für node:test Runner)
+export SF1_JWT_SECRET="$(docker exec sf1-auth-service printenv JWT_SECRET 2>/dev/null || echo 'fallback-for-ci')"
+
+node "${SCRIPT_DIR}/suites/runner.mjs" 2>&1 | tee -a "${LOG_FILE}" || FUNCTIONAL_EXIT=$?
 
 if [ "$FUNCTIONAL_EXIT" -eq 0 ]; then
   echo "✅ Functional Tests bestanden" | tee -a "${LOG_FILE}"

@@ -5130,10 +5130,36 @@ Ollama ist seit 2026-04-03 auf Port 11434 installiert, falls später gebraucht.
 - Pre-Cleanup hinzugefügt: Alte AUTOTEST-Threads vor jedem Test-Lauf gelöscht
 - Alte Threads (01.04, 04.04) wurden manuell via API gelöscht
 
+### Test-Framework Migration auf `node:test` (Professional Standard)
+
+**Neue Struktur (session 94):**
+- `node:test` (Node.js 20 built-in — kein extra Dependency)
+- `before()`/`after()` Hooks mit garantiertem Cleanup
+- Assertions auf Response-Body (nicht nur Status)
+- Secrets aus Umgebungsvariablen (kein hardcoded JWT-Secret)
+- Retry-Logik (exponential backoff, 2 Versuche)
+- 10 Test-Suites (Auth, Community, Journal, Price, Search, Tools, Gamification, Media, Backup, AI)
+- 3 Shared Libraries (service-discovery, http-client, auth-helper)
+
+**Dateien:**
+- `/tests/automated/lib/` — HTTP-Client, Service-Discovery, Auth-Helper
+- `/tests/automated/suites/` — Test-Suites (01-auth bis 04-read-only) + runner
+- `/tests/automated/run-daily-tests.sh` — Secret-Injection + neuer Runner
+
+**Improvements vs. alte Struktur:**
+- ✅ Cleanup läuft IMMER (auch bei Ausnahmen via `after()`-Hook)
+- ✅ Korrekte ID-Systematik: Auth=`user.id` (Prisma), andere=`_id` (Mongoose)
+- ✅ Pre-Cleanup mit Auth-Token (alte AUTOTEST-Threads gelöscht)
+- ✅ Votes, Entries, alle Daten werden gelöscht
+- ✅ Kein hardcoded JWT-Secret im Code
+- ✅ Retry-Logik für flaky Requests
+- ✅ Body-Assertions (Response-Shape validiert)
+
 ### Status Ende Session 94
 - ✅ Alle 12 Core-Services laufen und sind healthy
 - ✅ Tägliche Tests: **100% bestanden** (vs. 2 fehlgeschlagen vorher)
 - ✅ Load-Test: 1000 concurrent users, 0% Fehlerrate
 - ✅ Ollama verfügbar (nicht aktiv genutzt)
 - ✅ Test-Thread Cleanup Bug behoben — Threads werden jetzt gelöscht
+- ✅ **Professional Integration-Tests mit `node:test` implementiert**
 
