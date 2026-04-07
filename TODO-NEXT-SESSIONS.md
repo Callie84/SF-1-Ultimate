@@ -1,8 +1,9 @@
 # SF-1 Ultimate — TODO (nächste Sessions)
-# Zuletzt aktualisiert: 2026-03-16 nach Session 69
+# Zuletzt aktualisiert: 2026-04-04 nach Session 93
 #
-# ➡️  Nächste Session: Session 70
+# ➡️  Nächste Session: Session 94
 # ➡️  Vollständige Roadmap: ROADMAP-NEXT.md
+# ➡️  Vault-Dokumentation: /root/SF-Brain/SF-1 Projekt/Status & Roadmap.md
 #
 # BEI SESSION-START: immer CLAUDE_CONTEXT.md lesen + Backup + Container prüfen
 

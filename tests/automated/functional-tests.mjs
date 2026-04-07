@@ -67,6 +67,35 @@ function suite(name) {
   console.log(`\n📋 ${name}`);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PRE-CLEANUP: Alte Test-Threads löschen
+// ═══════════════════════════════════════════════════════════════════════════
+
+try {
+  const oldThreads = await fetch(`${BASE.community}/api/community/threads?limit=1000`);
+  const threadList = await oldThreads.json();
+  const autoTestThreads = (threadList.threads || []).filter(t =>
+    t.title?.includes('AUTOTEST') && t._id
+  );
+
+  if (autoTestThreads.length > 0) {
+    console.log(`🧹 Pre-Cleanup: ${autoTestThreads.length} alte AUTOTEST-Thread(s) gefunden`);
+
+    for (const thread of autoTestThreads) {
+      try {
+        // Mit Admin-Token versuchen (oder Owner-Token wenn möglich)
+        await fetch(`${BASE.community}/api/community/threads/${thread._id}?force=true`, {
+          method: 'DELETE'
+        });
+      } catch (e) {
+        // Ignorieren falls Fehler
+      }
+    }
+  }
+} catch (e) {
+  // Pre-Cleanup kann fehlschlagen — ist nicht kritisch
+}
+
 async function req(method, url, { body, token, expectStatus = 200, label } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -239,7 +268,7 @@ if (authToken) {
     expectStatus: [201, 400, 422],
   });
   if (postRes.ok && (postRes.status === 201)) {
-    testPostId = postRes.data?.thread?.id || postRes.data?.id;
+    testPostId = postRes.data?.thread?._id || postRes.data?.thread?.id || postRes.data?._id || postRes.data?.id;
   }
 
   if (testPostId) {
@@ -298,7 +327,7 @@ if (authToken) {
     label: 'Grow erstellen',
     expectStatus: 201,
   });
-  if (growRes.ok) testGrowId = growRes.data?.grow?.id || growRes.data?._id || growRes.data?.id;
+  if (growRes.ok) testGrowId = growRes.data?.grow?._id || growRes.data?.grow?.id || growRes.data?._id || growRes.data?.id;
 
   if (testGrowId) {
     await req('GET', `${BASE.journal}/api/journal/grows/${testGrowId}`, {
