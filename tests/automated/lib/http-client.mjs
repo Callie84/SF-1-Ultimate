@@ -26,6 +26,7 @@ const TIMEOUT_MS = 8000;
 export async function request(method, url, {
   body = null,
   token = null,
+  headers: customHeaders = {},
   expectStatus = 200,
   label = '',
   retries = 2,
@@ -41,6 +42,7 @@ export async function request(method, url, {
 
       const headers = {
         'Content-Type': 'application/json',
+        ...customHeaders,  // Custom headers zuerst, damit sie überschrieben können
       };
 
       if (token) {

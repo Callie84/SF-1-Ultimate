@@ -19,6 +19,7 @@ const testFiles = [
   '02-community.test.mjs',
   '03-journal.test.mjs',
   '04-read-only.test.mjs',
+  '05-09-advanced.test.mjs',
 ].map(f => `${__dirname}/${f}`);
 
 // Starte Tests
