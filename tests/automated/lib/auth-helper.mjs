@@ -152,8 +152,39 @@ export class TestSession {
 }
 
 /**
+ * Erstelle eine zweite Test-Session (nützlich für Cross-User-Tests wie Permission Guards)
+ * z.B. User B versucht Grow von User A zu löschen
+ */
+export async function createAnotherSession(overrides = {}) {
+  const other = new TestSession(overrides);
+  await other.setup();
+  return other;
+}
+
+/**
  * Exportiere auch Admin-JWT Generator für Admin-exclusive Tests
  */
 export function getAdminToken() {
   return generateAdminJWT();
+}
+
+/**
+ * Generiere Token mit custom Role (z.B. für MODERATOR Tests)
+ * Warnung: Das ist ein lokal generierter Token ohne DB-Validierung
+ */
+export function generateTokenWithRole(userId = 'test-user', role = 'USER') {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const now = Math.floor(Date.now() / 1000);
+  const payload = Buffer.from(JSON.stringify({
+    userId,
+    role,
+    iat: now,
+    exp: now + 3600,
+  })).toString('base64url');
+
+  const sig = createHmac('sha256', JWT_SECRET)
+    .update(`${header}.${payload}`)
+    .digest('base64url');
+
+  return `${header}.${payload}.${sig}`;
 }
