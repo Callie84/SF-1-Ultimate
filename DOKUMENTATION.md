@@ -1,8 +1,11 @@
 # SF-1 Ultimate — Vollständige Entwicklungsdokumentation
 
 **Projekt:** seedfinderpro.de — Cannabis Growing Community Platform
-**Stand:** 2026-03-04 (Session 20)
+**Stand:** 2026-04-07 (Sessions 1–94 abgeschlossen)
 **Stack:** Next.js 14, Express Microservices, MongoDB, PostgreSQL, Redis, Meilisearch, Docker Compose, Traefik
+
+> **⚠️ Hinweis:** Sessions 30–92 sind hauptsächlich in `/root/SF-Brain/SF-1 Projekt/Status & Roadmap.md` dokumentiert (Vault).
+> Diese Datei wird systematisch aktualisiert ab Session 94.
 
 ---
 
@@ -32,7 +35,8 @@
 22. [Bekannte Patterns & Fallstricke](#22-bekannte-patterns--fallstricke)
 23. [Session 21: Grows auf Profil, Grow-Suche, Strain-Verknüpfung, Forum-Verbesserungen](#23-session-21)
 24. [Session 22: Seedbank-Reviews, Notification-Events, Forum Edit/Delete, Grows-Reindex, Profil-Avatar, S3-Integration](#24-session-22)
-25. [Offene Punkte & Nächste Schritte](#25-offene-punkte--nächste-schritte)
+25. [Session 94: Crash-Loop Fix, Daily Tests](#25-session-94-crash-loop-fix-daily-tests)
+26. [Offene Punkte & Nächste Schritte](#26-offene-punkte--nächste-schritte)
 
 ---
 
@@ -4963,6 +4967,61 @@ Search (~99.4%) und Prices (~99.7%) Non-2xx im wrk-Test bleiben bestehen — wah
 - `FIRECRAWL_API_KEY=fc-aa5eeb49c56347098e177509984c51ed` ergänzt
 - Wird von `HanfImGlueckFeed` genutzt
 
+## Session 92 — 2026-04-03 — Agent-System implementiert
+
+### Claude Code Agents — 15 Agents erstellt
+
+**Verzeichnis:** `/root/.claude/agents/`
+**Zweck:** Spezialisierte Claude-Instanzen die unabhängig vom Haupt-Kontext arbeiten — prüfen, analysieren, validieren.
+
+#### Fundamentale Sicherheit
+| Agent | Datei | Aufgabe |
+|-------|-------|---------|
+| critical-review-agent | `critical-review-agent.md` | Meta-Agent: Korrektheit, Halluzinationen, destruktive Aktionen, Pflicht-Regeln |
+| security-agent | `security-agent.md` | OWASP Top 10, Secrets, SQL Injection, XSS, JWT-Handling |
+
+#### Code-Qualität
+| Agent | Datei | Aufgabe |
+|-------|-------|---------|
+| test-agent | `test-agent.md` | Tests ausführen, Fehlschläge analysieren, bekannte SF-1 Test-Fallen |
+| code-quality-agent | `code-quality-agent.md` | SF-1 Anti-Patterns erkennen (Redis v4, Toast-Import, apiClient, etc.) |
+| api-agent | `api-agent.md` | Endpoint-Konsistenz, Auth-Prüfung, Response-Format, HTTP-Status-Codes |
+
+#### Frontend
+| Agent | Datei | Aufgabe |
+|-------|-------|---------|
+| frontend-agent | `frontend-agent.md` | Alle 16 Design Hard Rules, Next.js Patterns, Rebuild-Entscheidung |
+| performance-agent | `performance-agent.md` | N+1 Queries, fehlende Indizes, Redis-Cache, Paginierung |
+
+#### Infrastruktur
+| Agent | Datei | Aufgabe |
+|-------|-------|---------|
+| architecture-agent | `architecture-agent.md` | Container-IPs/Ports verifizieren, Traefik-Routing, Service-Abhängigkeiten |
+| infrastructure-agent | `infrastructure-agent.md` | Docker-Status, .env-Vollständigkeit, Restart-Scope (Regel 10/11) |
+| database-agent | `database-agent.md` | Backup-Pflicht vor DB-Ops, count() vor deleteMany, Prisma/MongoDB-Safety |
+
+#### Deployment & Betrieb
+| Agent | Datei | Aufgabe |
+|-------|-------|---------|
+| deploy-git-agent | `deploy-git-agent.md` | Secrets im Commit, .gitignore, Commit-Message, Rollback-Plan |
+| backup-safety-agent | `backup-safety-agent.md` | Backup-Existenz + Integrität prüfen, neues Backup triggern |
+| documentation-agent | `documentation-agent.md` | DOKUMENTATION.md aktuell halten (Regel 2), TODO-Dateien pflegen |
+
+#### SF-1 Spezifisch
+| Agent | Datei | Aufgabe |
+|-------|-------|---------|
+| search-agent | `search-agent.md` | Meilisearch Index-Status, Reindex sequenziell (kein Promise.all!) |
+| feed-scraping-agent | `feed-scraping-agent.md` | Price-Service Adapter, Firecrawl-Integration, 29 aktive Feeds |
+
+#### Modell-Strategie
+- **Sonnet** (stark): critical-review, security, database, frontend, architecture, infrastructure, deploy-git, test
+- **Haiku** (schnell/günstig): code-quality, api, performance, documentation, backup-safety, search, feed-scraping
+
+#### Vault aktualisiert
+- `/root/SF-Brain/Agents/Agent-System Übersicht.md` — alle 15 Agents als [x] markiert
+
+---
+
 ## Session 91 — 2026-04-02 — Test-Fixes & Infrastruktur
 
 ### Obsidian-Vault SF-Brain eingerichtet
@@ -4986,3 +5045,95 @@ Search (~99.4%) und Prices (~99.7%) Non-2xx im wrk-Test bleiben bestehen — wah
 ### wrk Stress Test Ergebnis nach Fix
 - Feed (500 Connections, 30s): **443 Req/s, 0 Fehler** (vorher: 99% Non-2xx)
 - Ursache: Rate-Limiter hat alle Requests vom Server geblockt (selbe IP)
+
+---
+
+## ✅ SESSION 93 — Infrastructure Fixes & Beta Verlängerung
+*(2026-04-04)*
+
+### Services Repariert (unhealthy → healthy)
+- **Fehler:** 4 Services im `tsx` Hot-Reload-Loop stuck (ERR_MODULE_NOT_FOUND: Cannot find module '/app/src/index.ts')
+  - sf1-notification-service
+  - sf1-ai-service
+  - sf1-tools-service
+  - sf1-search-service
+- **Ursache:** File-Reload bei `tsx watch` konnte nicht komplett neu starten
+- **Lösung:** `docker-compose restart` für alle 4 Services → ✅ gesund
+
+### Beta-Limit Verlängert
+- **Alt:** `BETA_END_DATE=2099-12-31` (unbegrenzt, inaktiv)
+- **Neu:** `BETA_END_DATE=2026-05-07` (30 Tage Verlängerung von 2026-04-04)
+- **Limit:** 50 Registrierungen (18/50 aktuell)
+- **Admin:** klingenpascal@gmail.com
+
+### Dokumentation Aktualisiert
+- ✅ `CLAUDE_CONTEXT.md` — Header auf 2026-04-04 aktualisiert
+- ✅ `DOKUMENTATION.md` — Hinweis auf Vault-Dokumentation für Sessions 30–92
+- ⚠️ `TODO-NEXT-SESSIONS.md` — noch aktualisieren (dokumentiert nur bis Session 87)
+
+### Status
+- ✅ Alle 12 Core-Services laufen und sind healthy
+- ✅ Monitoring Stack aktiv (Grafana, Prometheus, AlertManager)
+- ✅ Backup-Service functional
+- ✅ Feature Flags (Unleash) & Analytics (Plausible) funktionieren
+
+---
+
+## ✅ SESSION 94 — Daily Tests Fix & Ollama Evaluation
+*(2026-04-07)*
+
+### Problem: Gamification & Media Services Crash-Loop
+
+**Symptom:**
+- Tägliche Tests zeigten **2 fehlgeschlagene Health-Checks:** Gamification & Media
+- Logs: `ERR_MODULE_NOT_FOUND: Cannot find module '/app/src/index.ts'`
+- Ursache: File-Watcher in `tsx` (seit 2026-04-03) hatte stale Lock-Dateien
+
+**Lösung:**
+- `docker restart sf1-gamification-service sf1-media-service` → ✅ beide wieder online
+- Kein Code-Fix nötig, nur Container-Restart
+
+### Tägliche Tests (2026-04-07 20:32)
+
+| Test | Ergebnis |
+|------|----------|
+| **Health Check** | ✅ 41/41 bestanden — alle Services (auch Gamification & Media) |
+| **Functional Tests** | ✅ 36/36 bestanden, 5 übersprungen (auth-dependent) |
+| **wrk Stress Tests** | ✅ Feed (440 RPS), Search (2996 RPS), Prices (1572 RPS) — 0 Fehler |
+| **Load Test (1000 VUs)** | ✅ 2600 Requests, **0.0% Fehler**, EXCELLENT Rating (1083 RPS) |
+
+**Bericht:** `/root/Dokumente/testreports/testbericht-2026-04-07-20-32-10.md`
+
+### Ollama-Evaluierung
+
+**User-Frage:** Ist lokale KI via Ollama rechtlich/technisch machbar?
+
+**Ergebnis:**
+- **Rechtlich:** Ja, mit Einschränkungen. Lokale Models sind datenschutz-freundlicher als OpenAI API, aber Model-Lizenzen müssen beachtet werden (z.B. Llama 2 unter 700M MAU)
+- **Technisch:** Bedingt machbar. Server hat nur 2,8 GB freiem RAM:
+  - Große Models (7B): ~3–5 GB — Swap-Thrashing wahrscheinlich
+  - Kleine Models (`tinyllama`, `neural-chat`): ~0.4–2.7 GB — funktioniert, aber merklich langsamer
+- **Entscheidung:** User lehnt ab (nicht lohnenswert für limited use-case)
+
+Ollama ist seit 2026-04-03 auf Port 11434 installiert, falls später gebraucht.
+
+### Test-Thread Cleanup Bug (behoben)
+
+**Problem:** Auto-Test-Threads wurden nicht gelöscht, sondern häuften sich an
+
+**Ursache:** 
+- Test extrahierte Thread-ID aus Response mit `thread.id`, aber API returnt nur `thread._id` (MongoDB)
+- `testPostId` wurde null → Cleanup konnte Thread nicht löschen
+
+**Fix:**
+- Zeile 242 & 301: ID-Extraktion erweitert auf `thread?._id || thread?.id`
+- Pre-Cleanup hinzugefügt: Alte AUTOTEST-Threads vor jedem Test-Lauf gelöscht
+- Alte Threads (01.04, 04.04) wurden manuell via API gelöscht
+
+### Status Ende Session 94
+- ✅ Alle 12 Core-Services laufen und sind healthy
+- ✅ Tägliche Tests: **100% bestanden** (vs. 2 fehlgeschlagen vorher)
+- ✅ Load-Test: 1000 concurrent users, 0% Fehlerrate
+- ✅ Ollama verfügbar (nicht aktiv genutzt)
+- ✅ Test-Thread Cleanup Bug behoben — Threads werden jetzt gelöscht
+

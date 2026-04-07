@@ -1,6 +1,6 @@
 # SF-1 Ultimate - Claude Code Kontext
 
-**Letzte Aktualisierung:** 2026-03-06 (Session 32 - Hetzner S3 ✅ | Session 31 - SMTP/E-Mail ✅ | Session 30 - Forum-Moderation ✅ | Session 29 - Backup ✅)
+**Letzte Aktualisierung:** 2026-04-04 (Session 93 - Services Fixed + Beta bis 2026-05-07 verlängert)
 **Vollständige Dokumentation:** `DOKUMENTATION.md` im Projekt-Root
 **Projekt:** seedfinderpro.de - Cannabis Growing Community Platform
 
@@ -37,18 +37,18 @@ Eine Fullstack Cannabis-Community-Plattform mit:
 
 | Service | Port | Pfad | Status |
 |---------|------|------|--------|
-| frontend | 3000 | / | ✅ |
-| auth-service | 3001 | /api/auth/* | ✅ |
-| price-service | 3002 | /api/prices/*, /api/strains/* | ✅ |
-| journal-service | 3003 | /api/journal/*, /api/grows/* | ✅ |
-| tools-service | 3004 | /api/tools/* | ✅ |
-| community-service | 3005 | /api/community/* | ✅ |
-| notification-service | 3006 | /api/notifications/* | ✅ |
-| search-service | 3007 | /api/search/* | ✅ |
-| media-service | 3008 | /api/media/* | ✅ |
-| gamification-service | 3009 | /api/gamification/* | ✅ |
-| ai-service | 3010 | /api/ai/* | ✅ |
-| backup-service | 3011 | /api/backup/* | ✅ |
+| frontend | 3000 | / | ✅ (Up 3d) |
+| auth-service | 3001 | /api/auth/* | ✅ (just restarted) |
+| price-service | 3002 | /api/prices/*, /api/strains/* | ✅ (Up 10h) |
+| journal-service | 3003 | /api/journal/*, /api/grows/* | ✅ (Up 10h) |
+| tools-service | 3004 | /api/tools/* | ✅ (just fixed) |
+| community-service | 3005 | /api/community/* | ✅ (Up 10h) |
+| notification-service | 3006 | /api/notifications/* | ✅ (just fixed) |
+| search-service | 3007 | /api/search/* | ✅ (just fixed) |
+| media-service | 3008 | /api/media/* | ✅ (Up 25h) |
+| gamification-service | 3009 | /api/gamification/* | ✅ (Up 25h) |
+| ai-service | 3010 | /api/ai/* | ✅ (just fixed) |
+| backup-service | 3011 | /api/backup/* | ✅ (Up 25h) |
 
 ---
 
