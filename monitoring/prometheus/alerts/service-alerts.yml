@@ -111,6 +111,30 @@ groups:
           summary: "Low disk space"
           description: "Disk space is below 10% (current: {{ $value | humanizePercentage }})"
 
+      - alert: SwapUsageHigh
+        expr: |
+          (node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes)
+          / node_memory_SwapTotal_bytes > 0.70
+        for: 10m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "Swap-Nutzung hoch (>70%)"
+          description: "Swap ist zu {{ $value | humanizePercentage }} voll — Watchdog greift bei 80% ein"
+
+      - alert: SwapUsageCritical
+        expr: |
+          (node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes)
+          / node_memory_SwapTotal_bytes > 0.85
+        for: 5m
+        labels:
+          severity: critical
+          category: resources
+        annotations:
+          summary: "Swap-Nutzung kritisch (>85%)"
+          description: "Swap ist zu {{ $value | humanizePercentage }} voll — Auto-Restart lief oder fehlgeschlagen"
+
       # ==========================================
       # DATABASE
       # ==========================================
