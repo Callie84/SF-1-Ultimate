@@ -3,20 +3,47 @@ version: '3.8'
 networks:
   sf1-network:
     driver: bridge
+  sf1-ki-network:
+    external: true
+    name: sf-1-ultimate-_sf1-ki-network
 
 volumes:
   mongodb_data:
+    name: sf1-mongodb-data-v1
+    driver: local
   postgres_data:
+    name: sf1-postgres-data-v1
+    driver: local
   redis_data:
+    name: sf1-redis-data-v1
+    driver: local
   meilisearch_data:
+    name: sf1-meilisearch-data-v1
+    driver: local
   traefik_certs:
+    name: sf1-traefik-certs-v1
+    driver: local
   prometheus_data:
+    name: sf1-prometheus-data-v1
+    driver: local
   grafana_data:
+    name: sf1-grafana-data-v1
+    driver: local
   alertmanager_data:
+    name: sf1-alertmanager-data-v1
+    driver: local
   loki_data:
+    name: sf1-loki-data-v1
+    driver: local
   plausible_pg_data:
+    name: sf1-plausible-pg-data-v1
+    driver: local
   plausible_ch_data:
+    name: sf1-plausible-ch-data-v1
+    driver: local
   unleash_pg_data:
+    name: sf1-unleash-pg-data-v1
+    driver: local
 
 services:
   # Datenbanken
@@ -50,7 +77,7 @@ services:
     networks:
       - sf1-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sf1_user"]
+      test: ["CMD-SHELL", "pg_isready -U sf1_user -d sf1_db && psql -U sf1_user -d sf1_db -c 'SELECT 1'"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -404,6 +431,7 @@ services:
       - ./apps/price-service:/app
     environment:
       NODE_ENV: production
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
       MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_price?authSource=admin&directConnection=true
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       REDIS_HOST: redis
@@ -412,6 +440,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       SENTRY_DSN: ${SENTRY_DSN_BACKEND}
       CORS_ORIGIN: ${CORS_ORIGIN}
+      FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY}
     networks:
       - sf1-network
     labels:
@@ -488,8 +517,10 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       SENTRY_DSN: ${SENTRY_DSN_BACKEND}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      OLLAMA_BASE_URL: http://sf1-ollama:11434
     networks:
       - sf1-network
+      - sf1-ki-network
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.ai.rule=(Host(`seedfinderpro.de`) || Host(`www.seedfinderpro.de`)) && PathPrefix(`/api/ai`)"
@@ -818,10 +849,14 @@ services:
     networks:
       - sf1-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U plausible"]
+      test: ["CMD-SHELL", "pg_isready -U plausible -d plausible_db && psql -U plausible -d plausible_db -c 'SELECT 1'"]
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256m
 
   plausible-clickhouse:
     image: clickhouse/clickhouse-server:23.3-alpine
@@ -835,6 +870,10 @@ services:
       nofile:
         soft: 262144
         hard: 262144
+    deploy:
+      resources:
+        limits:
+          memory: 500m
 
   plausible:
     image: plausible/analytics:v2
@@ -847,6 +886,10 @@ services:
       DATABASE_URL: postgresql://plausible:${PLAUSIBLE_DB_PASSWORD}@plausible-db:5432/plausible_db
       CLICKHOUSE_DATABASE_URL: http://plausible-clickhouse:8123/plausible_events_db
       DISABLE_REGISTRATION: "invite_only"
+    deploy:
+      resources:
+        limits:
+          memory: 400m
     depends_on:
       plausible-db:
         condition: service_healthy
@@ -876,7 +919,7 @@ services:
     networks:
       - sf1-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U unleash_user"]
+      test: ["CMD-SHELL", "pg_isready -U unleash_user -d unleash_db && psql -U unleash_user -d unleash_db -c 'SELECT 1'"]
       interval: 10s
       timeout: 5s
       retries: 5
