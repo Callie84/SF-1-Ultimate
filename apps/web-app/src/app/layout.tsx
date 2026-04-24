@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { CookieBanner } from '@/components/cookie-banner';
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
 import { OnboardingModal } from '@/components/onboarding-modal';
+import { Footer } from '@/components/footer';
 import Script from 'next/script';
 import './globals.css';
 
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
     default: 'SeedFinderPro — Cannabis Samen Preisvergleich & Strain-Datenbank',
     template: '%s | SeedFinderPro',
   },
-  description: 'Vergleiche Preise von 2800+ Cannabis Samen aus 12 Seedbanks. Strain-Datenbank, Grow-Tagebuch, Community-Forum und KI-Assistent für Grower.',
+  description: 'Vergleiche Preise von 7.000+ Cannabis Samen aus 19 Seedbanks. Strain-Datenbank, Grow-Tagebuch, Community-Forum und KI-Assistent für Grower.',
   keywords: ['cannabis samen', 'samenbank preisvergleich', 'cannabis strains', 'seeds kaufen', 'growing community', 'strain datenbank'],
   authors: [{ name: 'SeedFinderPro' }],
   creator: 'SeedFinderPro',
@@ -28,12 +29,12 @@ export const metadata: Metadata = {
     url: 'https://seedfinderpro.de',
     siteName: 'SeedFinderPro',
     title: 'SeedFinderPro — Cannabis Samen Preisvergleich',
-    description: 'Vergleiche Preise von 2800+ Cannabis Samen aus 12 Seedbanks. Kostenlos, ohne Anmeldung.',
+    description: 'Vergleiche Preise von 7.000+ Cannabis Samen aus 19 Seedbanks. Kostenlos, ohne Anmeldung.',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'SeedFinderPro — Cannabis Samen Preisvergleich',
-    description: 'Vergleiche Preise von 2800+ Cannabis Samen aus 12 Seedbanks.',
+    description: 'Vergleiche Preise von 7.000+ Cannabis Samen aus 19 Seedbanks.',
   },
   robots: {
     index: true,
@@ -80,7 +81,12 @@ export default function RootLayout({
         >
           <QueryProvider>
             <AuthProvider>
-              {children}
+              <div className="flex flex-col min-h-screen">
+                <main className="flex-1">
+                  {children}
+                </main>
+                <Footer />
+              </div>
               <Toaster />
               <CookieBanner />
               <PwaInstallPrompt />

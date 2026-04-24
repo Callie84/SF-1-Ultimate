@@ -20,8 +20,7 @@ export default function AboutPage() {
 
         <div className="prose prose-neutral dark:prose-invert max-w-none space-y-6">
           <p className="text-lg text-muted-foreground">
-            SeedfinderPro (SF-1 Ultimate) ist die umfassende Community-Plattform für Cannabis-Anbauer.
-            Wir bieten Werkzeuge, Wissen und eine aktive Gemeinschaft, um deinen Grow auf das nächste Level zu bringen.
+            SeedFinderPro ist der deutsche Preisvergleich für Cannabis-Samen mit Strain-Datenbank, KI-Assistent und Growing-Community.
           </p>
 
           <div className="grid gap-6 md:grid-cols-2 mt-8">
