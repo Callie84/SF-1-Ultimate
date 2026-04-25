@@ -156,6 +156,14 @@ export default function StrainsPage() {
               {strains.map((strain) => {
                 const isSelected = selectedForCompare.includes(strain._id);
 
+                const handleCardClick = (e: React.MouseEvent) => {
+                  // Verhindere Navigation, wenn ein Button geklickt wurde
+                  if ((e.target as HTMLElement).closest('button')) {
+                    return;
+                  }
+                  router.push(`/strains/${strain.slug}`);
+                };
+
                 return (
                   <Card
                     key={strain._id}
@@ -163,6 +171,7 @@ export default function StrainsPage() {
                       'cursor-pointer transition-all hover:shadow-md',
                       isSelected && 'ring-2 ring-primary'
                     )}
+                    onClick={handleCardClick}
                   >
                     <CardContent className="pt-4">
                       <div className="flex items-start gap-3">
@@ -195,12 +204,12 @@ export default function StrainsPage() {
                       <div className="flex items-center gap-2 mt-3">
                         {strain.thc && (
                           <Badge variant="outline" className="text-xs">
-                            THC: {strain.thc}%
+                            THC: {strain.thc.toFixed(1)}%
                           </Badge>
                         )}
                         {strain.cbd && (
                           <Badge variant="outline" className="text-xs">
-                            CBD: {strain.cbd}%
+                            CBD: {strain.cbd.toFixed(1)}%
                           </Badge>
                         )}
                       </div>

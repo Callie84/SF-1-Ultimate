@@ -12,6 +12,7 @@ interface AdCarouselProps {
   autoPlayInterval?: number; // ms, default 5000
   showControls?: boolean;
   showDots?: boolean;
+  showPlaceholder?: boolean;
 }
 
 // Platzhalter-Ads (werden angezeigt wenn keine Ads im Backend vorhanden)
@@ -76,6 +77,7 @@ export function AdCarousel({
   autoPlayInterval = 5000,
   showControls = true,
   showDots = true,
+  showPlaceholder = true,
 }: AdCarouselProps) {
   const { data } = useAds(type);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -84,8 +86,8 @@ export function AdCarousel({
   const trackClick = useTrackClick();
   const impressedIds = useRef<Set<string>>(new Set());
 
-  const ads = (data?.ads && data.ads.length > 0) ? data.ads : PLACEHOLDER_ADS[type];
   const isPlaceholder = !data?.ads || data.ads.length === 0;
+  const ads = isPlaceholder ? (showPlaceholder ? PLACEHOLDER_ADS[type] : []) : data.ads;
   const total = ads.length;
 
   const goNext = useCallback(() => {
