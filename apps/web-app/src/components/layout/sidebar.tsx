@@ -185,7 +185,7 @@ export function Sidebar({ onNavigate, sidebarWidth = 256 }: SidebarProps) {
           {/* Unterer Block: nur Werbefläche — Höhe per Drag steuerbar */}
           <div className="flex-shrink-0 overflow-hidden" style={{ height: bottomHeight }}>
             <div className="h-full px-3 py-2 overflow-hidden">
-              <AdCarousel type={sidebarBottom.adType} showControls={false} autoPlayInterval={6000} />
+              <AdCarousel type={sidebarBottom.adType} showControls={false} autoPlayInterval={6000} showPlaceholder={false} />
             </div>
           </div>
         </>
