@@ -46,7 +46,7 @@ export default function AiLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <DashboardLayout>
-      <div className="flex h-full gap-6">
+      <div className="flex flex-col lg:flex-row h-full gap-6">
         {/* AI Sub-Navigation */}
         <aside className="w-56 flex-shrink-0 hidden lg:block">
           <div className="sticky top-0">
