@@ -315,11 +315,38 @@ export class PriceService {
     const cached = await redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
+    // Split query into words for better search
+    // "PinkGorilla" → ["Pink", "Gorilla"] (heuristic split on capitals)
+    // "pink gorilla" → ["pink", "gorilla"] (split on whitespace)
+    let words: string[] = [];
+
+    if (query.includes(' ')) {
+      // Whitespace separated
+      words = query.trim().split(/\s+/).filter(w => w.length > 0);
+    } else {
+      // Try to split camelCase/PascalCase
+      words = query
+        .replace(/([A-Z])/g, ' $1')
+        .trim()
+        .split(/\s+/)
+        .filter(w => w.length > 0);
+    }
+
+    // Build search query: match if any word is found in name/breeder
+    const wordRegexes = words.map(w => ({ $regex: w, $options: 'i' }));
+
+    // Create OR array with word-based searches
+    const searchOrConditions: any[] = [
+      // Match any word in name OR breeder
+      ...wordRegexes.map(w => ({ name: w })),
+      ...wordRegexes.map(w => ({ breeder: w })),
+      // Also try the original query as-is
+      { name: { $regex: query, $options: 'i' } },
+      { breeder: { $regex: query, $options: 'i' } }
+    ];
+
     const searchQuery: any = {
-      $or: [
-        { name: { $regex: query, $options: 'i' } },
-        { breeder: { $regex: query, $options: 'i' } }
-      ]
+      $or: searchOrConditions
     };
 
     if (options.type) searchQuery.type = options.type;
@@ -386,7 +413,7 @@ export class PriceService {
     const cached = await redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
-    const query: any = { priceCount: { $gt: 0 } };
+    const query: any = { priceCount: { $gt: 0 }, lowestPrice: { $gt: 0 } };
     if (options.type) query.type = options.type;
     if (options.breeder) query.breeder = options.breeder;
 

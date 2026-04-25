@@ -5901,3 +5901,14 @@ Handy-Screenshots (2026-04-25) zeigten 4 visuelle Bugs auf Mobile: Float-Werte, 
 
 ### Root Cause P1/P7
 Der äußere `flex h-full`-Container zeigte mobile Nav und Content nebeneinander statt übereinander. Dadurch erschienen die Nav-Pills als riesige leere Hochformat-Karten (volle Viewport-Höhe). P7 (VPD-Formular) war ein Folgefehler desselben Bugs.
+
+## Session — Mobile-UI Block C: 0 Preisangebote Fix (2026-04-25)
+
+### Geänderte Datei
+- `apps/price-service/src/services/price.service.ts` — `browseSeeds` Query: `lowestPrice: { $gt: 0 }` hinzugefügt
+
+### Root Cause
+33 Seeds hatten veralteten `priceCount > 0` aber `lowestPrice = null` (stale Daten, keine aktuellen Preise). MongoDB sortiert `null` vor realen Zahlen bei ASC-Sort — diese 33 Seeds erschienen zuerst. Im Frontend-Join via `seedId` fanden sich keine Preise → 0 Preisangebote.
+
+### Fix
+Einfacher 1-Zeilen-Fix im Browse-Query. Redis-Cache der alten Ergebnisse manuell gelöscht.
