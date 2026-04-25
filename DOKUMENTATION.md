@@ -5891,3 +5891,13 @@ Ollama ist seit 2026-04-03 auf Port 11434 installiert, falls später gebraucht.
 
 ### Hintergrund
 Handy-Screenshots (2026-04-25) zeigten 4 visuelle Bugs auf Mobile: Float-Werte, zusammengeklebte Links, sichtbarer Ad-Placeholder in Sidebar.
+
+## Session — Mobile-UI Fixes Block B (2026-04-25)
+
+### Geänderte Dateien
+- `apps/web-app/src/app/tools/layout.tsx` — `flex` → `flex flex-col lg:flex-row`: Mobile-Nav stand neben Content statt darüber
+- `apps/web-app/src/app/ai/layout.tsx` — gleicher Fix wie tools/layout.tsx
+- `apps/web-app/src/app/strains/page.tsx` — Strain-Grid: `grid-cols-2` → `grid-cols-1 sm:grid-cols-2` (Namen nicht mehr abgeschnitten)
+
+### Root Cause P1/P7
+Der äußere `flex h-full`-Container zeigte mobile Nav und Content nebeneinander statt übereinander. Dadurch erschienen die Nav-Pills als riesige leere Hochformat-Karten (volle Viewport-Höhe). P7 (VPD-Formular) war ein Folgefehler desselben Bugs.

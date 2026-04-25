@@ -152,7 +152,7 @@ export default function StrainsPage() {
           </Card>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
               {strains.map((strain) => {
                 const isSelected = selectedForCompare.includes(strain._id);
 
