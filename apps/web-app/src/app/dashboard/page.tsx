@@ -185,7 +185,7 @@ export default function DashboardPage() {
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {stats.map((stat) => {
             const Icon = stat.icon;
             return (
@@ -206,13 +206,13 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <div>
           <h2 className="mb-4 text-xl font-semibold">Schnellaktionen</h2>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
             {quickActions.map((action) => {
               const Icon = action.icon;
               return (
                 <Link key={action.title} href={action.href}>
                   <Card className="cursor-pointer transition-colors hover:bg-accent h-full">
-                    <CardHeader>
+                    <CardHeader className="p-4 sm:p-6">
                       <div className={`mb-2 inline-flex h-10 w-10 items-center justify-center rounded-lg ${action.color} text-white`}>
                         <Icon className="h-5 w-5" />
                       </div>
