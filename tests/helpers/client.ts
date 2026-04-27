@@ -10,7 +10,7 @@ const PRICE_BASE  = process.env.SF1_PRICE_BASE  || 'http://172.17.0.26:3008';
 const GAM_BASE    = process.env.SF1_GAM_BASE    || 'http://172.17.0.24:3009';
 const SEARCH_BASE = process.env.SF1_SEARCH_BASE || 'http://172.17.0.29:3010';
 const BACKUP_BASE = process.env.SF1_BACKUP_BASE || 'http://172.17.0.17:3011';
-const TOOLS_BASE  = process.env.SF1_TOOLS_BASE  || 'http://172.17.0.8:3012';
+const TOOLS_BASE  = process.env.SF1_TOOLS_BASE  || 'http://172.17.0.8:3004';
 const AI_BASE     = process.env.SF1_AI_BASE     || 'http://172.17.0.22:3013';
 const NOTIF_BASE  = process.env.SF1_NOTIF_BASE  || 'http://172.17.0.21:3014';
 
