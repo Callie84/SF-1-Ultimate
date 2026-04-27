@@ -1,0 +1,28 @@
+{
+  "name": "sf1-mastertest",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:auth": "vitest run services/auth.test.ts",
+    "test:tools": "vitest run services/tools.test.ts",
+    "test:community": "vitest run services/community.test.ts",
+    "test:journal": "vitest run services/journal.test.ts",
+    "test:price": "vitest run services/price.test.ts",
+    "test:search": "vitest run services/search.test.ts",
+    "test:gamification": "vitest run services/gamification.test.ts",
+    "test:notification": "vitest run services/notification.test.ts",
+    "test:ai": "vitest run services/ai.test.ts",
+    "test:backup": "vitest run services/backup.test.ts",
+    "test:media": "vitest run services/media.test.ts",
+    "mastertest": "vitest run services/ --reporter=verbose"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.6.0"
+  }
+}
