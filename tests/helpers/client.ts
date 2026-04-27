@@ -5,14 +5,14 @@ import axios from 'axios';
 const AUTH_BASE   = process.env.SF1_AUTH_BASE   || 'http://172.17.0.23:3001';
 const COMM_BASE   = process.env.SF1_COMM_BASE   || 'http://172.17.0.20:3005';
 const JOURN_BASE  = process.env.SF1_JOURN_BASE  || 'http://172.17.0.25:3003';
-const MEDIA_BASE  = process.env.SF1_MEDIA_BASE  || 'http://172.17.0.18:3007';
+const MEDIA_BASE  = process.env.SF1_MEDIA_BASE  || 'http://172.17.0.18:3008';
 const PRICE_BASE  = process.env.SF1_PRICE_BASE  || 'http://172.17.0.26:3002';
 const GAM_BASE    = process.env.SF1_GAM_BASE    || 'http://172.17.0.24:3009';
 const SEARCH_BASE = process.env.SF1_SEARCH_BASE || 'http://172.17.0.29:3007';
 const BACKUP_BASE = process.env.SF1_BACKUP_BASE || 'http://172.17.0.17:3011';
 const TOOLS_BASE  = process.env.SF1_TOOLS_BASE  || 'http://172.17.0.8:3004';
-const AI_BASE     = process.env.SF1_AI_BASE     || 'http://172.17.0.22:3013';
-const NOTIF_BASE  = process.env.SF1_NOTIF_BASE  || 'http://172.17.0.21:3014';
+const AI_BASE     = process.env.SF1_AI_BASE     || 'http://172.17.0.22:3010';
+const NOTIF_BASE  = process.env.SF1_NOTIF_BASE  || 'http://172.17.0.21:3006';
 
 export const authClient      = axios.create({ baseURL: AUTH_BASE,   timeout: 10000 });
 export const communityClient = axios.create({ baseURL: COMM_BASE,   timeout: 10000 });
