@@ -50,7 +50,7 @@ export default function AiPage() {
           <Link
             key={tool.href}
             href={tool.href}
-            className="group rounded-xl border bg-card p-4 sm:p-6 transition-all hover:border-primary hover:shadow-lg"
+            className="group rounded-xl border bg-card p-3 sm:p-6 transition-all hover:border-primary hover:shadow-lg"
           >
             <div className={`mb-4 inline-flex rounded-lg ${tool.color} p-3`}>
               <tool.icon className="h-6 w-6 text-white" />
