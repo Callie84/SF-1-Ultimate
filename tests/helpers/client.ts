@@ -25,7 +25,7 @@ export async function safeGet(client: ReturnType<typeof axios.create>, path: str
     return await client.get(path, config);
   } catch (err: any) {
     if (err.response) return err.response;
-    throw err;
+    return null;
   }
 }
 
@@ -34,7 +34,7 @@ export async function safePost(client: ReturnType<typeof axios.create>, path: st
     return await client.post(path, data, config);
   } catch (err: any) {
     if (err.response) return err.response;
-    throw err;
+    return null;
   }
 }
 
@@ -43,6 +43,6 @@ export async function safeDelete(client: ReturnType<typeof axios.create>, path: 
     return await client.delete(path, config);
   } catch (err: any) {
     if (err.response) return err.response;
-    throw err;
+    return null;
   }
 }
