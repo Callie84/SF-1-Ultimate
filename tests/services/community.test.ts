@@ -15,6 +15,7 @@ let token = '';
 let threadId = '';
 
 beforeAll(async () => {
+  // Register gibt direkt accessToken zurück — kein separater Login nötig
   const reg = await safePost(authClient, '/api/auth/register', {
     email: testEmail,
     password: 'MasterTest!2026',
@@ -22,12 +23,7 @@ beforeAll(async () => {
     ageVerified: true,
   });
   if (reg?.status !== 201) throw new Error(`Voraussetzung fehlgeschlagen: Register ${reg?.status}`);
-
-  const login = await safePost(authClient, '/api/auth/login', {
-    email: testEmail,
-    password: 'MasterTest!2026',
-  });
-  token = login?.data.accessToken;
+  token = reg.data.accessToken;
   registerCleanup({ type: 'user', id: reg.data.user.id, token });
 });
 
