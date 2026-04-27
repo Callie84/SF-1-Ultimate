@@ -1,0 +1,19 @@
+{
+  "name": "sf1-ultimate",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "mastertest": "cd tests && npm run mastertest",
+    "test:auth": "cd tests && npm run test:auth",
+    "test:tools": "cd tests && npm run test:tools",
+    "test:community": "cd tests && npm run test:community",
+    "test:journal": "cd tests && npm run test:journal",
+    "test:price": "cd tests && npm run test:price",
+    "test:search": "cd tests && npm run test:search",
+    "test:gamification": "cd tests && npm run test:gamification",
+    "test:notification": "cd tests && npm run test:notification",
+    "test:ai": "cd tests && npm run test:ai",
+    "test:backup": "cd tests && npm run test:backup",
+    "test:media": "cd tests && npm run test:media"
+  }
+}
