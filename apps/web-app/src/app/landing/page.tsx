@@ -38,7 +38,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen">
       {/* Hero Section — Full-Bleed + Brand-First */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/5 via-background to-background">
+      <section className="relative min-h-[70vh] sm:h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/5 via-background to-background">
         {/* Subtle gradient background */}
         <div className="absolute inset-0 opacity-40">
           <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-primary/10" />
@@ -47,12 +47,12 @@ export default function LandingPage() {
         {/* Minimal Content — One Composition */}
         <div className="relative z-10 text-center space-y-6 px-4 max-w-3xl">
           {/* Brand Name — PROMINENT */}
-          <h1 className="text-6xl md:text-7xl font-bold tracking-tight">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight">
             <span className="text-primary">SeedFinderPro</span>
           </h1>
 
           {/* Subheadline */}
-          <p className="text-xl md:text-2xl text-muted-foreground font-medium">
+          <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground font-medium">
             Der deutsche Preisvergleich für Cannabis-Samen
           </p>
 
