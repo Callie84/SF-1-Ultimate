@@ -128,7 +128,7 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0',
+                  'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0',
                   isActive
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-accent text-muted-foreground'
