@@ -189,7 +189,7 @@ export default function StrainsPage() {
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-bold truncate">{strain.name}</h3>
+                          <h3 className="font-bold line-clamp-2 leading-tight">{strain.name}</h3>
                           <Badge className={cn('text-xs mt-1', typeColors[strain.type])}>
                             {strain.type}
                           </Badge>
