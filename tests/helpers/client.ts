@@ -4,7 +4,7 @@ import axios from 'axios';
 // Use SF1_AUTH_BASE etc. env vars to override (e.g. in CI with port-forwarding)
 const AUTH_BASE   = process.env.SF1_AUTH_BASE   || 'http://172.17.0.23:3001';
 const COMM_BASE   = process.env.SF1_COMM_BASE   || 'http://172.17.0.20:3005';
-const JOURN_BASE  = process.env.SF1_JOURN_BASE  || 'http://172.17.0.25:3006';
+const JOURN_BASE  = process.env.SF1_JOURN_BASE  || 'http://172.17.0.25:3003';
 const MEDIA_BASE  = process.env.SF1_MEDIA_BASE  || 'http://172.17.0.18:3007';
 const PRICE_BASE  = process.env.SF1_PRICE_BASE  || 'http://172.17.0.26:3008';
 const GAM_BASE    = process.env.SF1_GAM_BASE    || 'http://172.17.0.24:3009';
