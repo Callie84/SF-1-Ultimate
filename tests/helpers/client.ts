@@ -1,18 +1,30 @@
 import axios from 'axios';
 
-const BASE = 'http://localhost';
+// Docker internal IPs — services are not exposed on localhost ports
+// Use SF1_AUTH_BASE etc. env vars to override (e.g. in CI with port-forwarding)
+const AUTH_BASE   = process.env.SF1_AUTH_BASE   || 'http://172.17.0.23:3001';
+const COMM_BASE   = process.env.SF1_COMM_BASE   || 'http://172.17.0.20:3005';
+const JOURN_BASE  = process.env.SF1_JOURN_BASE  || 'http://172.17.0.25:3006';
+const MEDIA_BASE  = process.env.SF1_MEDIA_BASE  || 'http://172.17.0.18:3007';
+const PRICE_BASE  = process.env.SF1_PRICE_BASE  || 'http://172.17.0.26:3008';
+const GAM_BASE    = process.env.SF1_GAM_BASE    || 'http://172.17.0.24:3009';
+const SEARCH_BASE = process.env.SF1_SEARCH_BASE || 'http://172.17.0.29:3010';
+const BACKUP_BASE = process.env.SF1_BACKUP_BASE || 'http://172.17.0.17:3011';
+const TOOLS_BASE  = process.env.SF1_TOOLS_BASE  || 'http://172.17.0.8:3012';
+const AI_BASE     = process.env.SF1_AI_BASE     || 'http://172.17.0.22:3013';
+const NOTIF_BASE  = process.env.SF1_NOTIF_BASE  || 'http://172.17.0.21:3014';
 
-export const authClient   = axios.create({ baseURL: `${BASE}:3001`, timeout: 10000 });
-export const communityClient = axios.create({ baseURL: `${BASE}:3005`, timeout: 10000 });
-export const journalClient   = axios.create({ baseURL: `${BASE}:3006`, timeout: 10000 });
-export const mediaClient     = axios.create({ baseURL: `${BASE}:3007`, timeout: 10000 });
-export const priceClient     = axios.create({ baseURL: `${BASE}:3008`, timeout: 10000 });
-export const gamClient       = axios.create({ baseURL: `${BASE}:3009`, timeout: 10000 });
-export const searchClient    = axios.create({ baseURL: `${BASE}:3010`, timeout: 10000 });
-export const backupClient    = axios.create({ baseURL: `${BASE}:3011`, timeout: 10000 });
-export const toolsClient     = axios.create({ baseURL: `${BASE}:3012`, timeout: 10000 });
-export const aiClient        = axios.create({ baseURL: `${BASE}:3013`, timeout: 10000 });
-export const notifClient     = axios.create({ baseURL: `${BASE}:3014`, timeout: 10000 });
+export const authClient      = axios.create({ baseURL: AUTH_BASE,   timeout: 10000 });
+export const communityClient = axios.create({ baseURL: COMM_BASE,   timeout: 10000 });
+export const journalClient   = axios.create({ baseURL: JOURN_BASE,  timeout: 10000 });
+export const mediaClient     = axios.create({ baseURL: MEDIA_BASE,  timeout: 10000 });
+export const priceClient     = axios.create({ baseURL: PRICE_BASE,  timeout: 10000 });
+export const gamClient       = axios.create({ baseURL: GAM_BASE,    timeout: 10000 });
+export const searchClient    = axios.create({ baseURL: SEARCH_BASE, timeout: 10000 });
+export const backupClient    = axios.create({ baseURL: BACKUP_BASE, timeout: 10000 });
+export const toolsClient     = axios.create({ baseURL: TOOLS_BASE,  timeout: 10000 });
+export const aiClient        = axios.create({ baseURL: AI_BASE,     timeout: 10000 });
+export const notifClient     = axios.create({ baseURL: NOTIF_BASE,  timeout: 10000 });
 
 // Hilfsfunktion: Auth-Header setzen
 export function withAuth(token: string) {
