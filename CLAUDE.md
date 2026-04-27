@@ -47,6 +47,15 @@ Vollständig in Vault: `Regeln & Protokolle/Pflicht-Regeln.md`
 
 ---
 
+## SF-1 Mastertest — Trigger
+
+Wenn der User sagt "starte master test", "mastertest starten", "führe mastertest aus" oder ähnliches:
+→ **`mastertest`-Skill aufrufen** (Skill tool, name: `mastertest`)
+
+Der Skill führt die 42-Test-Suite aus, liest den JSON-Output und schreibt einen detaillierten Report nach `/root/SF-Brain/Logs/mastertest-reports/`.
+
+---
+
 ## SF-1 Bekannte Fallen (Kurzreferenz)
 
 Vollständig in Vault: `SF-1 Projekt/Code-Patterns.md`
