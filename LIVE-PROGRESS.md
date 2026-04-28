@@ -1,21 +1,17 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-04-27T19:59:58Z
-**Status:** 🔄 in-progress
+\*\*Last-Update:\*\* $(date -u -Iseconds)
+**Status:** ✅ clean
 
 ## ➡ NEXT ACTION
-Task 15: mastertest-report.sh + Skill + Vault-Integration erstellen.
+(kein aktiver Task)
 
 ## Aktueller Task
-**SF-1 Mastertest-Suite: ABGESCHLOSSEN** ✅ (Commit be6ea9f)
-- 42/42 Tests grün | 11/11 Service-Test-Dateien
-- Rate-Limit-Resilience in allen 6 Auth-abhängigen Services (rateLimited-Flag)
-- gamClient Timeout 25s (Leaderboard ~9s Antwortzeit)
-- `npm run mastertest` im Projekt-Root oder `tests/` funkioniert
+—
 
 ## Letzter abgeschlossener Task
-SF-1 Mastertest vollständig — alle 14 Sub-Tasks erledigt
-Plan: /root/SF-1-Ultimate-/docs/superpowers/plans/2026-04-27-mastertest.md
+Mastertest-Automation — Pre-Commit-Hook + täglicher Cron + Dokumentation
+Plan: /root/SF-1-Ultimate-/docs/superpowers/plans/2026-04-29-mastertest-automation.md
 
 ## Diese Session erledigt
 - Task 1: strains/page.tsx Z.192 — truncate → line-clamp-2 leading-tight (c9a8fc4)
@@ -25,6 +21,7 @@ Plan: /root/SF-1-Ultimate-/docs/superpowers/plans/2026-04-27-mastertest.md
 - Task 5: tools/page.tsx + ai/page.tsx — Karten-Padding p-4 → p-3 (084e479)
 - Task 6: Frontend-Rebuild erfolgreich (✓ Ready, keine TypeScript-Fehler)
 - Task 2 (Mastertest): Helpers client.ts, cleanup.ts, logger.ts erstellt (b71b04e)
+- [2026-04-29] Mastertest-Automation: Pre-Commit-Hook (.git/hooks/pre-commit, Auth+Search), täglicher Cron (06:00, /root/scripts/sf1-daily-mastertest.sh), DOKUMENTATION.md + Vault aktualisiert
 
 ## Offene Tasks
 (werden bei Bedarf über /plan angelegt)
