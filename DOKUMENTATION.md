@@ -5912,3 +5912,134 @@ Der äußere `flex h-full`-Container zeigte mobile Nav und Content nebeneinander
 
 ### Fix
 Einfacher 1-Zeilen-Fix im Browse-Query. Redis-Cache der alten Ergebnisse manuell gelöscht.
+
+## Session — Mobile UI Audit 2 (2026-04-27)
+
+### Hintergrund
+Zweite Runde Mobile-UI-Verbesserungen: weniger verschwendeter Platz, lesbare Strain-Namen, kompaktere Tab-Navs. Rein CSS/Tailwind-Änderungen — kein JS, kein Refactoring.
+
+### Geänderte Dateien
+- `apps/web-app/src/app/strains/page.tsx` — Strain-Namen: `truncate` → `line-clamp-2 leading-tight` (2-zeilig statt abgeschnitten)
+- `apps/web-app/src/app/ai/layout.tsx` — Tab-Nav-Buttons: `py-2` → `py-1.5` (kompaktere Pill-Höhe)
+- `apps/web-app/src/app/tools/layout.tsx` — Tab-Nav-Buttons: `py-2` → `py-1.5`
+- `apps/web-app/src/app/landing/page.tsx` — Hero: `h-screen` → `min-h-[70vh] sm:h-screen`, H1 `text-4xl sm:text-6xl`, Subheadline `text-lg sm:text-xl`
+- `apps/web-app/src/app/dashboard/page.tsx` — Stats-Grid + Quick-Actions: `gap-4` → `gap-3 sm:gap-4`, CardHeader `p-4 sm:p-6`
+- `apps/web-app/src/app/tools/page.tsx` — Karten-Padding: `p-4` → `p-3` auf Mobile
+- `apps/web-app/src/app/ai/page.tsx` — Karten-Padding: `p-4` → `p-3` auf Mobile
+
+### Commits
+- `c9a8fc4` — fix(web-app): Strain-Namen line-clamp-2 statt truncate auf Mobile
+- `6efded3` — fix(web-app): Mobile Tab-Nav Padding reduzieren (AI + Tools)
+- `e0cce64` — fix(web-app): Landing Hero mobilfreundlich — Höhe + Schriftgröße
+- `2654318` — fix(web-app): Dashboard Mobile-Padding und Grid-Gap reduzieren
+- `084e479` — fix(web-app): Tools + AI Karten-Padding auf Mobile reduzieren
+
+## Task 3 — SF-1 Mastertest-Suite (2026-04-27) [abgeschlossen]
+
+### Ziel
+Standalone Vitest-Integration-Testsuite für alle 11 SF-1 Services via direkten HTTP-Calls auf Docker-Container-IPs.
+
+### Implementierung
+- `tests/` — separates Node-Paket (`sf1-mastertest`) mit Vitest 1.6 + Axios
+- `tests/vitest.config.ts` — 30s testTimeout, 15s hookTimeout, sequenziell
+- `tests/helpers/client.ts` — Axios-Clients mit Docker-IPs, safe*-Wrapper (null bei ECONNREFUSED), gamClient 25s Timeout
+- `tests/helpers/cleanup.ts` — reverse-order Cleanup (grows/threads vor users)
+- `tests/helpers/logger.ts` — mastertest.log mit ISO-Timestamps
+- `tests/services/` — 11 Test-Dateien (auth, tools, community, journal, price, search, gamification, notification, ai, backup, media)
+
+### Besondere Erkenntnisse
+- Auth-Service Rate-Limit (20 req/900s): alle Tests mit `rateLimited`-Flag und graceful-skip-Pattern
+- Gamification Leaderboard braucht ~9s → Axios-Timeout auf 25s, Vitest-Timeout 30s
+- Media-Service: Gateway-Headers statt JWT → nur Health + 401-Check
+- Vitest lädt `vitest.config.ts`, nicht `mastertest.config.ts`
+
+### Ergebnis
+**42/42 Tests grün | 11/11 Test-Dateien** — auch unter Rate-Limit-Bedingungen 0 Failures.
+
+### Commits
+- `be6ea9f` — feat(tests): SF-1 Mastertest-Suite vollständig — 42/42 Tests grün
+
+## Task 15 — Mastertest-Skill + Vault-Report-Integration (2026-04-27) [geplant → abgeschlossen]
+
+### Ausgangslage (geplant)
+Nach Abschluss der Testsuite (Task 3/14, 42/42 Tests) wollte der User den Mastertest als dauerhaftes Testverfahren verankern: ein einziger Befehl ("starte master test") soll die Suite ausführen und das Ergebnis als ausführlichen Report im Vault festhalten.
+
+**Betroffene Dateien (geplant):**
+- `tests/mastertest-report.sh` (neu)
+- `tests/generate-vault-report.py` (neu)
+- `/root/.claude/skills/mastertest/SKILL.md` (neu)
+- `/root/SF-Brain/Logs/mastertest-reports/INDEX.md` (neu)
+- `CLAUDE.md` (Trigger-Eintrag ergänzt)
+
+### Implementierung (abgeschlossen)
+- `tests/mastertest-report.sh` — Shell-Script: Vitest mit verbose + JSON-Reporter, Output nach `/tmp/sf1-mastertest-result.json`
+- `tests/generate-vault-report.py` — Python-Script: liest JSON, erstellt Report im Vault, aktualisiert INDEX.md (neueste oben)
+- `/root/.claude/skills/mastertest/SKILL.md` — Superpowers-Skill: 3 Schritte (run → generate → report to user)
+- `/root/SF-Brain/Logs/mastertest-reports/` — Vault-Verzeichnis
+- `/root/SF-Brain/Logs/mastertest-reports/INDEX.md` — chronologischer Index aller Runs
+- `CLAUDE.md` (SF-1-Ultimate) — Trigger-Eintrag "starte master test"
+
+### Report-Format pro Run
+Zusammenfassung-Tabelle (Status/Tests/Dauer), Ergebnis pro Service, Rate-Limit-Events, fehlgeschlagene Tests mit Fehlermeldung, Testumgebung.
+
+### Nachträgliche Ergänzung — Dok-Reminder-Hook (selbe Session)
+Nach User-Feedback (Dokumentation nicht lückenlos):
+- `/root/.claude/hooks/sf1-dok-reminder.py` (neu) — PostToolUse-Hook: erinnert nach jeder Dateiänderung an DOKUMENTATION.md-Pflicht (Regel 2+19); schweigt nur bei Meta-Dateien (DOKUMENTATION.md selbst, Vault, Hooks, Lock-Files)
+- `/root/.claude/settings.json` — Hook als PostToolUse auf Edit|Write|MultiEdit registriert
+- `/root/CLAUDE.md` — Enforcement-Hinweis bei Regel 19 ergänzt
+
+### Commits
+- `1024bea` — feat(tests): Mastertest-Skill + Vault-Report-Infrastructure
+- Dok-Reminder-Hook in `/root/.claude/` (nicht im SF-1-Repo, daher kein separater Commit)
+
+---
+
+## Bugfix: Redis NOAUTH + MoC Adapter (2026-04-29) [abgeschlossen]
+
+### Problem
+Zwei Dauerfehler in den täglichen Monitoring-Reports (seit 10.04.):
+1. Circuit Breaker zeigte täglich `NOAUTH Authentication required.` als offenen Breaker — Schein-Fehler
+2. Ministry of Cannabis Feed-Adapter: `/regular-seeds/` gab täglich 404
+
+### Ursachen
+1. `generate-all-reports.sh` rief `redis-cli` ohne Auth auf → Redis-Fehlertext `NOAUTH Authentication required.` wurde als Key-Name interpretiert
+2. MoC hat Regular-Seeds-Kategorie von ihrer Website entfernt (keine gültige URL mehr vorhanden)
+
+### Geänderte Dateien
+- `/root/scripts/generate-all-reports.sh` — alle 5 `redis-cli`-Aufrufe um `-a "$REDIS_PASS" --no-auth-warning` ergänzt; Passwort wird aus `.env` geladen; Key-Extraktion via `${key#circuit:open:}` gefixt
+- `apps/price-service/src/feeds/adapters/garden-of-green.feed.ts` — `/regular-seeds`-Eintrag aus `categories`-Array entfernt
+
+### Ergebnis
+- Reports zeigen ab sofort echten Circuit-Breaker-Status (kein Fake-Eintrag mehr)
+- Redis Memory- und Hit-Rate-Stats werden korrekt befüllt
+- MoC-Adapter ohne tägliche 404-Fehler
+
+---
+
+## Mastertest-Automation (2026-04-29) [abgeschlossen]
+
+### Ziel
+Automatische Ausführung der Mastertest-Suite: Smoke-Test vor Commits + volle Suite täglich.
+
+### Pre-Commit-Hook
+- **Datei:** `.git/hooks/pre-commit` (Shell-Script, executable)
+- **Tests:** `npm run test:auth` + `npm run test:search`
+- **Verhalten:** Commit wird blockiert wenn ein Test fehlschlägt
+- **Bypass (Notfall):** `git commit --no-verify` (nur wenn bewusst gewollt)
+
+### Täglicher Cron
+- **Script:** `/root/scripts/sf1-daily-mastertest.sh`
+- **Trigger:** Täglich 06:00 (Crontab: `0 6 * * *`)
+- **Suite:** Volle 42-Test-Suite (`npm run mastertest`)
+- **Report:** `/root/SF-Brain/Logs/mastertest-reports/YYYY-MM-DD_mastertest.md`
+- **Log:** `/var/log/sf1-daily-mastertest.log`
+
+### Automatische Dokumentation (pro Lauf)
+- Report-Datei mit Status, Dauer, fehlgeschlagenen Tests
+- `INDEX.md` in Reports-Verzeichnis (neueste oben)
+- Dieses DOKUMENTATION.md (Lauf-Eintrag)
+- Vault-Log `/root/SF-Brain/Logs/sf1-v1.md`
+
+### Lauf-Protokoll
+- 2026-04-29 00:52 — ✅ 42/42 grün (22s)
+- 2026-04-29 00:53 — ✅ 42/42 grün (22s)
