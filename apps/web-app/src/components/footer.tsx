@@ -43,9 +43,6 @@ export function Footer() {
               <Link href="/journal" className="text-sm text-muted-foreground hover:text-foreground">
                 Journal
               </Link>
-              <Link href="/ai/advisor" className="text-sm text-muted-foreground hover:text-foreground">
-                KI-Assistent
-              </Link>
             </nav>
           </div>
 

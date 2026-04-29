@@ -1,78 +1,20 @@
 version: '3.8'
 
 # KI-Integration Shadow Setup (Ansatz C)
-# Separate Infrastruktur: Ollama + Open Web UI + n8n + RAG-Service
-# Läuft UNABHÄNGIG von Production-Stack (docker-compose.yml)
-# Start: docker compose -f docker-compose.ki.yml up -d
+# AI-Stack (Ollama, Open WebUI, RAG-Service) entfernt 2026-04-29 — RAM-Krise
+# n8n läuft weiterhin als Automatisierungs-Engine
+# Start: docker-compose -f docker-compose.ki.yml up -d
 
 networks:
   sf1-ki-network:
     driver: bridge
-  sf1-network:
-    external: true
-    name: sf-1-ultimate-_sf1-network
 
 volumes:
-  ollama_data:
-  open-webui_data:
   n8n_data:
-  rag_service_data:
 
 services:
   # ============================================
-  # 1. OLLAMA — Lokale LLM-Modelle
-  # ============================================
-  ollama:
-    image: ollama/ollama:latest
-    container_name: sf1-ollama
-    restart: always
-    ports:
-      - "11435:11434"
-    environment:
-      # GPU/CPU-Inferenz
-      OLLAMA_HOST: "0.0.0.0:11434"
-      # CPU-only (für Server ohne NVIDIA GPU)
-      # OLLAMA_RUNNER_CPU: "true"
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - sf1-ki-network
-    # Healthcheck disabled — Ollama braucht Zeit zum Starten
-    # Für Production: Pull-Models im Init-Skript
-    # Folgende Modelle werden manual gepullt:
-    # docker exec sf1-ollama ollama pull qwen2.5:7b
-    # docker exec sf1-ollama ollama pull llama2:7b
-
-  # ============================================
-  # 2. OPEN WEB UI — ChatGPT-ähnliche Oberfläche
-  # ============================================
-  open-webui:
-    image: openwebui/open-webui:latest
-    container_name: sf1-open-webui
-    restart: always
-    ports:
-      - "8081:8080"
-    environment:
-      OLLAMA_BASE_URL: "http://ollama:11434"
-      # Authentifizierung
-      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:-change-me-in-production}
-      # Datenschutz & API
-      ENABLE_SIGNUP: "true"  # Temporär true für Admin-Erstellung, dann auf false setzen
-      ENABLE_API: "true"
-      # Ollama-Integration
-      OLLAMA_HOST: "http://ollama:11434"
-    volumes:
-      - open-webui_data:/app/backend/data
-    networks:
-      - sf1-ki-network
-    deploy:
-      resources:
-        limits:
-          memory: 800m
-    # Healthcheck disabled — Ollama braucht Zeit zum Starten
-
-  # ============================================
-  # 3. N8N — Automatisierungs-Engine
+  # N8N — Automatisierungs-Engine
   # ============================================
   n8n:
     image: n8nio/n8n:1.85.0
@@ -114,43 +56,3 @@ services:
       resources:
         limits:
           memory: 300m
-    # Healthcheck disabled — Ollama braucht Zeit zum Starten
-
-  # ============================================
-  # 4. RAG-SERVICE — KI + Datenbank Integration
-  # ============================================
-  rag-service:
-    image: sf1-rag-service:latest
-    container_name: sf1-rag-service
-    restart: always
-    ports:
-      - "3014:3013"
-    environment:
-      PORT: "3013"
-      RAG_SERVICE_LOG_LEVEL: "info"
-      OLLAMA_BASE_URL: "http://ollama:11434"
-      OPENWEBUI_BASE_URL: "http://open-webui:8080"
-      N8N_BASE_URL: "http://n8n:5678"
-      # Database connections (Production-Container-Namen)
-      MONGODB_URL: "mongodb://sf1_admin:Sf1_MongoDB_SuperSecure_2026!@mongodb:27017/sf1_db?authSource=admin"
-      POSTGRES_URL: "postgresql://sf1_user:@postgres:5432/sf1_db"
-    volumes:
-      - rag_service_data:/app/data
-    networks:
-      - sf1-ki-network
-      - sf1-network
-    # Hinweis: depends_on removed, damit Services nicht beim Start blockieren
-    # Healthcheck disabled (Node Health-Check kann fehlen wenn Service länger braucht)
-
-  # ============================================
-  # OPTIONAL: Watchtower für Auto-Updates
-  # ============================================
-  # watchtower:
-  #   image: containrrr/watchtower:latest
-  #   container_name: sf1-watchtower-ki
-  #   restart: always
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock
-  #   command: --interval 300 sf1-ollama sf1-open-webui sf1-n8n
-  #   networks:
-  #     - sf1-ki-network

@@ -3,6 +3,7 @@ export interface Strain {
   name: string;
   breeder?: string;
   type: 'SATIVA' | 'INDICA' | 'HYBRID' | 'RUDERALIS';
+  seedType?: string;
   genetics?: string;
   thc?: { min: number; max: number };
   cbd?: { min: number; max: number };
