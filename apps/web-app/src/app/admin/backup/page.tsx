@@ -20,7 +20,9 @@ import {
   ShieldCheck,
   ShieldAlert,
   Lock,
+  ArrowLeft,
 } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -122,6 +124,14 @@ export default function BackupAdminPage() {
   return (
     <DashboardLayout>
     <div className="space-y-6">
+      <Link
+        href="/admin"
+        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Zurück zum Admin Dashboard
+      </Link>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Backup-Verwaltung</h1>
