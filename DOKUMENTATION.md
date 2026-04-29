@@ -10,6 +10,20 @@
 
 ---
 
+## Session s1 (2026-04-29): Admin Zurück-Buttons — COMPLETED ✅
+
+**Fokus:** Zurück-Button auf Admin-Seiten Analytics und Backup-Verwaltung ergänzt
+
+**Geänderte Dateien:**
+- `apps/web-app/src/app/admin/analytics/page.tsx` — ArrowLeft-Link + `import Link, ArrowLeft`
+- `apps/web-app/src/app/admin/backup/page.tsx` — ArrowLeft-Link + `import Link, ArrowLeft`
+
+**Pattern:** `<Link href="/admin" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">` — identisch zu Monitoring/Logs
+
+**Commit:** `c59e588`
+
+---
+
 ## Session 105 (2026-04-09): Dokumentation & Claude Code Skills Referenz — COMPLETED ✅
 
 **Fokus:** User-Dokumentation + Skill-Übersicht erstellen, Session-Start durchführen
@@ -6098,4 +6112,12 @@ Server-RAM-Krise: `qwen2.5:7b` (4,4 GiB) konnte auf dem 7,8 GiB Server nicht meh
 - Vault: `/root/SF-Brain/SF-1 Projekt/Plans/2026-04-29-ai-stack-removal.md`
 
 ### Commits
-[werden nach Abschluss ergänzt]
+`2300ff8` — chore: remove AI stack
+
+## Session-Ende 2026-04-29 — Shortcodes + Abschluss
+
+**Neue User-Shortcodes (permanent):**
+- `dk` = alles dokumentieren
+- `ss` = /session-start
+
+**Session-Ergebnis:** AI-Stack entfernt, RAM stabilisiert, 4 Learnings + 3 Regeln im Vault.
