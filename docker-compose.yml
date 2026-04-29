@@ -3,9 +3,6 @@ version: '3.8'
 networks:
   sf1-network:
     driver: bridge
-  sf1-ki-network:
-    external: true
-    name: sf-1-ultimate-_sf1-ki-network
 
 volumes:
   mongodb_data:
@@ -215,10 +212,6 @@ services:
       - "traefik.http.middlewares.rl-api.rateLimit.average=300"
       - "traefik.http.middlewares.rl-api.rateLimit.period=1m"
       - "traefik.http.middlewares.rl-api.rateLimit.burst=60"
-      # AI-Routen: 10 req/min (teuer)
-      - "traefik.http.middlewares.rl-ai.rateLimit.average=10"
-      - "traefik.http.middlewares.rl-ai.rateLimit.period=1m"
-      - "traefik.http.middlewares.rl-ai.rateLimit.burst=3"
 
   # Backend Services
   auth-service:
@@ -498,48 +491,6 @@ services:
       start_period: 30s
     depends_on:
       mongodb:
-        condition: service_healthy
-
-  ai-service:
-    image: node:20-alpine
-    container_name: sf1-ai-service
-    restart: always
-    security_opt:
-      - no-new-privileges:true
-    working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
-    volumes:
-      - ./apps/ai-service:/app
-    environment:
-      NODE_ENV: production
-      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_ai?authSource=admin&directConnection=true
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      JWT_SECRET: ${JWT_SECRET}
-      SENTRY_DSN: ${SENTRY_DSN_BACKEND}
-      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
-      OLLAMA_BASE_URL: http://sf1-ollama:11434
-    networks:
-      - sf1-network
-      - sf1-ki-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.ai.rule=(Host(`seedfinderpro.de`) || Host(`www.seedfinderpro.de`)) && PathPrefix(`/api/ai`)"
-      - "traefik.http.routers.ai.priority=10"
-      - "traefik.http.routers.ai.entrypoints=websecure"
-      - "traefik.http.routers.ai.tls=true"
-      - "traefik.http.routers.ai.tls.certresolver=letsencrypt"
-      # NO middlewares - service expects full path /api/ai/...
-      - "traefik.http.services.ai.loadbalancer.server.port=3010"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3010/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      redis:
         condition: service_healthy
 
   tools-service:

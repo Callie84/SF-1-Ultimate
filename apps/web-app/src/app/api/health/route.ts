@@ -9,8 +9,7 @@ const SERVICES = [
   { name: 'notification', label: 'Notification-Service', url: 'http://sf1-notification-service:3006/health' },
   { name: 'price', label: 'Price-Service', url: 'http://sf1-price-service:3002/health' },
   { name: 'search', label: 'Search-Service', url: 'http://sf1-search-service:3007/health' },
-  { name: 'ai', label: 'AI-Service', url: 'http://sf1-ai-service:3010/health' },
-  { name: 'tools', label: 'Tools-Service', url: 'http://sf1-tools-service:3004/health' },
+{ name: 'tools', label: 'Tools-Service', url: 'http://sf1-tools-service:3004/health' },
   { name: 'backup', label: 'Backup-Service', url: 'http://sf1-backup:3011/health' },
 ];
 

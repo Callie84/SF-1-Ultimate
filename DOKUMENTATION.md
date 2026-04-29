@@ -6028,6 +6028,7 @@ Automatische Ausführung der Mastertest-Suite: Smoke-Test vor Commits + volle Su
 - **Bypass (Notfall):** `git commit --no-verify` (nur wenn bewusst gewollt)
 
 ### Täglicher Cron
+- 2026-04-29 06:00 — ❌ 41 grün / 1 fehlgeschlagen
 - **Script:** `/root/scripts/sf1-daily-mastertest.sh`
 - **Trigger:** Täglich 06:00 (Crontab: `0 6 * * *`)
 - **Suite:** Volle 42-Test-Suite (`npm run mastertest`)
@@ -6043,3 +6044,58 @@ Automatische Ausführung der Mastertest-Suite: Smoke-Test vor Commits + volle Su
 ### Lauf-Protokoll
 - 2026-04-29 00:52 — ✅ 42/42 grün (22s)
 - 2026-04-29 00:53 — ✅ 42/42 grün (22s)
+
+## Session — AI-Stack Entfernung (2026-04-29) [in Bearbeitung]
+
+### Hintergrund / Grund
+Server-RAM-Krise: `qwen2.5:7b` (4,4 GiB) konnte auf dem 7,8 GiB Server nicht mehr geladen werden. `kswapd0` lief auf 77% CPU, 1,3 GiB Swap belegt, Load Average 5+. Entscheidung: AI-Stack vollständig entfernen (Kosten + Instabilität).
+
+### Entfernte Komponenten
+- `sf1-ollama` Container + Config aus `docker-compose.ki.yml`
+- `sf1-open-webui` Container + Config aus `docker-compose.ki.yml`
+- `sf1-rag-service` Container + Config aus `docker-compose.ki.yml`
+- `sf1-ai-service` Container + Config aus `docker-compose.yml` + `docker-compose.staging.yml`
+- `apps/ai-service/` Verzeichnis (komplett gelöscht)
+- `apps/rag-service/` Verzeichnis (komplett gelöscht)
+- Traefik Router `ai` + Rate-Limit Middleware `rl-ai` aus `docker-compose.yml`
+- `sf1-ki-network` aus `docker-compose.yml` (n8n nutzt eigenes Netzwerk in ki.yml)
+- `OPENAI_API_KEY` aus `.env`
+- AI-Service Health-Check aus `apps/web-app/src/app/api/health/route.ts`
+- Footer-Link `/ai/advisor` aus `apps/web-app/src/components/footer.tsx`
+- `admin/ai/page.tsx` auf Platzhalter reduziert (Seiten-Dateien bleiben erhalten)
+
+### Beibehaltenes
+- Docker Volume `sf-1-ultimate-_ollama_data` (5,6 GiB Modelle auf Disk — jederzeit reaktivierbar)
+- `sf1-n8n` Container (eigenständige Automatisierungs-Engine, kein AI-Stack)
+- Frontend-Seiten `/ai/*` als Dateien (nur Navigation-Links entfernt)
+
+### Aufgetretene Fehler beim Frontend-Build (pre-existing Bugs, kein AI-Zusammenhang)
+
+| Fehler | Ursache | Fix |
+|--------|---------|-----|
+| `Property 'seedType' does not exist on type 'Strain'` | `use-strains.ts` Interface unvollständig | `seedType?: string` hinzugefügt |
+| `Property 'floweringTime' does not exist on type 'Strain'` | Fehlende Properties im Interface | `floweringTime?: number` hinzugefügt |
+| `Type 'number | { min; max }' is not assignable to ReactNode` | Komplexer Typ nicht renderbar | Vereinfacht zu `number` |
+| `Property 'map' does not exist on type 'string'` | `lineage` als `string` statt `string[]` | `lineage?: string[]` |
+| `Property 'breeder/climate/cbdRich/lineage' does not exist` | Weitere fehlende Properties | Alle optional ergänzt |
+
+**Lektion:** `tsc --noEmit` direkt ausführen um ALLE Fehler auf einmal zu sehen — nicht durch Docker-Build-Loops iterieren (zu langsam, je 3–5 Min pro Versuch).
+
+### Geänderte Dateien
+- `docker-compose.yml` — ai-service Block + rl-ai Middleware + sf1-ki-network entfernt
+- `docker-compose.ki.yml` — ollama + open-webui + rag-service entfernt, nur n8n bleibt
+- `docker-compose.staging.yml` — ai-service-stg Block entfernt
+- `.env` — OPENAI_API_KEY entfernt
+- `apps/web-app/src/app/api/health/route.ts` — AI-Service Health-Check entfernt
+- `apps/web-app/src/components/footer.tsx` — /ai/advisor Link entfernt
+- `apps/web-app/src/app/admin/ai/page.tsx` — Platzhalter-Seite
+- `apps/web-app/src/hooks/use-strains.ts` — Strain Interface vervollständigt
+- `apps/web-app/src/types/price.ts` — seedType zu Strain Interface hinzugefügt
+
+### Plan & Spec
+- Spec: `docs/superpowers/specs/2026-04-29-ai-stack-removal-design.md`
+- Plan: `docs/superpowers/plans/2026-04-29-ai-stack-removal.md`
+- Vault: `/root/SF-Brain/SF-1 Projekt/Plans/2026-04-29-ai-stack-removal.md`
+
+### Commits
+[werden nach Abschluss ergänzt]
