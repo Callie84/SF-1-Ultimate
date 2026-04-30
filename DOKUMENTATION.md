@@ -10,6 +10,33 @@
 
 ---
 
+## Session s3 (2026-04-30): Test-User-Cleanup Bug Fix — COMPLETED ✅
+
+**Problem:** `cleanup.ts` schickte keinen `password`-Body an `DELETE /api/auth/account` → immer 400. Logout-Test in `auth.test.ts` invalidierte Token vor `afterAll` → 401. `catch {}` schluckte beide Fehler still. 65 mt-User hatten sich akkumuliert.
+
+**Lösung:**
+- `cleanup.ts`: Re-Login vor Account-Delete (umgeht Logout-Token-Invalidierung), `password` im DELETE-Body
+- Alle 5 Test-Files (`auth`, `community`, `journal`, `gamification`, `notification`): `email`+`password` an `registerCleanup` übergeben
+- Einmalige DB-Bereinigung: 65 mt-User per psql gelöscht (CASCADE auf Sessions/RefreshTokens)
+- Cron-Script `tests/scripts/cleanup-mt-users.sh` täglich 02:30 (löscht mt-User > 1h alt)
+
+**Verifikation:** Mastertest 40/42 ✅, 0 mt-User nach Test (2 Fehlschläge = AI-Service pre-existing, nicht durch diese Änderung)
+
+**Commits:** `553f0d1` (cleanup.ts), `226a4d2` (5 Test-Files), `88fe730` (Cron-Script)
+
+**Nacharbeit 2026-04-30 (Session s3 Runde 2):** Root-Cause lag auch im `master-test.mjs` — erstellt `testuser_${ts}@sf1-test.de` ohne Cleanup. Fix: `TEST_EMAIL`/`TEST_PASSWORD` global, Cleanup-Block am Ende via Re-Login + `DELETE /api/auth/account`. `cleanup-mt-users.sh` Pattern auf `testuser*` + `@sf1-test.de` + `@mastertest.invalid` erweitert.
+**Commit:** `0be5b74`
+
+---
+
+## Session s2 (2026-04-30): Preisvergleich Klick-Bug — COMPLETED ✅
+
+**Fokus:** AnnouncementModal Backdrop blockierte Klicks auf Preisvergleich-Karten
+
+**Commit:** `65f4382`
+
+---
+
 ## Session s1 (2026-04-29): Admin Zurück-Buttons — COMPLETED ✅
 
 **Fokus:** Zurück-Button auf Admin-Seiten Analytics und Backup-Verwaltung ergänzt
