@@ -58,7 +58,7 @@ export default function LandingPage() {
 
           {/* One Short Sentence */}
           <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-            Vergleiche Preise von 7.000+ Samen aus 19 Seedbanks — kostenlos, ohne Anmeldung.
+            Vergleiche Preise von 11.500+ Samen aus 19 Seedbanks — kostenlos, ohne Anmeldung.
           </p>
 
           {/* One CTA Group */}
@@ -84,8 +84,8 @@ export default function LandingPage() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
             {[
-              { value: '7.000+', label: 'Cannabis-Samen' },
-              { value: '7.000+', label: 'Strain-Profile' },
+              { value: '11.500+', label: 'Cannabis-Samen' },
+              { value: '11.500+', label: 'Strain-Profile' },
               { value: '19', label: 'Seedbanks' },
               { value: '100%', label: 'Kostenlos' },
             ].map((stat) => (
@@ -117,7 +117,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-xl font-semibold">Samen-Preisvergleich</h3>
               <p className="text-muted-foreground">
-                7.000+ Samen aus 19 Seedbanks täglich aktualisiert. Finde den günstigsten Preis sofort.
+                11.500+ Samen aus 19 Seedbanks täglich aktualisiert. Finde den günstigsten Preis sofort.
               </p>
             </div>
 
@@ -127,7 +127,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-xl font-semibold">Strain-Datenbank</h3>
               <p className="text-muted-foreground">
-                7.000+ Cannabis-Profile mit THC/CBD-Werten, Terpenprofil, Wirkungen und Aromen. Inkl. Preisvergleich.
+                11.500+ Cannabis-Profile mit THC/CBD-Werten, Terpenprofil, Wirkungen und Aromen. Inkl. Preisvergleich.
               </p>
             </div>
 
@@ -137,7 +137,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-xl font-semibold">KI-Assistent</h3>
               <p className="text-muted-foreground">
-                GPT-4o analysiert deine Pflanzen-Fotos, empfiehlt Strains und beantwortet Grow-Fragen sofort.
+                Unser KI-Assistent analysiert deine Pflanzen-Fotos, empfiehlt Strains und beantwortet Grow-Fragen sofort.
               </p>
             </div>
 
