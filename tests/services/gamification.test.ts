@@ -27,7 +27,7 @@ beforeAll(async () => {
   if (reg?.status !== 201) throw new Error(`Register fehlgeschlagen: ${reg?.status}`);
   token = reg.data.accessToken;
   userId = reg.data.user.id;
-  registerCleanup({ type: 'user', id: userId, token });
+  registerCleanup({ type: 'user', id: userId, token, email: testEmail, password: 'MasterTest!2026' });
 });
 
 afterAll(async () => { await runCleanup(); });
