@@ -181,7 +181,18 @@ export class ReplyService {
     
     logger.info(`[Reply] Deleted ${replyId} by ${userId} (mod: ${isModAction})`);
   }
-  
+
+  async restore(replyId: string, userId: string): Promise<IReply> {
+    const reply = await Reply.findById(replyId);
+    if (!reply) throw new AppError('NOT_FOUND', 404);
+    if (reply.userId !== userId) throw new AppError('FORBIDDEN', 403);
+    reply.isDeleted = false;
+    reply.deletedAt = undefined;
+    reply.isPermanentlyDeleted = false;
+    await reply.save();
+    return reply;
+  }
+
   /**
    * Replies eines Threads abrufen
    */
