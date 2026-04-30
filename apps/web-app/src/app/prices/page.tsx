@@ -60,6 +60,9 @@ export default function PricesPage() {
   const [filterType, setFilterType] = useState<string>('');
   const [filterBreeder, setFilterBreeder] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('price');
+  const [minPrice, setMinPrice] = useState<string>('');
+  const [maxPrice, setMaxPrice] = useState<string>('');
+  const [onlyInStock, setOnlyInStock] = useState(false);
 
   const LIMIT = 24;
 
@@ -86,6 +89,9 @@ export default function PricesPage() {
         });
         if (filterType) params.set('type', filterType);
         if (filterBreeder) params.set('breeder', filterBreeder);
+        if (minPrice) params.set('minPrice', minPrice);
+        if (maxPrice) params.set('maxPrice', maxPrice);
+        if (onlyInStock) params.set('inStock', 'true');
 
         const response = await apiClient.get(`/api/prices/browse?${params}`);
         setSeeds(response.seeds || []);
@@ -97,7 +103,7 @@ export default function PricesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [query, page, filterType, filterBreeder, sortBy]);
+  }, [query, page, filterType, filterBreeder, sortBy, minPrice, maxPrice, onlyInStock]);
 
   useEffect(() => {
     fetchSeeds();
@@ -106,7 +112,7 @@ export default function PricesPage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(0);
-  }, [query, filterType, filterBreeder, sortBy]);
+  }, [query, filterType, filterBreeder, sortBy, minPrice, maxPrice, onlyInStock]);
 
   const totalPages = Math.ceil(total / LIMIT);
 
@@ -192,6 +198,38 @@ export default function PricesPage() {
               ))}
             </select>
           )}
+
+          <div className="h-4 w-px bg-border mx-1" />
+
+          {/* Price range */}
+          <div className="flex items-center gap-1">
+            <Input
+              type="number"
+              placeholder="Min €"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value)}
+              className="h-8 w-20 text-sm"
+              min={0}
+            />
+            <span className="text-muted-foreground text-xs">–</span>
+            <Input
+              type="number"
+              placeholder="Max €"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value)}
+              className="h-8 w-20 text-sm"
+              min={0}
+            />
+          </div>
+
+          {/* In-stock toggle */}
+          <Button
+            variant={onlyInStock ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setOnlyInStock(!onlyInStock)}
+          >
+            Nur lieferbar
+          </Button>
         </div>
       </div>
 

@@ -123,8 +123,11 @@ router.get('/browse', async (req, res, next) => {
     const sort = (req.query.sort as string) || 'price';
     const limit = parseInt(req.query.limit as string) || 24;
     const skip = parseInt(req.query.skip as string) || 0;
+    const minPrice = req.query.minPrice ? parseFloat(req.query.minPrice as string) : undefined;
+    const maxPrice = req.query.maxPrice ? parseFloat(req.query.maxPrice as string) : undefined;
+    const inStock = req.query.inStock === 'true' ? true : undefined;
 
-    const result = await priceService.browseSeeds({ type, breeder, sort, limit, skip });
+    const result = await priceService.browseSeeds({ type, breeder, sort, limit, skip, minPrice, maxPrice, inStock });
 
     res.json(result);
   } catch (error) {
