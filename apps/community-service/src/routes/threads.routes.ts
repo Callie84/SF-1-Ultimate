@@ -112,6 +112,27 @@ router.get('/search',
 );
 
 /**
+ * GET /api/community/threads/admin/deleted
+ * Admin: gelöschte Threads auflisten (muss VOR /:id stehen!)
+ */
+router.get('/admin/deleted',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      if (req.user!.role !== 'ADMIN' && req.user!.role !== 'MODERATOR') {
+        return res.status(403).json({ error: 'Nicht berechtigt' });
+      }
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const result = await threadService.getDeleted(page, limit);
+      res.json({ ...result, page, totalPages: Math.ceil(result.total / limit) });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
  * GET /api/community/threads/:id/replies
  * Alle Replies eines Threads
  */
@@ -185,6 +206,41 @@ router.delete('/:id',
   async (req, res, next) => {
     try {
       await threadService.delete(req.params.id, req.user!.id);
+      res.json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * PATCH /api/community/threads/:id/restore
+ * Thread wiederherstellen (Owner oder Admin)
+ */
+router.patch('/:id/restore',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      const thread = await threadService.restore(req.params.id, req.user!.id);
+      res.json({ success: true, thread });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * PATCH /api/community/threads/:id/purge
+ * Thread dauerhaft ausblenden (Admin only)
+ */
+router.patch('/:id/purge',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      if (req.user!.role !== 'ADMIN' && req.user!.role !== 'MODERATOR') {
+        return res.status(403).json({ error: 'Nicht berechtigt' });
+      }
+      await threadService.purge(req.params.id);
       res.json({ success: true });
     } catch (error) {
       next(error);

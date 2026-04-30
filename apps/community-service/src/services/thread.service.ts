@@ -236,7 +236,34 @@ export class ThreadService {
     
     logger.info(`[Thread] Deleted ${threadId} by ${userId} (mod: ${isModAction})`);
   }
-  
+
+  async restore(threadId: string, userId: string): Promise<IThread> {
+    const thread = await Thread.findById(threadId);
+    if (!thread) throw new AppError('NOT_FOUND', 404);
+    if (thread.userId !== userId) throw new AppError('FORBIDDEN', 403);
+    thread.isDeleted = false;
+    thread.deletedAt = undefined;
+    thread.isPermanentlyDeleted = false;
+    await thread.save();
+    return thread;
+  }
+
+  async purge(threadId: string): Promise<void> {
+    const thread = await Thread.findById(threadId);
+    if (!thread) throw new AppError('NOT_FOUND', 404);
+    thread.isPermanentlyDeleted = true;
+    await thread.save();
+  }
+
+  async getDeleted(page: number, limit: number): Promise<{ threads: IThread[]; total: number }> {
+    const query = { isDeleted: true, isPermanentlyDeleted: false };
+    const [threads, total] = await Promise.all([
+      Thread.find(query).sort({ deletedAt: -1 }).skip((page - 1) * limit).limit(limit),
+      Thread.countDocuments(query),
+    ]);
+    return { threads, total };
+  }
+
   /**
    * Thread als gelöst markieren (Best Answer)
    */
