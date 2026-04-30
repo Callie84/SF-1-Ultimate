@@ -31,7 +31,7 @@ export class GrowService {
     limit?: number;
     skip?: number;
   } = {}): Promise<{ grows: IGrow[]; total: number }> {
-    const query: any = { userId, deletedAt: { $exists: false } };
+    const query: any = { userId, deletedAt: { $exists: false }, isPermanentlyDeleted: { $ne: true } };
     
     if (options.status) {
       query.status = options.status;
@@ -122,10 +122,36 @@ export class GrowService {
     
     grow.deletedAt = new Date();
     await grow.save();
-    
+
     logger.info(`[Grow] Soft-deleted ${growId}`);
   }
-  
+
+  async restore(growId: string, userId: string): Promise<IGrow> {
+    const grow = await Grow.findById(growId);
+    if (!grow) throw new AppError('NOT_FOUND', 404);
+    if (grow.userId !== userId) throw new AppError('FORBIDDEN', 403);
+    grow.deletedAt = undefined;
+    grow.isPermanentlyDeleted = false;
+    await grow.save();
+    return grow;
+  }
+
+  async purge(growId: string): Promise<void> {
+    const grow = await Grow.findById(growId);
+    if (!grow) throw new AppError('NOT_FOUND', 404);
+    grow.isPermanentlyDeleted = true;
+    await grow.save();
+  }
+
+  async getDeleted(page: number, limit: number): Promise<{ grows: IGrow[]; total: number }> {
+    const query = { deletedAt: { $ne: null, $exists: true }, isPermanentlyDeleted: { $ne: true } };
+    const [grows, total] = await Promise.all([
+      Grow.find(query).sort({ deletedAt: -1 }).skip((page - 1) * limit).limit(limit),
+      Grow.countDocuments(query),
+    ]);
+    return { grows, total };
+  }
+
   async markHarvested(growId: string, userId: string, data: {
     harvestDate: Date;
     yieldWet?: number;
