@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { authClient, communityClient, safePost, safeGet, safeDelete, withAuth } from '../helpers/client.js';
+import { authClient, communityClient, safePost, safeGet, safeDelete, safePatch, withAuth } from '../helpers/client.js';
 import { registerCleanup, runCleanup } from '../helpers/cleanup.js';
 import { logPass, logFail } from '../helpers/logger.js';
 
@@ -99,6 +99,29 @@ describe('community-service', () => {
       logPass(SVC, 'thread-delete');
     } catch (e: any) {
       logFail(SVC, 'thread-delete', `Status ${res?.status}`);
+      throw e;
+    }
+  });
+
+  it('Thread löschen + Restore — gibt 200 zurück', async () => {
+    if (rateLimited || !token) { logPass(SVC, 'thread-restore-skipped'); return; }
+    const createRes = await safePost(communityClient, '/api/community/threads', {
+      title: `Restore-Test ${sessionId}`,
+      content: 'Zum Testen des Restore-Flows. Mindestlänge erfüllt.',
+      categoryId: TEST_CATEGORY_ID,
+    }, withAuth(token));
+    if (!createRes || createRes.status !== 201) { logPass(SVC, 'thread-restore-skipped'); return; }
+    const tempId = createRes.data?.thread?._id;
+
+    const delRes = await safeDelete(communityClient, `/api/community/threads/${tempId}`, withAuth(token));
+    expect([200, 204]).toContain(delRes?.status);
+
+    const restoreRes = await safePatch(communityClient, `/api/community/threads/${tempId}/restore`, {}, withAuth(token));
+    try {
+      expect(restoreRes?.status).toBe(200);
+      logPass(SVC, 'thread-restore');
+    } catch (e: any) {
+      logFail(SVC, 'thread-restore', `Status ${restoreRes?.status}`);
       throw e;
     }
   });

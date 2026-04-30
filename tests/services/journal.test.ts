@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { authClient, journalClient, safePost, safeGet, safeDelete, withAuth } from '../helpers/client.js';
+import { authClient, journalClient, safePost, safeGet, safeDelete, safePatch, withAuth } from '../helpers/client.js';
 import { registerCleanup, runCleanup } from '../helpers/cleanup.js';
 import { logPass, logFail } from '../helpers/logger.js';
 
@@ -91,6 +91,30 @@ describe('journal-service', () => {
       logPass(SVC, 'grow-delete');
     } catch (e: any) {
       logFail(SVC, 'grow-delete', `Status ${res?.status}`);
+      throw e;
+    }
+  });
+
+  it('Grow löschen + Restore — gibt 200 zurück', async () => {
+    if (rateLimited || !token) { logPass(SVC, 'grow-restore-skipped'); return; }
+    const createRes = await safePost(journalClient, '/api/journal/grows', {
+      strainName: `Restore-Test ${sessionId}`,
+      type: 'autoflower',
+      environment: 'indoor',
+      startDate: new Date().toISOString(),
+    }, withAuth(token));
+    if (!createRes || createRes.status !== 201) { logPass(SVC, 'grow-restore-skipped'); return; }
+    const tempId = createRes.data?.grow?._id ?? createRes.data?.grow?.id;
+
+    const delRes = await safeDelete(journalClient, `/api/journal/grows/${tempId}`, withAuth(token));
+    expect([200, 204]).toContain(delRes?.status);
+
+    const restoreRes = await safePatch(journalClient, `/api/journal/grows/${tempId}/restore`, {}, withAuth(token));
+    try {
+      expect(restoreRes?.status).toBe(200);
+      logPass(SVC, 'grow-restore');
+    } catch (e: any) {
+      logFail(SVC, 'grow-restore', `Status ${restoreRes?.status}`);
       throw e;
     }
   });
