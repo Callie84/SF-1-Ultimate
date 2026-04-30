@@ -97,4 +97,20 @@ router.delete('/:id',
   }
 );
 
+/**
+ * PATCH /api/community/replies/:id/restore
+ * Reply wiederherstellen (Owner oder Admin)
+ */
+router.patch('/:id/restore',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      const reply = await replyService.restore(req.params.id, req.user!.id);
+      res.json({ success: true, reply });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 export default router;
