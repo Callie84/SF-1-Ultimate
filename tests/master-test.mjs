@@ -28,6 +28,8 @@ const FRONTEND = 'https://seedfinderpro.de';
 let ADMIN_JWT = '';
 let USER_JWT  = '';
 let TEST_USER_ID = '';
+let TEST_EMAIL = '';
+let TEST_PASSWORD = '';
 const results = { pass: [], fail: [], warn: [], total: 0 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -208,6 +210,8 @@ async function testAuth() {
   const ts = Date.now();
   const testEmail = `testuser_${ts}@sf1-test.de`;
   const testPassword = 'TestPass123!';
+  TEST_EMAIL = testEmail;
+  TEST_PASSWORD = testPassword;
   let testUserId = null;
 
   log('\n  [3.1] Registrierung');
@@ -833,6 +837,22 @@ async function main() {
 
   log('╚══════════════════════════════════════════════════════════════╝');
   log('');
+
+  // Test-User aufräumen
+  if (TEST_USER_ID && TEST_EMAIL && TEST_PASSWORD) {
+    try {
+      const freshLogin = await req('POST', SERVICES.auth + '/api/auth/login', { email: TEST_EMAIL, password: TEST_PASSWORD });
+      const freshToken = freshLogin.data?.accessToken || USER_JWT;
+      if (freshToken) {
+        await req('DELETE', SERVICES.auth + '/api/auth/account', { password: TEST_PASSWORD }, authHeader(freshToken));
+        log(`  🧹 Test-User aufgeräumt: ${TEST_EMAIL}`);
+      } else {
+        warn('Test-User-Cleanup: kein Token verfügbar');
+      }
+    } catch {
+      warn('Test-User-Cleanup fehlgeschlagen — manuell prüfen');
+    }
+  }
 
   // JSON-Report für Datei
   return {
