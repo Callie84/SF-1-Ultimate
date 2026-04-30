@@ -311,7 +311,17 @@ export class PriceService {
     const limit = Math.min(options.limit || 50, 200);
     const skip = options.skip || 0;
 
-    const cacheKey = `search:${query}:${options.type || ''}:${options.breeder || ''}:${limit}:${skip}`;
+    // Deutsche Typ-Synonyme → englische DB-Werte
+    const TYPE_SYNONYMS: Record<string, string> = {
+      'feminisiert': 'feminized', 'feminized': 'feminized',
+      'autoflower': 'autoflower', 'automatisch': 'autoflower', 'auto': 'autoflower',
+      'regulär': 'regular', 'regular': 'regular',
+      'indica': 'indica', 'sativa': 'sativa', 'hybrid': 'hybrid',
+      'cbd': 'cbd',
+    };
+    const resolvedType = options.type ? (TYPE_SYNONYMS[options.type.toLowerCase()] ?? options.type) : undefined;
+
+    const cacheKey = `search:${query}:${resolvedType || ''}:${options.breeder || ''}:${limit}:${skip}`;
     const cached = await redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
@@ -349,7 +359,7 @@ export class PriceService {
       $or: searchOrConditions
     };
 
-    if (options.type) searchQuery.type = options.type;
+    if (resolvedType) searchQuery.type = resolvedType;
     if (options.breeder) searchQuery.breeder = options.breeder;
 
     const [seeds, total] = await Promise.all([
@@ -405,17 +415,22 @@ export class PriceService {
     sort?: string;
     limit?: number;
     skip?: number;
+    minPrice?: number;
+    maxPrice?: number;
+    inStock?: boolean;
   } = {}): Promise<{ seeds: any[]; total: number; breeders: string[] }> {
     const limit = Math.min(options.limit || 24, 100);
     const skip = options.skip || 0;
 
-    const cacheKey = `browse:${options.type || ''}:${options.breeder || ''}:${options.sort || 'price'}:${limit}:${skip}`;
+    const cacheKey = `browse:${options.type || ''}:${options.breeder || ''}:${options.sort || 'price'}:${limit}:${skip}:${options.minPrice || ''}:${options.maxPrice || ''}:${options.inStock ?? ''}`;
     const cached = await redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
     const query: any = { priceCount: { $gt: 0 }, lowestPrice: { $gt: 0 } };
     if (options.type) query.type = options.type;
     if (options.breeder) query.breeder = options.breeder;
+    if (options.minPrice != null) query.lowestPrice = { ...query.lowestPrice, $gte: options.minPrice };
+    if (options.maxPrice != null) query.lowestPrice = { ...query.lowestPrice, $lte: options.maxPrice };
 
     let sortObj: any = { lowestPrice: 1 };
     if (options.sort === 'price_desc') sortObj = { lowestPrice: -1 };
@@ -445,7 +460,8 @@ export class PriceService {
 
     // Alle Preise für diese Seeds in EINER Query laden (statt N+1)
     const inactiveSeedbanks = await this.getInactiveSeedbanks();
-    const priceFilter: any = { seedId: { $in: seeds.map(s => s._id) }, inStock: true };
+    const priceFilter: any = { seedId: { $in: seeds.map(s => s._id) } };
+    if (options.inStock) priceFilter.inStock = true;
     if (inactiveSeedbanks.length > 0) {
       priceFilter.seedbankSlug = { $nin: inactiveSeedbanks };
     }

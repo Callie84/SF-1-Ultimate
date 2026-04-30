@@ -1,6 +1,7 @@
-// Feed Registry - 29 Feed-Importer (Sessions 40 + 73 + 74)
+// Feed Registry - 19 Feed-Importer (Sessions 40 + 73 + 94 + 96)
 // Hybrid-Ansatz: Feeds für Affiliate-Partner, HTML-Scraping als Fallback
-// Session 74: mhseeds (DNS tot) entfernt, hanf-im-glueck auf Firecrawl umgestellt
+// Session 94: 11 nicht-funktionale Adapter entfernt (Breeder, TLS, CSS-Fehler)
+// Session 96: Linda Seeds hinzugefügt (Custom Shop mit Firecrawl-Support)
 import { BaseFeed } from './base.feed';
 import { ZamnesiaFeed } from './adapters/zamnesia.feed';
 import { SensiSeedsFeed } from './adapters/sensi-seeds.feed';
@@ -12,27 +13,28 @@ import { GreenhouseFeed } from './adapters/greenhouse.feed';
 import { ParadiseSeedsFeed } from './adapters/paradise-seeds.feed';
 import { AnesiaSeedsFeed } from './adapters/anesia-seeds.feed';
 import { MrHanfFeed } from './adapters/mr-hanf.feed';
-import { WeedSeedShopFeed } from './adapters/weed-seed-shop.feed';
 import { BarneysFarmFeed } from './adapters/barneys-farm.feed';
 import { SeedstockersFeed } from './adapters/seedstockers.feed';
 import { HerbiesFeed } from './adapters/herbies.feed';
 import { KannabiaFeed } from './adapters/kannabia.feed';
 // Session 73: 15 neue Adapter
-import { SweetSeedsFeed } from './adapters/sweet-seeds.feed';
-import { WorldOfSeedsFeed } from './adapters/world-of-seeds.feed';
 import { PyramidSeedsFeed } from './adapters/pyramid-seeds.feed';
-import { HeavyweightSeedsFeed } from './adapters/heavyweight-seeds.feed';
-import { SpliffSeedsFeed } from './adapters/spliff-seeds.feed';
 import { GardenOfGreenFeed } from './adapters/garden-of-green.feed';
 import { OriginalSeedsStoreFeed } from './adapters/original-seeds-store.feed';
 import { BlimburnSeedsFeed } from './adapters/blimburn-seeds.feed';
-import { CropKingSeedsFeed } from './adapters/crop-king-seeds.feed';
+// Session 96: Linda Seeds hinzugefügt
+import { LindaSeedsFeed } from './adapters/linda-seeds.feed';
 // MHSeedsFeed entfernt — mhseeds.de DNS-Fehler (Domain tot, Session 74)
-import { SamenwahlFeed } from './adapters/samenwahl.feed';
-import { HanfImGlueckFeed } from './adapters/hanf-im-glueck.feed';
-import { SumoSeedsFeed } from './adapters/sumo-seeds.feed';
-import { CbdSeedsFeed } from './adapters/cbd-seeds.feed';
+// Session s9: 9 weitere Adapter aktiviert
+import { SweetSeedsFeed } from './adapters/sweet-seeds.feed';
+import { WorldOfSeedsFeed } from './adapters/world-of-seeds.feed';
+import { SpliffSeedsFeed } from './adapters/spliff-seeds.feed';
 import { FemaleSeedsFeed } from './adapters/female-seeds.feed';
+import { SamenwahlFeed } from './adapters/samenwahl.feed';
+import { SumoSeedsFeed } from './adapters/sumo-seeds.feed';
+import { HeavyweightSeedsFeed } from './adapters/heavyweight-seeds.feed';
+import { HanfImGlueckFeed } from './adapters/hanf-im-glueck.feed';
+import { CbdSeedsFeed } from './adapters/cbd-seeds.feed';
 import { logger } from '../utils/logger';
 
 // ============================================
@@ -43,7 +45,6 @@ export const feeds: Record<string, BaseFeed> = {
   // Tier 1: Höchste Provisionen (30%+)
   'fastbuds':          new FastBudsFeed(),         // bis 50%
   'zamnesia':          new ZamnesiaFeed(),          // bis 33%
-  'weed-seed-shop':    new WeedSeedShopFeed(),      // 30% flat
 
   // Tier 2: Gute Provisionen (20-30%)
   'sensi-seeds':       new SensiSeedsFeed(),        // 20-30%
@@ -65,21 +66,25 @@ export const feeds: Record<string, BaseFeed> = {
   'herbies-seeds':     new HerbiesFeed(),            // Custom HTML
   'kannabia':          new KannabiaFeed(),            // WooCommerce HTML
 
-  // Tier 6: Neue Shops (Session 73 — 15 weitere)
-  'sweet-seeds':           new SweetSeedsFeed(),         // PrestaShop ES
-  'world-of-seeds':        new WorldOfSeedsFeed(),        // PrestaShop EU
+  // Tier 6: Neue Shops (Session 73 — weitere)
   'pyramid-seeds':         new PyramidSeedsFeed(),        // WooCommerce
-  'heavyweight-seeds':     new HeavyweightSeedsFeed(),    // WooCommerce
-  'spliff-seeds':          new SpliffSeedsFeed(),         // PrestaShop NL
   'garden-of-green':       new GardenOfGreenFeed(),       // WooCommerce + JSON-LD
   'original-seeds-store':  new OriginalSeedsStoreFeed(),  // Shopify API
   'blimburn-seeds':        new BlimburnSeedsFeed(),       // WooCommerce
-  'crop-king-seeds':       new CropKingSeedsFeed(),       // WooCommerce CA
-  'samenwahl':             new SamenwahlFeed(),           // Shopware DE
-  'hanf-im-glueck':        new HanfImGlueckFeed(),        // WooCommerce via Firecrawl (CF-Schutz)
+
+  // Session 96: Neue Shops
+  'linda-seeds':           new LindaSeedsFeed(),          // Custom Shop (Firecrawl für JS-Pricing)
+
+  // Session s9: 9 weitere Adapter aktiviert
+  'sweet-seeds':           new SweetSeedsFeed(),          // PrestaShop
+  'world-of-seeds':        new WorldOfSeedsFeed(),        // PrestaShop
+  'spliff-seeds':          new SpliffSeedsFeed(),         // PrestaShop
+  'female-seeds':          new FemaleSeedsFeed(),         // WooCommerce
+  'samenwahl':             new SamenwahlFeed(),            // DE WooCommerce
   'sumo-seeds':            new SumoSeedsFeed(),           // WooCommerce
-  'cbd-seeds':             new CbdSeedsFeed(),            // PrestaShop / WooCommerce
-  'female-seeds':          new FemaleSeedsFeed(),         // WooCommerce NL
+  'heavyweight-seeds':     new HeavyweightSeedsFeed(),    // WooCommerce + Firecrawl
+  'hanf-im-glueck':        new HanfImGlueckFeed(),        // Cloudflare + Firecrawl
+  'cbd-seeds':             new CbdSeedsFeed(),            // PrestaShop
 };
 
 /**

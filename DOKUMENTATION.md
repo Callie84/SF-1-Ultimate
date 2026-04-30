@@ -6281,6 +6281,28 @@ Server-RAM-Krise: `qwen2.5:7b` (4,4 GiB) konnte auf dem 7,8 GiB Server nicht meh
 
 ---
 
+## s9: Suche — Mehr Seeds + Kaufoptionen erweitern [in-progress — 2026-04-30]
+
+**Status:** 🔄 in-progress
+**Scope:** 9 neue Feed-Adapter aktivieren, deutsche Suchsynonyme, Preisfilter UI
+
+**Ziele:**
+- +20% Seeds in DB durch 9 neue Adapter
+- Deutsche Suchbegriffe funktionieren ("feminisiert"→feminized, "automatisch"→autoflower)
+- Preisfilter (min/max) + "Nur lieferbar" Toggle in /prices
+
+**Geplante Änderungen:**
+- `apps/price-service/src/feeds/index.ts` — 9 neue Adapter in Registry (Imports ✅, Registry-Einträge fehlen noch)
+- `apps/price-service/src/services/price.service.ts` — DE-Synonym-Mapping in searchSeeds() + Preisfilter in browseSeeds()
+- `apps/web-app/src/app/prices/page.tsx` — Preisfilter-UI + "Nur lieferbar" Toggle
+
+**Neue Adapter (alle Dateien fertig, Aktivierung ausstehend):**
+- `sweet-seeds` (PrestaShop), `world-of-seeds` (PrestaShop), `spliff-seeds` (PrestaShop)
+- `female-seeds` (WooCommerce), `samenwahl` (DE WooCommerce), `sumo-seeds` (WooCommerce)
+- `heavyweight-seeds` (WooCommerce+Firecrawl), `hanf-im-glueck` (CF+Firecrawl), `cbd-seeds` (PrestaShop)
+
+---
+
 ## s8: Ad Layout Templates [abgeschlossen — 2026-04-30]
 
 **Commits:** `f3e91fb`, `dfade77`, `43f2a1a`, `22ef7b4`
