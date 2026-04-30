@@ -26,6 +26,7 @@ export interface IThread extends Document {
   deletedAt?: Date;
   deletedBy?: string;
   deleteReason?: string;
+  isPermanentlyDeleted: boolean;
   
   // Media
   imageUrls: string[];
@@ -113,6 +114,7 @@ const ThreadSchema = new Schema<IThread>({
   deletedAt: Date,
   deletedBy: String,
   deleteReason: String,
+  isPermanentlyDeleted: { type: Boolean, default: false, index: true },
 
   searchText: {
     type: String
