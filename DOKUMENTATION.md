@@ -6278,3 +6278,24 @@ Server-RAM-Krise: `qwen2.5:7b` (4,4 GiB) konnte auf dem 7,8 GiB Server nicht meh
 - `ss` = /session-start
 
 **Session-Ergebnis:** AI-Stack entfernt, RAM stabilisiert, 4 Learnings + 3 Regeln im Vault.
+
+---
+
+## s8: Ad Layout Templates [abgeschlossen — 2026-04-30]
+
+**Commits:** `f3e91fb`, `dfade77`, `43f2a1a`, `22ef7b4`
+**Scope:** Mehrere benannte Werbezonen-Layouts speichern, aktivieren, duplizieren, löschen.
+
+**Geänderte Dateien:**
+- `apps/community-service/src/models/AdLayout.model.ts` (neu) — Mongoose-Modell mit name, zones[], sidebarWidth, isActive
+- `apps/community-service/src/routes/ads.routes.ts` — 6 neue Routes + GET /zones bevorzugt aktives Layout (Fallback auf AdZoneConfig)
+- `apps/web-app/src/hooks/use-ad-layouts.ts` (neu) — TanStack Query Hooks für Layout-CRUD
+- `apps/web-app/src/app/admin/ads/page.tsx` — 4. Tab "Layouts" mit Liste, Erstellen, Aktivieren, Duplizieren, Löschen
+
+**Neue API-Endpoints (community-service):**
+- GET /api/community/ads/layouts
+- POST /api/community/ads/layouts
+- PUT /api/community/ads/layouts/:id
+- DELETE /api/community/ads/layouts/:id
+- POST /api/community/ads/layouts/:id/activate
+- POST /api/community/ads/layouts/:id/duplicate
