@@ -18,7 +18,7 @@ import { api } from '@/lib/api-client';
 import { formatRelativeTime } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { typeLabel, climateLabel, seedTypeLabel, effectLabel, flavorLabel, aromaLabel } from '@/lib/strain-labels';
+import { typeLabel, climateLabel, seedTypeLabel, effectLabel, flavorLabel, aromaLabel, terpeneLabel } from '@/lib/strain-labels';
 import { trackStrainViewed } from '@/lib/analytics';
 import { PriceHistoryChart } from '@/components/prices/price-history-chart';
 
@@ -342,7 +342,7 @@ export function StrainDetailClient({ slug }: { slug: string }) {
               <div className="space-y-3">
                 {terpenes.map(([name, value]) => (
                   <div key={name} className="flex items-center gap-3">
-                    <span className="w-28 text-sm capitalize text-muted-foreground">{name}</span>
+                    <span className="w-28 text-sm text-muted-foreground">{terpeneLabel(name)}</span>
                     <div className="flex-1 bg-muted rounded-full h-2">
                       <div
                         className="bg-primary h-2 rounded-full transition-all"

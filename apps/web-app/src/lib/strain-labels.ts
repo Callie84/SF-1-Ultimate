@@ -101,3 +101,48 @@ export function flavorLabel(flavor: string): string {
 export function aromaLabel(aroma: string): string {
   return FLAVORS_LABELS[aroma] ?? aroma;
 }
+
+export const DIFFICULTY_LABELS: Record<string, string> = {
+  beginner: 'Anfänger',
+  intermediate: 'Mittel',
+  expert: 'Experte',
+  easy: 'Einfach',
+  medium: 'Mittel',
+  hard: 'Schwer',
+};
+
+export function difficultyLabel(difficulty: string): string {
+  return DIFFICULTY_LABELS[difficulty.toLowerCase()] ?? difficulty;
+}
+
+export const TERPENE_LABELS: Record<string, string> = {
+  myrcene: 'Myrcen',
+  limonene: 'Limonen',
+  caryophyllene: 'Caryophyllen',
+  'beta-caryophyllene': 'Beta-Caryophyllen',
+  pinene: 'Pinen',
+  'alpha-pinene': 'Alpha-Pinen',
+  'beta-pinene': 'Beta-Pinen',
+  linalool: 'Linalool',
+  humulene: 'Humulen',
+  ocimene: 'Ocimen',
+  terpinolene: 'Terpinolen',
+  bisabolol: 'Bisabolol',
+  valencene: 'Valencen',
+  nerolidol: 'Nerolidol',
+  geraniol: 'Geraniol',
+  borneol: 'Borneol',
+  terpineol: 'Terpineol',
+  camphene: 'Camphen',
+  sabinene: 'Sabinen',
+  phellandrene: 'Phellandren',
+  eucalyptol: 'Eucalyptol',
+  guaiol: 'Guaiol',
+  isopulegol: 'Isopulegol',
+  pulegone: 'Pulegon',
+  fenchol: 'Fenchol',
+};
+
+export function terpeneLabel(terpene: string): string {
+  return TERPENE_LABELS[terpene.toLowerCase()] ?? terpene;
+}

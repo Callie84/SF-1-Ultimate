@@ -1,31 +1,31 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-04-30T03:12:27Z
+**Last-Update:** 2026-04-30T14:22:58Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
-(kein aktiver Task — s2 abgeschlossen, s3 als nächstes)
+s7 starten: Strain-DB — alle Texte auf Deutsch (`/root/.claude/skills/s7/SKILL.md`)
 
 ## Aktueller Task
 —
 
 ## Letzter abgeschlossener Task
-s2: Preisvergleich Klick-Bug
-- Root Cause: AnnouncementModal (fixed inset-0 z-50) blockierte alle Klicks
-- Fix: onClick={close} auf Backdrop-Div
-- Commit: 65f4382
+s6: Löschen + Undo Recovery-UI
+- Soft-Delete mit 10s Undo-Toast (sonner action) für Threads, Replies, Grows
+- isPermanentlyDeleted-Flag statt Hard-Delete
+- Admin-Papierkorb als Tab in /admin/threads + /admin/grows
+- Restore-Endpoints in community-service + journal-service
+- Tests: safePatch() + Restore-Tests für community + journal
+- Commits: c2d3049 … e278ca4 (9 Commits)
 
 ## Diese Session erledigt
-- [2026-04-30] session-start Skill fix: awk → ls -lht (kein Permission-Error mehr)
 - [2026-04-30] s2: Preisvergleich Klick-Bug — AnnouncementModal Backdrop-Fix (65f4382)
-  - Nebenfix: TypeScript Build-Cache Problem durch rm -rf .next behoben
-  - Playwright-Test: Modal schließt, Karten expandieren mit Preisen
+- [2026-04-30] s3: Test-User-Cleanup — Mastertest + Cron-Pattern erweitert (0be5b74)
+- [2026-04-30] s4: Feedback-Button global — floating, Modal, Bug/Idee/Lob (f66aedc)
+- [2026-04-30] s5: System-Logs klickbar + Detail-Modal (08a9ef2)
+- [2026-04-30] s6: Löschen + Undo Toast + Admin-Papierkorb + isPermanentlyDeleted (c2d3049..e278ca4)
 
 ## Offene Tasks (s-plan)
-s3: Test-User-Cleanup
-s4: Feedback-Button global
-s5: System-Logs expandierbar
-s6: Löschen + Undo Recovery-UI
 s7: Strain-DB Texte auf Deutsch
 s8: Werbung Layout-Templates
 s9: Suche mehr Seeds
