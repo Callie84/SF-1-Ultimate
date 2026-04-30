@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStrainSearch, useStrain, Strain } from '@/hooks/use-strains';
+import { effectLabel, aromaLabel } from '@/lib/strain-labels';
 
 const MAX_COMPARE = 4;
 
@@ -173,7 +174,7 @@ function ComparisonCard({
             <div className="flex flex-wrap gap-1">
               {strain.effects.slice(0, 5).map((effect, i) => (
                 <Badge key={i} variant="outline" className="text-xs">
-                  {effect}
+                  {effectLabel(effect)}
                 </Badge>
               ))}
             </div>
@@ -194,7 +195,7 @@ function ComparisonCard({
                 .slice(0, 5)
                 .map((aroma, i) => (
                   <Badge key={i} variant="outline" className="text-xs">
-                    {aroma}
+                    {aromaLabel(aroma)}
                   </Badge>
                 ))}
             </div>
@@ -370,7 +371,7 @@ function StrainCompareContent() {
                       <td className="py-3 px-4 text-muted-foreground">Effekte</td>
                       {selectedStrains.map((s) => (
                         <td key={s._id} className="py-3 px-4">
-                          {s.effects?.slice(0, 3).join(', ') || '-'}
+                          {s.effects?.slice(0, 3).map(effectLabel).join(', ') || '-'}
                         </td>
                       ))}
                     </tr>
@@ -381,6 +382,7 @@ function StrainCompareContent() {
                           {[...(s.aromas || []), ...(s.flavors || [])]
                             .filter((v, i, a) => a.indexOf(v) === i)
                             .slice(0, 3)
+                            .map(aromaLabel)
                             .join(', ') || '-'}
                         </td>
                       ))}
