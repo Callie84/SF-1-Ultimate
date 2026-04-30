@@ -235,13 +235,21 @@ router.post('/cache/clear', adminMiddleware, async (req: Request, res: Response)
 });
 
 // Helper: Log-Eintrag speichern (wird von anderen Routen genutzt)
-export async function addSystemLog(level: string, service: string, message: string): Promise<void> {
+export async function addSystemLog(
+  level: string,
+  service: string,
+  message: string,
+  meta?: Record<string, unknown>,
+  stack?: string,
+): Promise<void> {
   const entry = JSON.stringify({
     id: `log_${Date.now()}`,
     level,
     service,
     message,
     timestamp: new Date().toISOString(),
+    ...(meta && { meta }),
+    ...(stack && { stack }),
   });
   await redis.lPush('system:logs', entry).catch(() => {});
   await redis.lTrim('system:logs', 0, 999).catch(() => {});

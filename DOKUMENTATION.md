@@ -10,6 +10,30 @@
 
 ---
 
+## Session s4 (2026-04-30): Globaler Feedback-Button — COMPLETED ✅
+
+**Feature:** Floating Feedback-Button auf allen User-sichtbaren Seiten (außer `/admin`).
+
+**Implementierung:**
+- Neue Komponente `apps/web-app/src/components/feedback-button.tsx` (`'use client'`)
+- Floating Button: `fixed bottom-6 right-6 z-40`, grünes Brand-Design, `MessageSquare`-Icon
+- Modal: `fixed inset-0 z-50` Overlay, Backdrop-Klick schließt
+- Feedback-Typen: Bug / Idee / Lob (visuell per Farbe unterschieden: Rot / Gelb / Grün)
+- Nachricht-Textarea (min. 10 Zeichen per API-Vorgabe)
+- E-Mail: auto-befüllt aus `user?.email` — nur angezeigt wenn nicht eingeloggt
+- Submit: `POST /api/notifications/contact` via bestehenden öffentlichen Endpoint
+- Erfolgs-Screen mit CheckCircle + Schließen-Button
+- Admin-Ausschluss: `usePathname().startsWith('/admin') → return null`
+- Global eingebunden in `apps/web-app/src/app/layout.tsx` neben `<OnboardingModal />`
+
+**TypeScript:** Kein Fehler. Build: ✅ Next.js Produktions-Build erfolgreich.
+
+**Smoke-Tests:** 10/10 ✅ (Auth 7/7, Search 3/3)
+
+**Commit:** `f66aedc`
+
+---
+
 ## Session s3 (2026-04-30): Test-User-Cleanup Bug Fix — COMPLETED ✅
 
 **Problem:** `cleanup.ts` schickte keinen `password`-Body an `DELETE /api/auth/account` → immer 400. Logout-Test in `auth.test.ts` invalidierte Token vor `afterAll` → 401. `catch {}` schluckte beide Fehler still. 65 mt-User hatten sich akkumuliert.
