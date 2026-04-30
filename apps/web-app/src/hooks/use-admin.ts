@@ -274,6 +274,86 @@ export function useUpdateCategory() {
   });
 }
 
+// Admin Trash — Deleted Threads
+export function useAdminDeletedThreads(filters?: { page?: number; limit?: number }) {
+  return useQuery({
+    queryKey: [...adminKeys.all, 'deleted-threads', filters],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (filters?.page) params.append('page', String(filters.page));
+      if (filters?.limit) params.append('limit', String(filters.limit));
+      const data = await api.get(`/api/community/threads/admin/deleted?${params}`);
+      return data as { threads: any[]; total: number; totalPages: number; page: number };
+    },
+  });
+}
+
+// Admin Trash — Deleted Grows
+export function useAdminDeletedGrows(filters?: { page?: number; limit?: number }) {
+  return useQuery({
+    queryKey: [...adminKeys.all, 'deleted-grows', filters],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (filters?.page) params.append('page', String(filters.page));
+      if (filters?.limit) params.append('limit', String(filters.limit));
+      const data = await api.get(`/api/journal/grows/admin/deleted?${params}`);
+      return data as { grows: any[]; total: number; totalPages: number; page: number };
+    },
+  });
+}
+
+// Restore Thread (Admin)
+export function useRestoreThread() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (threadId: string) => {
+      await api.patch(`/api/community/threads/${threadId}/restore`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'deleted-threads'] });
+    },
+  });
+}
+
+// Purge Thread (Admin — permanent hidden, stays in DB)
+export function usePurgeThread() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (threadId: string) => {
+      await api.patch(`/api/community/threads/${threadId}/purge`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'deleted-threads'] });
+    },
+  });
+}
+
+// Restore Grow (Admin)
+export function useRestoreGrow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (growId: string) => {
+      await api.patch(`/api/journal/grows/${growId}/restore`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'deleted-grows'] });
+    },
+  });
+}
+
+// Purge Grow (Admin)
+export function usePurgeGrow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (growId: string) => {
+      await api.patch(`/api/journal/grows/${growId}/purge`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'deleted-grows'] });
+    },
+  });
+}
+
 // Delete category
 export function useDeleteCategory() {
   const queryClient = useQueryClient();
