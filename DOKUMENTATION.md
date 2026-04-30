@@ -6114,6 +6114,26 @@ Server-RAM-Krise: `qwen2.5:7b` (4,4 GiB) konnte auf dem 7,8 GiB Server nicht meh
 ### Commits
 `2300ff8` — chore: remove AI stack
 
+## s2: Preisvergleich Klick-Bug [abgeschlossen 2026-04-30]
+
+**Problem:** Seed-Karten auf `/prices` sahen klickbar aus (cursor-pointer), Klicks lösten keine Aktion aus.
+
+**Root Cause:** `AnnouncementModal` rendert als `fixed inset-0 z-50` Overlay das gesamten Viewport abdeckt. Das Backdrop-Div hatte keinen `onClick`-Handler → User konnten das Modal nicht durch Außen-Klick schließen, alle Klicks auf Karten darunter wurden abgefangen.
+
+**Fix:** `onClick={close}` auf Backdrop-Div in `announcement-modal.tsx` — Standard-Modal-UX-Pattern.
+
+**Nebenfix:** TypeScript-Build-Cache-Problem in `strain-detail-client.tsx` (Property `seedType` — war Cache-Problem, kein echter Fehler), durch `rm -rf .next` behoben.
+
+**Verifiziert:** Playwright-Test — Modal schließt bei Klick auf X-Button, Karten expandieren nach Modal-Schließen mit Preisliste + Chart.
+
+### Datei
+- `apps/web-app/src/components/announcement-modal.tsx` — onClick={close} auf Backdrop
+
+### Commit
+`65f4382` — fix: AnnouncementModal Backdrop schliesst bei Klick (Preisvergleich Klick-Bug)
+
+---
+
 ## Session-Ende 2026-04-29 — Shortcodes + Abschluss
 
 **Neue User-Shortcodes (permanent):**
