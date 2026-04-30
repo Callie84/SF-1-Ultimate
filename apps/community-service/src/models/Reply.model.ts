@@ -20,6 +20,7 @@ export interface IReply extends Document {
   deletedAt?: Date;
   deletedBy?: string;
   deleteReason?: string;
+  isPermanentlyDeleted: boolean;
   
   isEdited: boolean;
   editedAt?: Date;
@@ -83,6 +84,7 @@ const ReplySchema = new Schema<IReply>({
   deletedAt: Date,
   deletedBy: String,
   deleteReason: String,
+  isPermanentlyDeleted: { type: Boolean, default: false, index: true },
 
   isEdited: {
     type: Boolean,
