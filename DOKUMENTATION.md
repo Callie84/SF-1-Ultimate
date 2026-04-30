@@ -1,12 +1,54 @@
 # SF-1 Ultimate — Vollständige Entwicklungsdokumentation
 
 **Projekt:** seedfinderpro.de — Cannabis Growing Community Platform
-**Stand:** 2026-04-09 (Sessions 101-104 Complete) — KI-Integration vollständig, Chat-Backend dual-provider  
+**Stand:** 2026-05-01 (Session s10 Complete) — Landing Page + User-Texte aktualisiert  
 **Status:** ✅ Production-Ready (RAG validated, Chat tested, ready for user testing)
 **Stack:** Next.js 14, Express Microservices, MongoDB, PostgreSQL, Redis, Meilisearch, Docker Compose, Traefik, Ollama (KI)
 
 > **⚠️ Hinweis:** Sessions 30–92 sind hauptsächlich in `/root/SF-Brain/SF-1 Projekt/Status & Roadmap.md` dokumentiert (Vault).
 > Diese Datei wird systematisch aktualisiert ab Session 94.
+
+---
+
+## Session s10 (2026-05-01): Landing Page + User-Texte aktualisiert — COMPLETED ✅
+
+**Ziel:** Alle user-sichtbaren Seiten auf aktuellen Stand bringen — echte Stats, kein GPT-4o-Claim, kein Denglisch.
+
+### Was geändert wurde
+
+**`apps/web-app/src/app/landing/page.tsx`:**
+- Stats: `7.000+` Cannabis-Samen → `11.500+` (real: 11.559 in DB)
+- Stats: `7.000+` Strain-Profile → `11.500+`
+- Hero-Text: `7.000+ Samen aus 19 Seedbanks` → `11.500+`
+- Feature Preisvergleich: `7.000+` → `11.500+`
+- Feature Strain-DB: `7.000+` → `11.500+`
+- Feature KI: `GPT-4o analysiert...` → `Unser KI-Assistent analysiert...` (kein falscher Model-Claim)
+
+**`apps/web-app/src/app/about/page.tsx`:**
+- `Card`-Komponenten entfernt → einfache `div`-Elemente (Design Rule: no cards on public pages)
+- Import bereinigt (Card, CardContent, CardHeader, CardTitle entfernt)
+- Stats in Intro-Text aktualisiert (`11.500+ Samen aus 19 Seedbanks`)
+
+**`apps/web-app/src/app/terms/page.tsx`:**
+- Datum: `8. April 2026` → `1. Mai 2026`
+- `controlled substances` → `kontrollierte Substanzen`
+- `Reverse Engineering` → `Technische Schutzmaßnahmen umgehen`
+- `Automated Systems einsetzen` → `Automatisierte Systeme einsetzen`
+- `Benutzergenerated Content` → `Nutzergenerierte Inhalte`
+- `Harassment, Spam oder Belästigung` → `Belästigungen oder Spam`
+- `Hate Speech` → `Hassrede`
+
+**`apps/web-app/src/app/privacy/page.tsx`:**
+- Datum: `8. April 2026` → `1. Mai 2026` (2× ersetzt: Header + Footer)
+
+### Echte Daten (Stand 2026-05-01)
+- Seeds in DB: 11.559 gesamt, 7.056 mit Preisen
+- Seedbanks: 19 aktiv
+- User: 60 (Beta)
+- Adapter: 34 (31 feeds + 3 scrapers)
+
+### Commit
+_(nach Abschluss eintragen)_
 
 ---
 
@@ -6281,25 +6323,23 @@ Server-RAM-Krise: `qwen2.5:7b` (4,4 GiB) konnte auf dem 7,8 GiB Server nicht meh
 
 ---
 
-## s9: Suche — Mehr Seeds + Kaufoptionen erweitern [in-progress — 2026-04-30]
+## s9: Suche — Mehr Seeds + Kaufoptionen erweitern [abgeschlossen — 2026-04-30]
 
-**Status:** 🔄 in-progress
-**Scope:** 9 neue Feed-Adapter aktivieren, deutsche Suchsynonyme, Preisfilter UI
+**Commit:** `e55bc87`
+**Scope:** 9 neue Feed-Adapter aktiviert, deutsche Suchsynonyme, Preisfilter UI
 
-**Ziele:**
-- +20% Seeds in DB durch 9 neue Adapter
-- Deutsche Suchbegriffe funktionieren ("feminisiert"→feminized, "automatisch"→autoflower)
-- Preisfilter (min/max) + "Nur lieferbar" Toggle in /prices
+**Geänderte Dateien:**
+- `apps/price-service/src/feeds/index.ts` — 9 neue Adapter in Registry + Imports
+- `apps/price-service/src/services/price.service.ts` — DE-Synonym-Mapping in searchSeeds() + minPrice/maxPrice/inStock-Filter in browseSeeds()
+- `apps/price-service/src/routes/prices.routes.ts` — minPrice/maxPrice/inStock aus Query-Params
+- `apps/web-app/src/app/prices/page.tsx` — Preisfilter-UI (min/max €) + "Nur lieferbar" Toggle
 
-**Geplante Änderungen:**
-- `apps/price-service/src/feeds/index.ts` — 9 neue Adapter in Registry (Imports ✅, Registry-Einträge fehlen noch)
-- `apps/price-service/src/services/price.service.ts` — DE-Synonym-Mapping in searchSeeds() + Preisfilter in browseSeeds()
-- `apps/web-app/src/app/prices/page.tsx` — Preisfilter-UI + "Nur lieferbar" Toggle
-
-**Neue Adapter (alle Dateien fertig, Aktivierung ausstehend):**
+**Neue Adapter (28 gesamt, vorher 19):**
 - `sweet-seeds` (PrestaShop), `world-of-seeds` (PrestaShop), `spliff-seeds` (PrestaShop)
 - `female-seeds` (WooCommerce), `samenwahl` (DE WooCommerce), `sumo-seeds` (WooCommerce)
 - `heavyweight-seeds` (WooCommerce+Firecrawl), `hanf-im-glueck` (CF+Firecrawl), `cbd-seeds` (PrestaShop)
+
+**DE-Synonyme:** feminisiert→feminized, automatisch/auto→autoflower, regulär→regular
 
 ---
 
