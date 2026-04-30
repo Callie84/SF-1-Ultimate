@@ -58,3 +58,12 @@ export async function safeDelete(client: ReturnType<typeof axios.create>, path: 
     return null;
   }
 }
+
+export async function safePatch(client: ReturnType<typeof axios.create>, path: string, data?: object, config?: object) {
+  try {
+    return await client.patch(path, data, config);
+  } catch (err: any) {
+    if (err.response) return err.response;
+    return null;
+  }
+}
