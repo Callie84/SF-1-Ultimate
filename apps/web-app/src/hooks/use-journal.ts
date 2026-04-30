@@ -1,4 +1,5 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import api from '@/lib/api-client';
 import { Grow, ApiGrow, ApiEntry, CreateEntryData } from '@/types/journal';
 
@@ -109,9 +110,25 @@ export function useDeleteGrow() {
   return useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/api/journal/grows/${id}`);
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (id: string) => {
       queryClient.invalidateQueries({ queryKey: journalKeys.grows() });
+      toast('Grow gelöscht', {
+        duration: 10000,
+        action: {
+          label: 'Rückgängig',
+          onClick: async () => {
+            try {
+              await api.patch(`/api/journal/grows/${id}/restore`);
+              queryClient.invalidateQueries({ queryKey: journalKeys.grows() });
+              toast.success('Grow wiederhergestellt');
+            } catch {
+              toast.error('Fehler beim Wiederherstellen des Grows');
+            }
+          },
+        },
+      });
     },
   });
 }
@@ -167,9 +184,25 @@ export function useDeleteEntry(growId: string) {
   return useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/api/journal/entries/${id}`);
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (id: string) => {
       queryClient.invalidateQueries({ queryKey: journalKeys.entries(growId) });
+      toast('Eintrag gelöscht', {
+        duration: 10000,
+        action: {
+          label: 'Rückgängig',
+          onClick: async () => {
+            try {
+              await api.patch(`/api/journal/entries/${id}/restore`);
+              queryClient.invalidateQueries({ queryKey: journalKeys.entries(growId) });
+              toast.success('Eintrag wiederhergestellt');
+            } catch {
+              toast.error('Fehler beim Wiederherstellen des Eintrags');
+            }
+          },
+        },
+      });
     },
   });
 }

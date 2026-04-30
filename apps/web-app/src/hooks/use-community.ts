@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import api from '@/lib/api-client';
 import { Thread, Reply, ApiThread, ApiReply, ThreadListResponse } from '@/types/community';
 
@@ -90,9 +91,25 @@ export function useDeleteThread() {
   return useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/api/community/threads/${id}`);
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (id: string) => {
       queryClient.invalidateQueries({ queryKey: communityKeys.threads() });
+      toast('Thread gelöscht', {
+        duration: 10000,
+        action: {
+          label: 'Rückgängig',
+          onClick: async () => {
+            try {
+              await api.patch(`/api/community/threads/${id}/restore`);
+              queryClient.invalidateQueries({ queryKey: communityKeys.threads() });
+              toast.success('Thread wiederhergestellt');
+            } catch {
+              toast.error('Fehler beim Wiederherstellen des Threads');
+            }
+          },
+        },
+      });
     },
   });
 }
@@ -147,9 +164,25 @@ export function useDeleteReply(threadId: string) {
   return useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/api/community/replies/${id}`);
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (id: string) => {
       queryClient.invalidateQueries({ queryKey: communityKeys.replies(threadId) });
+      toast('Reply gelöscht', {
+        duration: 10000,
+        action: {
+          label: 'Rückgängig',
+          onClick: async () => {
+            try {
+              await api.patch(`/api/community/replies/${id}/restore`);
+              queryClient.invalidateQueries({ queryKey: communityKeys.replies(threadId) });
+              toast.success('Reply wiederhergestellt');
+            } catch {
+              toast.error('Fehler beim Wiederherstellen der Reply');
+            }
+          },
+        },
+      });
     },
   });
 }
