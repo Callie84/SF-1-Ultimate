@@ -10,6 +10,60 @@
 
 ---
 
+## Session s6 (2026-04-30): Löschen + Undo Recovery-UI — COMPLETED ✅
+
+**Feature:** Toast mit 10-Sekunden-Undo nach jedem Löschen + Admin-Papierkorb für soft-gelöschte Inhalte.
+
+**Ansatz:** Optimistic Delete + Restore-Endpoint. `isPermanentlyDeleted`-Flag blendet endgültig aus ohne DB-Delete. Gemeinsamer Restore-Endpoint für Toast-Undo und Admin-Papierkorb.
+
+### Was gebaut wurde
+
+**Backend:**
+- `isPermanentlyDeleted: Boolean` zu `Thread.model.ts`, `Reply.model.ts`, `Grow.model.ts`
+- Endpoints community-service: `PATCH /threads/:id/restore`, `PATCH /threads/:id/purge`, `GET /threads/admin/deleted`, `PATCH /replies/:id/restore`
+- Endpoints journal-service: `PATCH /grows/:id/restore`, `PATCH /grows/:id/purge`, `GET /grows/admin/deleted`
+- Alle Grow-Queries um `isPermanentlyDeleted: { $ne: true }` erweitert
+
+**Frontend:**
+- `hooks/use-delete-with-undo.ts` — zentraler Hook (wiederverwendbar)
+- `use-community.ts`: `useDeleteThread`, `useDeleteReply` mit Undo-Toast (10 Sek)
+- `use-journal.ts`: `useDeleteGrow`, `useDeleteEntry` mit Undo-Toast
+- `use-admin.ts`: Trash-Hooks (`useAdminDeletedThreads/Grows`, `useRestoreThread/Grow`, `usePurgeThread/Grow`)
+- `/admin/threads` + `/admin/grows`: Tab "Gelöscht" mit Wiederherstellen/Dauerhaft-Buttons
+
+**Tests:** 11/11 grün, `safePatch()` Helper + Restore-Tests für Thread + Grow
+
+### Commits
+`c2d3049` · `2c02301` · `324be95` · `fd87340` · `24d1b87` · `6d3fca7` · `a4f7c3e` · `6236b29` · `e278ca4`
+
+### Spec & Plan
+- Spec: `docs/superpowers/specs/2026-04-30-delete-undo-recovery-design.md`
+- Plan: `docs/superpowers/plans/2026-04-30-delete-undo-recovery.md`
+
+---
+
+## Session s5 (2026-04-30): System-Logs Detail-Modal — COMPLETED ✅
+
+**Feature:** Log-Zeilen in `/admin/logs` klickbar — Detail-Modal mit vollständigem Log-Inhalt.
+
+**Frontend (`apps/web-app/src/app/admin/logs/page.tsx`):**
+- `LogEntry`-Interface ersetzt `any` (Felder: id, level, service, timestamp, message, meta, stack)
+- `onClick` + `cursor-pointer hover:bg-muted/50` auf jede Log-Zeile
+- `LogDetailModal`-Komponente (inline) via shadcn `Dialog`
+- Modal zeigt: formatierter Timestamp, Level-Badge farbcodiert, Service-Badge, vollständige Message, JSON-Meta schön formatiert, Stack-Trace mit rotem Hintergrund
+- `CopyButton`-Komponente für Log-ID, Meta-JSON und Stack-Trace
+- Listenzeile: `truncate` statt rohem `pre`-Block
+
+**Backend (`apps/auth-service/src/routes/admin.routes.ts`):**
+- `addSystemLog()` um optionale Parameter `meta?: Record<string, unknown>` und `stack?: string` erweitert
+- Rückwärtskompatibel — alle bestehenden Call-Sites unverändert
+
+**TypeScript:** Kein Fehler. Build: ✅ Smoke-Tests 10/10.
+
+**Commit:** `08a9ef2`
+
+---
+
 ## Session s4 (2026-04-30): Globaler Feedback-Button — COMPLETED ✅
 
 **Feature:** Floating Feedback-Button auf allen User-sichtbaren Seiten (außer `/admin`).
@@ -6094,6 +6148,7 @@ Automatische Ausführung der Mastertest-Suite: Smoke-Test vor Commits + volle Su
 
 ### Täglicher Cron
 - 2026-04-29 06:00 — ❌ 41 grün / 1 fehlgeschlagen
+- 2026-04-30 06:00 — ❌ 42 grün / 2 fehlgeschlagen
 - **Script:** `/root/scripts/sf1-daily-mastertest.sh`
 - **Trigger:** Täglich 06:00 (Crontab: `0 6 * * *`)
 - **Suite:** Volle 42-Test-Suite (`npm run mastertest`)
