@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { Ad } from '../models/Ad.model';
 import { AdZoneConfig } from '../models/AdZoneConfig.model';
+import { AdLayout } from '../models/AdLayout.model';
 import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
@@ -154,6 +155,10 @@ const DEFAULT_ZONES = [
 
 router.get('/zones', async (req, res, next) => {
   try {
+    const activeLayout = await AdLayout.findOne({ isActive: true }).lean();
+    if (activeLayout) {
+      return res.json({ zones: activeLayout.zones, sidebarWidth: activeLayout.sidebarWidth });
+    }
     const config = await AdZoneConfig.findOne().lean();
     res.json({
       zones: config?.zones ?? DEFAULT_ZONES,
@@ -184,6 +189,130 @@ router.put('/zones', authMiddleware, adminMiddleware, async (req, res, next) => 
       { upsert: true, new: true }
     );
     res.json({ zones: config.zones, sidebarWidth: (config as any).sidebarWidth ?? 256 });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/community/ads/layouts
+ * Alle Layout-Templates auflisten (Admin)
+ */
+router.get('/layouts', authMiddleware, adminMiddleware, async (req, res, next) => {
+  try {
+    const layouts = await AdLayout.find().sort({ createdAt: -1 });
+    res.json({ layouts });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/community/ads/layouts
+ * Neues Layout erstellen (Admin)
+ */
+router.post('/layouts', authMiddleware, adminMiddleware, async (req, res, next) => {
+  try {
+    const { name, zones, sidebarWidth } = req.body;
+    if (!name) return res.status(400).json({ error: 'Name ist erforderlich' });
+
+    let layoutZones = zones;
+    let layoutSidebarWidth = sidebarWidth ?? 256;
+
+    if (!layoutZones) {
+      const config = await AdZoneConfig.findOne();
+      layoutZones = config?.zones ?? [];
+      layoutSidebarWidth = (config as any)?.sidebarWidth ?? 256;
+    }
+
+    const layout = await AdLayout.create({
+      name,
+      zones: layoutZones,
+      sidebarWidth: layoutSidebarWidth,
+      isActive: false,
+    });
+
+    res.status(201).json({ layout });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/community/ads/layouts/:id/activate
+ * Layout aktivieren — setzt alle anderen auf isActive: false (Admin)
+ */
+router.post('/layouts/:id/activate', authMiddleware, adminMiddleware, async (req, res, next) => {
+  try {
+    const layout = await AdLayout.findById(req.params.id);
+    if (!layout) return res.status(404).json({ error: 'Layout nicht gefunden' });
+
+    await AdLayout.updateMany({}, { isActive: false });
+    layout.isActive = true;
+    await layout.save();
+
+    res.json({ layout });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/community/ads/layouts/:id/duplicate
+ * Layout duplizieren (Admin)
+ */
+router.post('/layouts/:id/duplicate', authMiddleware, adminMiddleware, async (req, res, next) => {
+  try {
+    const original = await AdLayout.findById(req.params.id);
+    if (!original) return res.status(404).json({ error: 'Layout nicht gefunden' });
+
+    const copy = await AdLayout.create({
+      name: `Kopie von ${original.name}`,
+      zones: original.zones,
+      sidebarWidth: original.sidebarWidth,
+      isActive: false,
+    });
+
+    res.status(201).json({ layout: copy });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PUT /api/community/ads/layouts/:id
+ * Layout umbenennen / Zones updaten (Admin)
+ */
+router.put('/layouts/:id', authMiddleware, adminMiddleware, async (req, res, next) => {
+  try {
+    const { name, zones, sidebarWidth } = req.body;
+    const layout = await AdLayout.findByIdAndUpdate(
+      req.params.id,
+      {
+        ...(name && { name }),
+        ...(zones && { zones }),
+        ...(sidebarWidth != null && { sidebarWidth }),
+      },
+      { new: true }
+    );
+    if (!layout) return res.status(404).json({ error: 'Layout nicht gefunden' });
+    res.json({ layout });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * DELETE /api/community/ads/layouts/:id
+ * Layout löschen — nur wenn nicht aktiv (Admin)
+ */
+router.delete('/layouts/:id', authMiddleware, adminMiddleware, async (req, res, next) => {
+  try {
+    const layout = await AdLayout.findById(req.params.id);
+    if (!layout) return res.status(404).json({ error: 'Layout nicht gefunden' });
+    if (layout.isActive) return res.status(400).json({ error: 'Aktives Layout kann nicht gelöscht werden' });
+    await layout.deleteOne();
+    res.json({ success: true });
   } catch (error) {
     next(error);
   }
