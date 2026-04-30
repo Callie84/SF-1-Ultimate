@@ -31,7 +31,7 @@ beforeAll(async () => {
     userId = reg.data.user.id;
     token = reg.data.accessToken;
     refreshToken = reg.data.refreshToken ?? '';
-    registerCleanup({ type: 'user', id: userId, token });
+    registerCleanup({ type: 'user', id: userId, token, email: testEmail, password: testPassword });
   }
 });
 
