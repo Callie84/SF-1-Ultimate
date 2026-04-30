@@ -1,121 +1,131 @@
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+'use client';
 
-export const metadata = {
-  title: 'Impressum',
-  robots: { index: true, follow: true },
-};
+import { DashboardLayout } from '@/components/layout/dashboard-layout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Info } from 'lucide-react';
 
 export default function ImpressumPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-3xl px-4 py-12">
-        <Button variant="ghost" asChild className="mb-6">
-          <Link href="/landing">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Zurück
-          </Link>
-        </Button>
+    <DashboardLayout>
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <Info className="h-8 w-8 text-primary" />
+            <h1 className="text-4xl font-bold">Impressum</h1>
+          </div>
+          <p className="text-muted-foreground">Herausgeberdaten und Verantwortlichkeiten</p>
+        </div>
 
-        <h1 className="mb-8 text-4xl font-bold">Impressum</h1>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Herausgeber</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <p>
+                <strong>Pascal Klingen</strong><br />
+                Am Röttchen 5<br />
+                41751 Viersen-Dülken<br />
+                Deutschland
+              </p>
+            </CardContent>
+          </Card>
 
-        <div className="space-y-8 text-sm leading-relaxed">
+          <Card>
+            <CardHeader>
+              <CardTitle>Kontakt</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <div>
+                <p className="font-semibold mb-2">E-Mail:</p>
+                <p>
+                  Allgemein: <strong>info@seedfinderpro.de</strong><br />
+                  Datenschutz: <strong>privacy@seedfinderpro.de</strong><br />
+                  Rechtliches: <strong>legal@seedfinderpro.de</strong>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
-          <section>
-            <h2 className="text-lg font-semibold mb-3">Angaben gemäß § 5 TMG</h2>
-            <p>
-              Pascal Klingen<br />
-              Am Röttchen 5<br />
-              41751 Viersen-Dülken<br />
-              Deutschland
-            </p>
-          </section>
+          <Card>
+            <CardHeader>
+              <CardTitle>Haftung für Inhalte</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <p>
+                Die Inhalte unserer Seiten wurden mit größter Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte können wir jedoch keine Gewähr übernehmen.
+              </p>
+              <p>
+                Als Diensteanbieter sind wir gemäß § 7 Abs. 1 TMG für eigene Inhalte verantwortlich. Nach den §§ 8 bis 10 TMG sind wir jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde Informationen zu überwachen.
+              </p>
+            </CardContent>
+          </Card>
 
-          <section>
-            <h2 className="text-lg font-semibold mb-3">Kontakt</h2>
-            <p>
-              E-Mail:{' '}
-              <a href="mailto:klingenpascal@gmail.com" className="text-primary hover:underline">
-                klingenpascal@gmail.com
-              </a>
-            </p>
-          </section>
+          <Card>
+            <CardHeader>
+              <CardTitle>Haftung für Links</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <p>
+                Unsere Website enthält Links zu externen Websites. Für die Inhalte dieser externen Websites sind wir nicht verantwortlich. Der jeweilige Betreiber ist für seinen Inhalt selbst verantwortlich.
+              </p>
+              <p>
+                Wir überprüfen die verlinkten Seiten regelmäßig auf illegale Inhalte. Bei Feststellung von Rechtsverletzungen werden wir derartige Links unverzüglich entfernen.
+              </p>
+            </CardContent>
+          </Card>
 
-          <section>
-            <h2 className="text-lg font-semibold mb-3">Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV</h2>
-            <p>
-              Pascal Klingen<br />
-              Am Röttchen 5<br />
-              41751 Viersen-Dülken
-            </p>
-          </section>
+          <Card>
+            <CardHeader>
+              <CardTitle>Urheberrecht</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <p>
+                Die durch die Seitenbetreiber erstellten Inhalte unterliegen dem deutschen Urheberrecht. Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der Verwertung außerhalb der Grenzen des Urheberrechtes bedürfen der schriftlichen Zustimmung.
+              </p>
+            </CardContent>
+          </Card>
 
-          <section>
-            <h2 className="text-lg font-semibold mb-3">Hinweis zu Affiliate-Links</h2>
-            <p className="text-muted-foreground">
-              Diese Website enthält Affiliate-Links zu externen Samenbanken. Wenn du über einen solchen
-              Link einkaufst, erhalten wir eine Provision — für dich entstehen keine zusätzlichen Kosten.
-              Alle Preisangaben sind ohne Gewähr und dienen nur der Information. Affiliate-Links sind
-              entsprechend gekennzeichnet.
-            </p>
-          </section>
+          <Card>
+            <CardHeader>
+              <CardTitle>Datenschutz</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <p>
+                Die Nutzung unserer Website ist in der Regel ohne Angabe personenbezogener Daten möglich. Soweit personenbezogene Daten erhoben werden, erfolgt dies immer freiwillig. Diese Daten werden ohne Ihre ausdrückliche Zustimmung nicht an Dritte weitergegeben.
+              </p>
+              <p>
+                Weitere Informationen zum Datenschutz finden Sie in unserer <strong>Datenschutzerklärung</strong>.
+              </p>
+            </CardContent>
+          </Card>
 
-          <section>
-            <h2 className="text-lg font-semibold mb-3">Hinweis zur Plattform</h2>
-            <p className="text-muted-foreground">
-              SeedFinderPro ist eine Community-Plattform für Hobbygärtner und Grow-Enthusiasten.
-              Die Plattform richtet sich ausschließlich an Personen ab 18 Jahren. Sämtliche Inhalte
-              dienen nur zu Informationszwecken. Der Betreiber distanziert sich ausdrücklich von
-              jeglicher illegalen Nutzung der bereitgestellten Informationen. Die geltenden gesetzlichen
-              Bestimmungen des jeweiligen Aufenthaltslands sind zu beachten.
-            </p>
-          </section>
+          <Card>
+            <CardHeader>
+              <CardTitle>Rechtshinweise</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <p>
+                Diese Website und alle Inhalte werden ausschließlich zu Informationszwecken bereitgestellt. SeedFinderPro stellt keine medizinischen, legalen oder anderen professionellen Ratschläge bereit. Benutzer sollten sich immer an Fachleute wenden, bevor sie Entscheidungen treffen.
+              </p>
+              <p>
+                Alle Informationen müssen in Übereinstimmung mit lokalen Gesetzen und Vorschriften verwendet werden.
+              </p>
+            </CardContent>
+          </Card>
 
-          <section>
-            <h2 className="text-lg font-semibold mb-3">Haftungsausschluss</h2>
-
-            <h3 className="font-medium mb-2">Haftung für Inhalte</h3>
-            <p className="text-muted-foreground mb-4">
-              Als Diensteanbieter sind wir gemäß § 7 Abs. 1 TMG für eigene Inhalte auf diesen Seiten
-              nach den allgemeinen Gesetzen verantwortlich. Nach §§ 8 bis 10 TMG sind wir als
-              Diensteanbieter jedoch nicht verpflichtet, übermittelte oder gespeicherte fremde
-              Informationen zu überwachen. Bei Bekanntwerden von Rechtsverletzungen werden wir diese
-              Inhalte umgehend entfernen.
-            </p>
-
-            <h3 className="font-medium mb-2">Haftung für Links</h3>
-            <p className="text-muted-foreground mb-4">
-              Unser Angebot enthält Links zu externen Websites. Auf deren Inhalte haben wir keinen
-              Einfluss und übernehmen daher keine Gewähr. Für die Inhalte der verlinkten Seiten ist
-              stets der jeweilige Anbieter oder Betreiber verantwortlich.
-            </p>
-
-            <h3 className="font-medium mb-2">KI-generierte Inhalte</h3>
-            <p className="text-muted-foreground">
-              Die auf dieser Plattform verfügbaren KI-Assistenten (Pflanzendiagnose, Grow-Beratung)
-              liefern automatisch generierte Antworten. Diese dienen ausschließlich der Information
-              und ersetzen keine professionelle Beratung. Für Schäden, die aus der Nutzung
-              KI-generierter Inhalte entstehen, wird keine Haftung übernommen.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold mb-3">Urheberrecht</h2>
-            <p className="text-muted-foreground">
-              Die durch den Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen
-              dem deutschen Urheberrecht. Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art
-              der Verwertung außerhalb der Grenzen des Urheberrechts bedürfen der schriftlichen
-              Zustimmung des jeweiligen Autors bzw. Erstellers. Nutzer behalten die Rechte an ihren
-              selbst erstellten Inhalten (Grow-Tagebücher, Fotos, Beiträge).
-            </p>
-          </section>
-
-          <p className="text-xs text-muted-foreground pt-4 border-t">
-            Stand: März 2026
-          </p>
+          <Card>
+            <CardHeader>
+              <CardTitle>Streitbeilegung</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <p>
+                Es gelten die Gesetze der Bundesrepublik Deutschland. Für Streitigkeiten sind die Gerichte am Ort des Betreibers zuständig.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
