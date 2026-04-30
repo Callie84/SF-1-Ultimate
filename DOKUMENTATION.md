@@ -10,6 +10,37 @@
 
 ---
 
+## Session s7 (2026-04-30): Strain-DB — Texte auf Deutsch — COMPLETED ✅
+
+**Ziel:** Alle noch englischen Strain-Felder in der UI auf Deutsch umstellen.
+
+### Was gebaut wurde
+
+**`apps/web-app/src/lib/strain-labels.ts`:**
+- `TERPENE_LABELS` — 25 Cannabis-Terpene (myrcene→Myrcen, limonene→Limonen, caryophyllene→Caryophyllen, linalool→Linalool, humulene→Humulen, pinene→Pinen u.a.)
+- `terpeneLabel(terpene)` Hilfsfunktion (case-insensitive, Fallback auf Originalwert)
+- `DIFFICULTY_LABELS` — beginner/intermediate/expert/easy/medium/hard → DE
+- `difficultyLabel(difficulty)` Hilfsfunktion
+
+**`apps/web-app/src/app/strains/[slug]/strain-detail-client.tsx`:**
+- Terpenprofil-Sektion: `{name}` + `capitalize` → `{terpeneLabel(name)}` (kein CSS-capitalize mehr nötig)
+- Import um `terpeneLabel` erweitert
+
+**`apps/search-service/src/config/meilisearch.ts`:**
+- 15 fehlende Synonyme ergänzt: süß/sweet, lachanfall/giggly, aufgeregt/aroused, sediert/sedated, kribbelig/tingly, vanille/vanilla, minze/mint, haschartig/hash, pfirsich/peach, limette/lime, lavendel/lavender, apfel/apple, birne/pear, kaffeeartig/coffee
+- Typ-Synonyme: feminisiert/feminized, automatisch/autoflower, innenanbau/indoor, außenanbau/outdoor
+- Deutsche Stopwörter: der, die, das, und, oder, ein, eine, mit, von, für
+
+**Entscheidung:** Rohwerte in MongoDB bleiben englisch (OK) — Label-Mapping-Layer in UI übersetzt zur Laufzeit. Keine DB-Migration nötig.
+
+### Commit
+`ad4660a`
+
+### Hinweis
+`strain.genetics` ist ein Freitext-Feld (z.B. "OG Kush x Northern Lights") — kein Enum, keine Übersetzung nötig/sinnvoll.
+
+---
+
 ## Session s6 (2026-04-30): Löschen + Undo Recovery-UI — COMPLETED ✅
 
 **Feature:** Toast mit 10-Sekunden-Undo nach jedem Löschen + Admin-Papierkorb für soft-gelöschte Inhalte.
