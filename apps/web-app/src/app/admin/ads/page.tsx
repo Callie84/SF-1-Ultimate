@@ -32,6 +32,14 @@ import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useAllAds, useCreateAd, useUpdateAd, useDeleteAd, useAdStats, Ad } from '@/hooks/use-ads';
 import { useAdZones, useSaveAdZones, ZoneConfig } from '@/hooks/use-ad-zones';
+import {
+  useAdLayouts,
+  useCreateAdLayout,
+  useActivateAdLayout,
+  useDuplicateAdLayout,
+  useDeleteAdLayout,
+  AdLayout,
+} from '@/hooks/use-ad-layouts';
 import { AdZoneEditor } from '@/components/admin/AdZoneEditor';
 import { toast } from 'sonner';
 
@@ -63,13 +71,22 @@ export default function AdminAdsPage() {
   const { data: zonesData } = useAdZones();
   const saveZones = useSaveAdZones();
 
-  const [mainTab, setMainTab] = useState<'ads' | 'buchungen' | 'zones'>('ads');
+  const [mainTab, setMainTab] = useState<'ads' | 'buchungen' | 'zones' | 'layouts'>('ads');
   const [activeTab, setActiveTab] = useState<'rectangle' | 'square'>('rectangle');
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [localZones, setLocalZones] = useState<ZoneConfig[] | null>(null);
   const [localSidebarWidth, setLocalSidebarWidth] = useState<number | null>(null);
+  const [newLayoutName, setNewLayoutName] = useState('');
+  const [useCurrentZones, setUseCurrentZones] = useState(true);
+  const [showLayoutForm, setShowLayoutForm] = useState(false);
+
+  const { data: layoutsData, isLoading: layoutsLoading } = useAdLayouts();
+  const createLayout = useCreateAdLayout();
+  const activateLayout = useActivateAdLayout();
+  const duplicateLayout = useDuplicateAdLayout();
+  const deleteLayout = useDeleteAdLayout();
 
   // Sync localZones from backend when loaded
   const currentZones: ZoneConfig[] = localZones ?? (zonesData?.zones as ZoneConfig[]) ?? [];
@@ -195,6 +212,51 @@ export default function AdminAdsPage() {
     }
   };
 
+  const handleCreateLayout = async () => {
+    if (!newLayoutName.trim()) return;
+    try {
+      await createLayout.mutateAsync({
+        name: newLayoutName.trim(),
+        ...(useCurrentZones && zonesData
+          ? { zones: currentZones, sidebarWidth: currentSidebarWidth }
+          : {}),
+      });
+      setNewLayoutName('');
+      setShowLayoutForm(false);
+      toast.success('Layout erstellt');
+    } catch {
+      toast.error('Fehler beim Erstellen');
+    }
+  };
+
+  const handleActivateLayout = async (layout: AdLayout) => {
+    try {
+      await activateLayout.mutateAsync(layout._id);
+      toast.success(`Layout "${layout.name}" aktiviert`);
+    } catch {
+      toast.error('Fehler beim Aktivieren');
+    }
+  };
+
+  const handleDuplicateLayout = async (layout: AdLayout) => {
+    try {
+      await duplicateLayout.mutateAsync(layout._id);
+      toast.success(`Layout "${layout.name}" dupliziert`);
+    } catch {
+      toast.error('Fehler beim Duplizieren');
+    }
+  };
+
+  const handleDeleteLayout = async (layout: AdLayout) => {
+    if (!confirm(`Layout "${layout.name}" wirklich löschen?`)) return;
+    try {
+      await deleteLayout.mutateAsync(layout._id);
+      toast.success('Layout gelöscht');
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Fehler beim Löschen');
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -247,6 +309,15 @@ export default function AdminAdsPage() {
           >
             <LayoutDashboard className="h-4 w-4" />
             Zonen-Layout
+          </button>
+          <button
+            onClick={() => setMainTab('layouts')}
+            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              mainTab === 'layouts' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Save className="h-4 w-4" />
+            Layouts
           </button>
         </div>
 
@@ -419,6 +490,117 @@ export default function AdminAdsPage() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* ── Layouts Tab ── */}
+        {mainTab === 'layouts' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">Zonen-Layout-Templates</h2>
+                <p className="text-sm text-muted-foreground">Speichere benannte Snapshots deiner Zonen-Konfiguration und wechsle zwischen ihnen.</p>
+              </div>
+              <Button size="sm" onClick={() => setShowLayoutForm((v) => !v)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Neues Layout
+              </Button>
+            </div>
+
+            {showLayoutForm && (
+              <Card>
+                <CardContent className="pt-4 space-y-3">
+                  <Input
+                    placeholder="Layout-Name (z.B. Sidebar groß)"
+                    value={newLayoutName}
+                    onChange={(e) => setNewLayoutName(e.target.value)}
+                  />
+                  <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useCurrentZones}
+                      onChange={(e) => setUseCurrentZones(e.target.checked)}
+                      className="rounded"
+                    />
+                    Aktuelle Zonen-Konfiguration übernehmen
+                  </label>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleCreateLayout}
+                      disabled={!newLayoutName.trim() || createLayout.isPending}
+                    >
+                      {createLayout.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Erstellen
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setShowLayoutForm(false)}>
+                      Abbrechen
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {layoutsLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" /> Lade Layouts…
+              </div>
+            ) : !layoutsData?.layouts?.length ? (
+              <p className="text-muted-foreground text-sm">Noch keine Layouts vorhanden. Erstelle dein erstes Layout.</p>
+            ) : (
+              <div className="space-y-2">
+                {layoutsData.layouts.map((layout) => (
+                  <Card key={layout._id} className={layout.isActive ? 'border-emerald-500/50' : ''}>
+                    <CardContent className="py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {layout.isActive && (
+                          <span className="text-xs bg-emerald-600 text-white px-2 py-0.5 rounded-full font-medium">
+                            Aktiv
+                          </span>
+                        )}
+                        <span className="font-medium">{layout.name}</span>
+                        <span className="text-muted-foreground text-xs">
+                          {new Date(layout.createdAt).toLocaleDateString('de-DE')}
+                        </span>
+                        <span className="text-muted-foreground text-xs">
+                          {layout.zones.length} Zonen
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {!layout.isActive && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleActivateLayout(layout)}
+                            disabled={activateLayout.isPending}
+                            className="text-emerald-600 hover:text-emerald-700"
+                          >
+                            Aktivieren
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDuplicateLayout(layout)}
+                          disabled={duplicateLayout.isPending}
+                        >
+                          Duplizieren
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteLayout(layout)}
+                          disabled={layout.isActive || deleteLayout.isPending}
+                          className="text-destructive hover:text-destructive disabled:opacity-30"
+                        >
+                          Löschen
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {/* ── Anzeigen Tab ── */}
