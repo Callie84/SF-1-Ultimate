@@ -59,7 +59,8 @@ export interface IGrow extends Document {
   motherGrowId?: string;
 
   deletedAt?: Date;
-  
+  isPermanentlyDeleted: boolean;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -124,7 +125,8 @@ const GrowSchema = new Schema<IGrow>({
     uploadedAt: { type: Date, default: Date.now }
   }],
 
-  deletedAt: Date
+  deletedAt: Date,
+  isPermanentlyDeleted: { type: Boolean, default: false, index: true }
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

@@ -85,7 +85,7 @@ router.get('/stats',
       const userId = req.user!.id;
       const [overview, harvestStats, topYields, strainStats] = await Promise.all([
         Grow.aggregate([
-          { $match: { userId, deletedAt: null } },
+          { $match: { userId, deletedAt: null, isPermanentlyDeleted: { $ne: true } } },
           { $facet: {
             total: [{ $count: 'count' }],
             active: [{ $match: { status: { $in: ['germination', 'vegetative', 'flowering', 'drying', 'curing'] } } }, { $count: 'count' }],
@@ -95,7 +95,7 @@ router.get('/stats',
           }},
         ]),
         Grow.aggregate([
-          { $match: { userId, deletedAt: null, status: 'harvested', yieldDry: { $gt: 0 } } },
+          { $match: { userId, deletedAt: null, status: 'harvested', yieldDry: { $gt: 0 }, isPermanentlyDeleted: { $ne: true } } },
           { $group: {
             _id: null,
             totalYieldDry: { $sum: '$yieldDry' },
@@ -110,13 +110,13 @@ router.get('/stats',
             count: { $sum: 1 },
           }},
         ]),
-        Grow.find({ userId, deletedAt: null, status: 'harvested', yieldDry: { $gt: 0 } })
+        Grow.find({ userId, deletedAt: null, status: 'harvested', yieldDry: { $gt: 0 }, isPermanentlyDeleted: { $ne: true } })
           .sort({ yieldDry: -1 })
           .limit(5)
           .select('strainName yieldDry yieldWet efficiency yieldPerM2 growAreaM2 quality harvestDate environment lightWattage')
           .lean(),
         Grow.aggregate([
-          { $match: { userId, deletedAt: null } },
+          { $match: { userId, deletedAt: null, isPermanentlyDeleted: { $ne: true } } },
           { $group: { _id: '$strainName', count: { $sum: 1 }, avgYield: { $avg: '$yieldDry' } } },
           { $sort: { count: -1 } },
           { $limit: 10 },
@@ -172,6 +172,62 @@ router.get('/public',
         environment: environment as string,
       });
       res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/journal/grows/admin/deleted
+ * Admin: gelöschte Grows auflisten (muss VOR /:id stehen!)
+ */
+router.get('/admin/deleted',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      if (req.user!.role !== 'ADMIN') {
+        return res.status(403).json({ error: 'Nicht berechtigt' });
+      }
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const result = await growService.getDeleted(page, limit);
+      res.json({ ...result, page, totalPages: Math.ceil(result.total / limit) });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * PATCH /api/journal/grows/:id/restore
+ * Grow wiederherstellen (Owner oder Admin)
+ */
+router.patch('/:id/restore',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      const grow = await growService.restore(req.params.id, req.user!.id);
+      res.json({ success: true, grow });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * PATCH /api/journal/grows/:id/purge
+ * Grow dauerhaft ausblenden (Admin only)
+ */
+router.patch('/:id/purge',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      if (req.user!.role !== 'ADMIN') {
+        return res.status(403).json({ error: 'Nicht berechtigt' });
+      }
+      await growService.purge(req.params.id);
+      res.json({ success: true });
     } catch (error) {
       next(error);
     }
@@ -296,7 +352,7 @@ router.get('/:id/clones',
       const clones = await Grow.find({
         motherGrowId: req.params.id,
         userId: req.user!.id,
-        deletedAt: null,
+        deletedAt: null, isPermanentlyDeleted: { $ne: true },
       }).sort({ createdAt: -1 }).lean();
       res.json({ clones });
     } catch (error) {
