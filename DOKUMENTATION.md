@@ -48,7 +48,7 @@
 - Adapter: 34 (31 feeds + 3 scrapers)
 
 ### Commit
-_(nach Abschluss eintragen)_
+`c551131`
 
 ---
 
