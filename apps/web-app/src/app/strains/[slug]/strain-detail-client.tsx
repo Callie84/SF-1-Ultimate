@@ -18,6 +18,7 @@ import { api } from '@/lib/api-client';
 import { formatRelativeTime } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { typeLabel, climateLabel, seedTypeLabel, effectLabel, flavorLabel, aromaLabel } from '@/lib/strain-labels';
 import { trackStrainViewed } from '@/lib/analytics';
 import { PriceHistoryChart } from '@/components/prices/price-history-chart';
 
@@ -214,7 +215,11 @@ export function StrainDetailClient({ slug }: { slug: string }) {
               <p className="text-muted-foreground mt-1">{strain.genetics}</p>
             )}
             <div className="flex flex-wrap gap-2 mt-3">
-              <Badge className={cn(typeColors[strain.type] || '')}>{strain.type}</Badge>
+              <Badge className={cn(typeColors[strain.type] || '')}>{typeLabel(strain.type)}</Badge>
+              {strain.seedType && <Badge variant="secondary">{seedTypeLabel(strain.seedType)}</Badge>}
+              {strain.floweringTime && <Badge variant="outline">🌸 {strain.floweringTime} Tage</Badge>}
+              {strain.climate && <Badge variant="outline">{climateLabel(strain.climate)}</Badge>}
+              {strain.cbdRich != null && <Badge variant="outline">{strain.cbdRich ? 'CBD-reich' : 'THC-dominant'}</Badge>}
               {strain.thc != null && <Badge variant="outline">THC: {strain.thc}%</Badge>}
               {strain.cbd != null && <Badge variant="outline">CBD: {strain.cbd}%</Badge>}
               {strain.cbg != null && <Badge variant="outline">CBG: {strain.cbg}%</Badge>}
@@ -246,6 +251,33 @@ export function StrainDetailClient({ slug }: { slug: string }) {
           </Card>
         )}
 
+        {/* Breeder + Stammbaum */}
+        {(strain.breeder || (strain.lineage && strain.lineage.length > 0)) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Herkunft</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {strain.breeder && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Züchter</p>
+                  <p className="font-medium">{strain.breeder}</p>
+                </div>
+              )}
+              {strain.lineage && strain.lineage.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Stammbaum / Vorfahren</p>
+                  <div className="flex flex-wrap gap-2">
+                    {strain.lineage.map((parent: string) => (
+                      <Badge key={parent} variant="outline">{parent}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Effects + Aromas/Flavors */}
         <div className="grid md:grid-cols-2 gap-6">
           {strain.effects && strain.effects.length > 0 && (
@@ -257,7 +289,7 @@ export function StrainDetailClient({ slug }: { slug: string }) {
                 <div className="flex flex-wrap gap-2">
                   {strain.effects.map((effect) => (
                     <Badge key={effect} variant="secondary">
-                      {effect}
+                      {effectLabel(effect)}
                     </Badge>
                   ))}
                 </div>
@@ -277,7 +309,7 @@ export function StrainDetailClient({ slug }: { slug: string }) {
                     <div className="flex flex-wrap gap-2">
                       {strain.aromas.map((a) => (
                         <Badge key={a} variant="outline">
-                          {a}
+                          {aromaLabel(a)}
                         </Badge>
                       ))}
                     </div>
@@ -289,7 +321,7 @@ export function StrainDetailClient({ slug }: { slug: string }) {
                     <div className="flex flex-wrap gap-2">
                       {strain.flavors.map((f) => (
                         <Badge key={f} variant="outline">
-                          {f}
+                          {flavorLabel(f)}
                         </Badge>
                       ))}
                     </div>
