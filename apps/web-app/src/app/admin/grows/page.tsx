@@ -20,10 +20,12 @@ import {
   CheckCircle,
   Clock,
   XCircle,
+  RotateCcw,
+  Ban,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/auth-provider';
-import { useAdminGrows, useDeleteContent } from '@/hooks/use-admin';
+import { useAdminGrows, useDeleteContent, useAdminDeletedGrows, useRestoreGrow, usePurgeGrow } from '@/hooks/use-admin';
 import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -33,6 +35,8 @@ export default function AdminGrowsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [page, setPage] = useState(1);
+  const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active');
+  const [deletedPage, setDeletedPage] = useState(1);
 
   const { data, isLoading, refetch } = useAdminGrows({
     page,
@@ -41,7 +45,14 @@ export default function AdminGrowsPage() {
     status: statusFilter,
   });
 
+  const { data: deletedData, isLoading: deletedLoading } = useAdminDeletedGrows({
+    page: deletedPage,
+    limit: 20,
+  });
+
   const deleteContent = useDeleteContent();
+  const restoreGrow = useRestoreGrow();
+  const purgeGrow = usePurgeGrow();
 
   useEffect(() => {
     if (!authLoading && currentUser && currentUser.role !== 'ADMIN') {
@@ -61,8 +72,27 @@ export default function AdminGrowsPage() {
       await deleteContent.mutateAsync({ type: 'grow', id: growId });
       toast.success('Grow-Projekt gelöscht');
       refetch();
-    } catch (error) {
+    } catch {
       toast.error('Fehler beim Löschen');
+    }
+  };
+
+  const handleRestore = async (growId: string) => {
+    try {
+      await restoreGrow.mutateAsync(growId);
+      toast.success('Grow wiederhergestellt');
+    } catch {
+      toast.error('Fehler beim Wiederherstellen');
+    }
+  };
+
+  const handlePurge = async (growId: string) => {
+    if (!confirm('Grow dauerhaft ausblenden? Er bleibt in der Datenbank, wird aber nirgends mehr angezeigt.')) return;
+    try {
+      await purgeGrow.mutateAsync(growId);
+      toast.success('Grow dauerhaft ausgeblendet');
+    } catch {
+      toast.error('Fehler beim Ausblenden');
     }
   };
 
@@ -179,15 +209,34 @@ export default function AdminGrowsPage() {
         {/* Grows List */}
         <Card>
           <CardHeader>
-            <CardTitle>Grow-Projekte ({data?.total || 0})</CardTitle>
+            <CardTitle>Grow-Projekte</CardTitle>
             <CardDescription>Liste aller Grow-Tagebücher</CardDescription>
           </CardHeader>
+
+          {/* Tabs */}
+          <div className="flex gap-2 px-6 pb-4">
+            <Button
+              variant={activeTab === 'active' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('active')}
+            >
+              Aktive Grows ({data?.total ?? 0})
+            </Button>
+            <Button
+              variant={activeTab === 'deleted' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setActiveTab('deleted')}
+            >
+              Gelöscht ({deletedData?.total ?? 0})
+            </Button>
+          </div>
+
           <CardContent>
-            {isLoading ? (
+            {activeTab === 'active' && isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ) : grows.length > 0 ? (
+            ) : activeTab === 'active' && grows.length > 0 ? (
               <div className="space-y-3">
                 {grows.map((grow: any) => (
                   <div
@@ -258,15 +307,15 @@ export default function AdminGrowsPage() {
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : activeTab === 'active' ? (
               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                 <Sprout className="mb-2 h-8 w-8" />
                 <p>Keine Grow-Projekte gefunden</p>
               </div>
-            )}
+            ) : null}
 
-            {/* Pagination */}
-            {totalPages > 1 && (
+            {/* Active Pagination */}
+            {activeTab === 'active' && totalPages > 1 && (
               <div className="mt-6 flex items-center justify-center gap-2">
                 <Button
                   variant="outline"
@@ -287,6 +336,72 @@ export default function AdminGrowsPage() {
                 >
                   Weiter
                 </Button>
+              </div>
+            )}
+
+            {/* Deleted Tab */}
+            {activeTab === 'deleted' && (
+              <div className="space-y-2">
+                {deletedLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : !deletedData?.grows?.length ? (
+                  <p className="text-center text-muted-foreground py-8">Keine gelöschten Grows</p>
+                ) : (
+                  deletedData.grows.map((grow: any) => (
+                    <div key={grow._id} className="flex items-center justify-between rounded-lg border p-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{grow.strainName || 'Unbekannte Sorte'}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Gelöscht: {grow.deletedAt ? formatDate(new Date(grow.deletedAt)) : '-'} · {grow.userId}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 ml-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRestore(grow._id)}
+                          disabled={restoreGrow.isPending}
+                        >
+                          <RotateCcw className="h-4 w-4 mr-1" /> Wiederherstellen
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handlePurge(grow._id)}
+                          disabled={purgeGrow.isPending}
+                        >
+                          <Ban className="h-4 w-4 mr-1" /> Dauerhaft
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+
+                {(deletedData?.totalPages ?? 0) > 1 && (
+                  <div className="flex justify-center gap-2 pt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={deletedPage <= 1}
+                      onClick={() => setDeletedPage((p) => p - 1)}
+                    >
+                      Zurück
+                    </Button>
+                    <span className="text-sm text-muted-foreground py-2">
+                      {deletedPage} / {deletedData?.totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={deletedPage >= (deletedData?.totalPages ?? 1)}
+                      onClick={() => setDeletedPage((p) => p + 1)}
+                    >
+                      Weiter
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
