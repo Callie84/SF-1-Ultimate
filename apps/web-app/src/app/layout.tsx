@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { CookieBanner } from '@/components/cookie-banner';
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
 import { OnboardingModal } from '@/components/onboarding-modal';
+import { FeedbackButton } from '@/components/feedback-button';
 import { Footer } from '@/components/footer';
 import Script from 'next/script';
 import './globals.css';
@@ -91,6 +92,7 @@ export default function RootLayout({
               <CookieBanner />
               <PwaInstallPrompt />
               <OnboardingModal />
+              <FeedbackButton />
             </AuthProvider>
           </QueryProvider>
         </ThemeProvider>
