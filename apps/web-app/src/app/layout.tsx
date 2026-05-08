@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     default: 'SeedFinderPro — Cannabis Samen Preisvergleich & Strain-Datenbank',
     template: '%s | SeedFinderPro',
   },
-  description: 'Vergleiche Preise von 7.000+ Cannabis Samen aus 19 Seedbanks. Strain-Datenbank, Grow-Tagebuch, Community-Forum und KI-Assistent für Grower.',
+  description: 'Vergleiche Preise von 11.500+ Cannabis Samen aus 19 Seedbanks. Strain-Datenbank, Grow-Tagebuch, Community-Forum und KI-Assistent für Grower.',
   keywords: ['cannabis samen', 'samenbank preisvergleich', 'cannabis strains', 'seeds kaufen', 'growing community', 'strain datenbank'],
   authors: [{ name: 'SeedFinderPro' }],
   creator: 'SeedFinderPro',
@@ -30,12 +30,12 @@ export const metadata: Metadata = {
     url: 'https://seedfinderpro.de',
     siteName: 'SeedFinderPro',
     title: 'SeedFinderPro — Cannabis Samen Preisvergleich',
-    description: 'Vergleiche Preise von 7.000+ Cannabis Samen aus 19 Seedbanks. Kostenlos, ohne Anmeldung.',
+    description: 'Vergleiche Preise von 11.500+ Cannabis Samen aus 19 Seedbanks. Kostenlos, ohne Anmeldung.',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'SeedFinderPro — Cannabis Samen Preisvergleich',
-    description: 'Vergleiche Preise von 7.000+ Cannabis Samen aus 19 Seedbanks.',
+    description: 'Vergleiche Preise von 11.500+ Cannabis Samen aus 19 Seedbanks.',
   },
   robots: {
     index: true,
