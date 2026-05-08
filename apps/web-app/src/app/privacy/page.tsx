@@ -59,16 +59,15 @@ export default function PrivacyPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>3. Zweck der Datenverarbeitung</CardTitle>
+              <CardTitle>3. Zweck der Datenverarbeitung &amp; Rechtsgrundlagen</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              <p>Ihre Daten werden verarbeitet für:</p>
+              <p>Ihre Daten werden auf folgenden Rechtsgrundlagen verarbeitet (Art. 6 DSGVO):</p>
               <ul className="list-disc list-inside space-y-1">
-                <li>Bereitstellung unserer Dienste</li>
-                <li>Benutzerauthentifizierung</li>
-                <li>Verbesserung unserer Website und Services</li>
-                <li>Kommunikation mit Ihnen</li>
-                <li>Einhaltung gesetzlicher Verpflichtungen</li>
+                <li>Bereitstellung unserer Dienste &amp; Benutzerauthentifizierung — <strong>Art. 6 Abs. 1b DSGVO</strong> (Vertragserfüllung)</li>
+                <li>Website-Analyse / Nutzungsstatistiken — <strong>Art. 6 Abs. 1f DSGVO</strong> (berechtigtes Interesse an der Verbesserung des Angebots)</li>
+                <li>Einhaltung gesetzlicher Verpflichtungen — <strong>Art. 6 Abs. 1c DSGVO</strong></li>
+                <li>E-Mail-Kommunikation auf Ihre Anfrage — <strong>Art. 6 Abs. 1a DSGVO</strong> (Einwilligung)</li>
               </ul>
             </CardContent>
           </Card>
@@ -125,21 +124,38 @@ export default function PrivacyPage() {
               <CardTitle>7. Analytics</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              <p>Wir verwenden Plausible Analytics um Website-Nutzung zu analysieren. Keine personenbezogenen Daten werden gespeichert. Die Daten unterliegen EU-Datenschutzstandards.</p>
+              <p>
+                Wir verwenden <strong>Plausible Analytics</strong> (plausible.io) zur anonymisierten Auswertung der Website-Nutzung.
+                Plausible ist cookielos, speichert keine personenbezogenen Daten und erhebt keine IP-Adressen.
+                Der Dienst wird in der EU betrieben und ist vollständig DSGVO-konform.
+                Rechtsgrundlage: Art. 6 Abs. 1f DSGVO (berechtigtes Interesse).
+              </p>
+              <p>
+                Datenschutzerklärung Plausible:{' '}
+                <a href="https://plausible.io/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">
+                  plausible.io/privacy
+                </a>
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>8. Dritte</CardTitle>
+              <CardTitle>8. Datenempfänger</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              <p>Ihre Daten werden nicht an Dritte weitergegeben, außer wenn:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>Gesetzlich erforderlich</li>
-                <li>Sie haben der Weitergabe zugestimmt</li>
-                <li>Zur Erbringung unserer Services notwendig</li>
+              <p>Ihre Daten werden durch folgende Dienstleister verarbeitet:</p>
+              <ul className="list-disc list-inside space-y-2">
+                <li>
+                  <strong>Hetzner Online GmbH</strong> (Gunzenhausen, Deutschland) — Server-Hosting und Infrastruktur.
+                  Daten verbleiben ausschließlich in der EU. Auftragsverarbeitungsvertrag vorhanden.
+                </li>
+                <li>
+                  <strong>Plausible Analytics</strong> (EU-gehostet) — anonymisierte Website-Nutzungsanalyse.
+                  Keine personenbezogenen Daten, kein Tracking, kein Profiling.
+                </li>
               </ul>
+              <p>Darüber hinaus werden Ihre Daten nicht an Dritte weitergegeben, außer bei gesetzlicher Verpflichtung.</p>
             </CardContent>
           </Card>
 
@@ -149,6 +165,11 @@ export default function PrivacyPage() {
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
               <p>Ihre Daten werden gespeichert solange Ihr Konto aktiv ist. Nach Kontolöschung werden Daten innerhalb von 30 Tagen gelöscht, außer wenn gesetzliche Aufbewahrungspflichten bestehen.</p>
+              <ul className="list-disc list-inside space-y-1 mt-2">
+                <li>Server-Logs (IP-Adresse, Browser): automatische Löschung nach <strong>30 Tagen</strong></li>
+                <li>Anonymisierte Analytik-Daten: Löschung nach <strong>365 Tagen</strong></li>
+                <li>Account-Daten: Löschung innerhalb von <strong>30 Tagen</strong> nach Kontolöschung</li>
+              </ul>
             </CardContent>
           </Card>
 
