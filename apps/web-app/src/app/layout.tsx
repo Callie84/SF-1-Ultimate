@@ -8,6 +8,7 @@ import { CookieBanner } from '@/components/cookie-banner';
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
 import { OnboardingModal } from '@/components/onboarding-modal';
 import { FeedbackButton } from '@/components/feedback-button';
+import { AgeGateModal } from '@/components/age-gate-modal';
 import { Footer } from '@/components/footer';
 import Script from 'next/script';
 import './globals.css';
@@ -90,6 +91,7 @@ export default function RootLayout({
               </div>
               <Toaster />
               <CookieBanner />
+              <AgeGateModal />
               <PwaInstallPrompt />
               <OnboardingModal />
               <FeedbackButton />
