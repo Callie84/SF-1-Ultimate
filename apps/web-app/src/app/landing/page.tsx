@@ -293,6 +293,10 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t py-8">
         <div className="container mx-auto px-4">
+          <div className="text-center text-xs text-muted-foreground mb-6 max-w-2xl mx-auto">
+            Diese Website dient ausschließlich zu Informationszwecken und stellt keine Werbung im Sinne des KCanG dar.
+            Alle Inhalte richten sich an Erwachsene (18+). Nur für legale Zwecke in Ihrer Jurisdiktion.
+          </div>
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Sprout className="h-5 w-5 text-primary" />

@@ -122,6 +122,12 @@ export default function PricesPage() {
 
   return (
     <div className="space-y-6">
+      <div className="rounded-lg border bg-muted/50 px-4 py-3 text-xs text-muted-foreground">
+        <strong>Hinweis:</strong> Diese Seite dient ausschließlich zu Informationszwecken (Preisvergleich)
+        und stellt keine Werbung im Sinne des Gesetzes zum kontrollierten Umgang mit Cannabis (KCanG) dar.
+        Alle Inhalte richten sich an Erwachsene (18+) in Jurisdiktionen, in denen der Erwerb von Pflanzensamen legal ist.
+      </div>
+
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-2">
