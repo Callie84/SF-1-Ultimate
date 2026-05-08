@@ -24,9 +24,14 @@ export default function ImpressumPage() {
             <CardContent className="space-y-4 text-sm">
               <p>
                 <strong>Pascal Klingen</strong><br />
+                Websitebetreiber (Privatperson)<br />
                 Am Röttchen 5<br />
                 41751 Viersen-Dülken<br />
                 Deutschland
+              </p>
+              <p className="text-muted-foreground">
+                Diese Website wird als Privatperson betrieben. Es besteht keine
+                gewerbliche Tätigkeit. Eine Umsatzsteuerpflicht besteht nicht (§ 19 UStG).
               </p>
             </CardContent>
           </Card>
@@ -122,6 +127,22 @@ export default function ImpressumPage() {
               <p>
                 Es gelten die Gesetze der Bundesrepublik Deutschland. Für Streitigkeiten sind die Gerichte am Ort des Betreibers zuständig.
               </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Geltendes Recht</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm">
+              <p>Diese Website unterliegt dem Recht der Bundesrepublik Deutschland, insbesondere:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Gesetz zum kontrollierten Umgang mit Cannabis (KCanG)</li>
+                <li>Telemediengesetz (TMG)</li>
+                <li>Jugendmedienschutz-Staatsvertrag (JMStV)</li>
+                <li>Datenschutz-Grundverordnung (DSGVO)</li>
+                <li>Netzwerkdurchsetzungsgesetz (NetzDG)</li>
+              </ul>
             </CardContent>
           </Card>
         </div>
