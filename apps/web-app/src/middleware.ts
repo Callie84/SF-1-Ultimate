@@ -33,6 +33,11 @@ function isPublicPath(pathname: string): boolean {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // /ai/* → Startseite (Feature nicht aktiv)
+  if (pathname === '/ai' || pathname.startsWith('/ai/')) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
   // POST-Requests auf Seiten-Routen (nicht /api) → 405 zurückgeben
   // Verhindert Bot-Scanner-Requests die Next.js digest-Fehler verursachen
   if (request.method === 'POST' && !pathname.startsWith('/api')) {
