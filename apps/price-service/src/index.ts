@@ -1,17 +1,5 @@
-import * as Sentry from '@sentry/node';
-
-Sentry.init({
-  dsn: process.env.SENTRY_DSN,
-  environment: process.env.NODE_ENV || 'production',
-  tracesSampleRate: 0.1,
-  beforeSend(event) {
-    if (event.request?.headers?.['authorization']) {
-      delete event.request.headers['authorization'];
-    }
-    if (event.request?.cookies) { event.request.cookies = {}; }
-    return event;
-  },
-});
+// Sentry MUST be imported and initialized FIRST, before express
+import Sentry from './sentry';
 
 // Price Service - Server Entry Point
 // Hybrid-Ansatz: Feed-Importer (Affiliate) + Lightweight Scraping (Fallback)
@@ -24,6 +12,8 @@ import { connectRedis, disconnectRedis, redis } from './config/redis';
 import { websocketService } from './services/websocket.service';
 import { alertService } from './services/alert.service';
 import { priceService } from './services/price.service';
+import { seedfinderEnrichment } from './services/seedfinder-enrichment.service';
+import { circuitBreaker } from './services/circuit-breaker.service';
 import { scheduleAllFeeds, scheduleFeedJob, getFeedQueueStats, runFeedImportNow } from './workers/feed.worker';
 import { getFeedInfos, getFeedSlugs } from './feeds';
 import pricesRoutes from './routes/prices.routes';
@@ -86,11 +76,7 @@ app.get('/api/prices/health', (req, res) => {
   });
 });
 
-// Public: Liste aller Seedbanks (slug + name)
-app.get('/api/prices/seedbanks', (req, res) => {
-  const infos = getFeedInfos();
-  res.json({ seedbanks: infos.map(f => ({ slug: f.slug, name: f.name })) });
-});
+// Public: Seedbanks-Übersicht — weitergeleitet an prices.routes.ts (GET /seedbanks)
 
 // ==========================================
 // ADMIN/FEED MANAGEMENT ENDPOINTS
@@ -329,6 +315,51 @@ app.post('/admin/feed/:seedbank/now', async (req, res) => {
   res.json({ success: true, ...result });
 });
 
+// Fix Seed THC/CBD Decimals (Admin)
+app.post('/api/prices/admin/fix-decimals', requireAdmin, async (req, res) => {
+  try {
+    const { Seed } = require('./models/Seed.model');
+
+    const seeds = await Seed.find({
+      $or: [{ thc: { $exists: true } }, { cbd: { $exists: true } }]
+    });
+
+    let updated = 0;
+    for (const seed of seeds) {
+      let hasChange = false;
+
+      // Round THC to 1 decimal place
+      if (seed.thc && seed.thc % 1 !== 0) {
+        const rounded = Math.round(seed.thc * 10) / 10;
+        if (rounded !== seed.thc) {
+          seed.thc = rounded;
+          hasChange = true;
+        }
+      }
+
+      // Round CBD to 1 decimal place
+      if (seed.cbd && seed.cbd % 1 !== 0) {
+        const rounded = Math.round(seed.cbd * 10) / 10;
+        if (rounded !== seed.cbd) {
+          seed.cbd = rounded;
+          hasChange = true;
+        }
+      }
+
+      if (hasChange) {
+        await seed.save();
+        updated++;
+      }
+    }
+
+    logger.info(`[Admin] Fixed decimals for ${updated} seeds`);
+    res.json({ success: true, updated, total: seeds.length });
+  } catch (error: any) {
+    logger.error('[Admin] Decimal-Fix Fehler:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ==========================================
 // API ROUTES
 // ==========================================
@@ -417,14 +448,20 @@ async function start() {
 
     logger.info(`[Scheduler] Täglicher Import geplant: ${scheduledTime.toISOString()}`);
 
-    // Alert-Check jede Stunde
+    // Alert-Check alle 30 Minuten
+    const CHECK_INTERVAL = 30 * 60 * 1000;
     setInterval(async () => {
       try {
-        await alertService.checkAlerts();
+        const count = await alertService.checkAlerts();
+        logger.info(`[AlertCron] ${count} Alarme geprüft`);
       } catch (error) {
-        logger.error('[Server] Alert-Check fehlgeschlagen:', error);
+        logger.error('[AlertCron] Fehler:', error);
       }
-    }, 60 * 60 * 1000);
+    }, CHECK_INTERVAL);
+    // Einmal sofort beim Start (nach 10s Delay)
+    setTimeout(() => {
+      alertService.checkAlerts().catch(err => logger.error('[AlertCron] Initial check failed:', err));
+    }, 10000);
 
     // Abgelaufene Preise alle 6 Stunden bereinigen
     setInterval(async () => {
@@ -434,6 +471,26 @@ async function start() {
         logger.error('[Server] Preis-Cleanup fehlgeschlagen:', error);
       }
     }, 6 * 60 * 60 * 1000);
+
+    // Seedfinder Enrichment — täglich um 02:00 Uhr
+    const scheduleEnrichment = () => {
+      const now = new Date();
+      const next = new Date();
+      next.setHours(2, 0, 0, 0);
+      if (next <= now) next.setDate(next.getDate() + 1);
+      const delay = next.getTime() - now.getTime();
+
+      setTimeout(async () => {
+        try {
+          const enrichedCount = await seedfinderEnrichment.enrichAllMissingFlavors();
+          logger.info(`[EnrichmentCron] ${enrichedCount} Seeds angereichert`);
+        } catch (error) {
+          logger.error('[EnrichmentCron] Fehler:', error);
+        }
+        scheduleEnrichment(); // Reschedule for next day
+      }, delay);
+    };
+    scheduleEnrichment();
 
     logger.info('[Server] Price Service v2.0 (Hybrid) bereit!');
 

@@ -136,6 +136,106 @@ router.get('/browse', async (req, res, next) => {
 });
 
 /**
+ * GET /api/prices/seedbanks
+ * Aggregiert alle Seedbanks mit Seed-Anzahl und Bestpreis
+ */
+router.get('/seedbanks', async (req, res, next) => {
+  try {
+    const cacheKey = 'seedbanks:overview';
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.json(JSON.parse(cached));
+
+    const agg = await Price.aggregate([
+      { $match: { inStock: true, validUntil: { $gte: new Date() } } },
+      {
+        $group: {
+          _id: '$seedbankSlug',
+          name: { $first: '$seedbank' },
+          bestPrice: { $min: '$price' },
+          currency: { $first: '$currency' },
+          seedIds: { $addToSet: '$seedId' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          slug: '$_id',
+          name: 1,
+          bestPrice: 1,
+          currency: 1,
+          seedCount: { $size: '$seedIds' },
+        },
+      },
+      { $sort: { name: 1 } },
+    ]);
+
+    const result = { seedbanks: agg };
+    await redis.set(cacheKey, JSON.stringify(result), { EX: 5 * 60 });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/prices/seedbanks/:slug/seeds
+ * Alle Seeds (mit Preisen) einer bestimmten Seedbank
+ */
+router.get('/seedbanks/:slug/seeds', async (req, res, next) => {
+  try {
+    const { slug } = req.params;
+    const cacheKey = `seedbanks:seeds:${slug}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.json(JSON.parse(cached));
+
+    const prices = await Price.find({
+      seedbankSlug: slug,
+      inStock: true,
+      validUntil: { $gte: new Date() },
+    })
+      .sort({ price: 1 })
+      .lean();
+
+    // Gruppiere nach seedSlug — günstigstes Angebot pro Seed
+    const seedMap = new Map<string, {
+      seedSlug: string;
+      seedName: string;
+      type: string;
+      packSize: string;
+      price: number;
+      currency: string;
+      url: string;
+      inStock: boolean;
+    }>();
+
+    for (const p of prices) {
+      if (!seedMap.has(p.seedSlug)) {
+        seedMap.set(p.seedSlug, {
+          seedSlug: p.seedSlug,
+          seedName: p.seedSlug
+            .split('-')
+            .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' '),
+          type: '',
+          packSize: p.packSize,
+          price: p.price,
+          currency: p.currency,
+          url: p.affiliateUrl || p.url,
+          inStock: p.inStock,
+        });
+      }
+    }
+
+    const seeds = Array.from(seedMap.values()).sort((a, b) => a.price - b.price);
+    const result = { seeds, total: seeds.length };
+    await redis.set(cacheKey, JSON.stringify(result), { EX: 5 * 60 });
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * GET /api/prices/seed/:slug
  * Get all prices for a specific seed
  */
