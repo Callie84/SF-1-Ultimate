@@ -1,22 +1,28 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-04-30T14:26:34Z
+**Last-Update:** 2026-05-18T23:10:06Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
-s7 starten: Strain-DB — alle Texte auf Deutsch (`/root/.claude/skills/s7/SKILL.md`)
+Automations-Audit Prio 2: Strain-Import Cron debuggen.
+Schritt 1: `bash /root/scripts/strain-import/run-description-batches.sh` manuell ausführen → Output prüfen.
+Details: `/root/SF-1-Ultimate-/docs/automations-audit-2026-05-19.md` (Punkt 3)
 
 ## Aktueller Task
-—
+Automations-Audit Nacharbeit — offene Punkte: Strain-Import Cron (Prio 2), Offsite-Backup (Prio 3), SessionEnd-Hook (Prio 4)
+Details: `/root/SF-1-Ultimate-/docs/automations-audit-2026-05-19.md`
 
 ## Letzter abgeschlossener Task
-s6: Löschen + Undo Recovery-UI
-- Soft-Delete mit 10s Undo-Toast (sonner action) für Threads, Replies, Grows
-- isPermanentlyDeleted-Flag statt Hard-Delete
-- Admin-Papierkorb als Tab in /admin/threads + /admin/grows
-- Restore-Endpoints in community-service + journal-service
-- Tests: safePatch() + Restore-Tests für community + journal
-- Commits: c2d3049 … e278ca4 (9 Commits)
+2026-05-19: Auth-Service + alle Services tsx-watch Fix (7fd0550)
+- 9 Services von `tsx watch` → `tsx` umgestellt
+- client.ts IPs nach Container-Neustart aktualisiert
+- Auth-Service: healthy ✅ | 7/7 + 3/3 Tests grün
+
+Vorheriger: s1: Skills-Audit 2026-05-19:
+- ss, se, plan, task-done, quickfix als SKILL.md angelegt (je mit SELBST-CHECK)
+- Memory-Dateien auf Skill-Pointer aktualisiert / neu angelegt
+- Lernphase-Widerspruch bereinigt (feedback_lernphase.md SUPERSEDED)
+- MEMORY.md mit 5 neuen Skill-Links aktualisiert
 
 ## Diese Session erledigt
 - [2026-04-30] s2: Preisvergleich Klick-Bug — AnnouncementModal Backdrop-Fix (65f4382)
@@ -24,13 +30,20 @@ s6: Löschen + Undo Recovery-UI
 - [2026-04-30] s4: Feedback-Button global — floating, Modal, Bug/Idee/Lob (f66aedc)
 - [2026-04-30] s5: System-Logs klickbar + Detail-Modal (08a9ef2)
 - [2026-04-30] s6: Löschen + Undo Toast + Admin-Papierkorb + isPermanentlyDeleted (c2d3049..e278ca4)
+- [2026-04-30] s7: Strain-DB Terpennamen DE + Meilisearch-Synonyme (ad4660a)
+- [2026-04-30] s8: Werbung Layout-Templates — AdLayout CRUD + Admin-Tab (f3e91fb..2d1b37e)
+- [2026-04-30] s9: Suche mehr Seeds + Kaufoptionen — 9 neue Adapter + DE-Synonyme + Preisfilter (e55bc87)
+- [2026-05-01] s10: Landing Page + User-Texte — Stats, KI-Claim, Terms DE, Datum (c551131)
+- [2026-05-01] Impressum §5 TMG — Pascal Klingen, Am Röttchen 5, 41751 Viersen-Dülken (00ae4ca)
+- [2026-05-18] s1: Seedbanken + Preise Feature — 2 neue Endpoints + UI-Erweiterungen (16ef81e, 749fe29, fc1d1ed)
+- [2026-05-18] Harnisch: dk-Skill + Commit-Sync-Hook + Skills-Audit + s1-Plan (keine Commits im SF-1-Repo)
+- [2026-05-19] s1: Skills-Audit — 5 SKILL.md angelegt (ss/se/plan/task-done/quickfix), Lernphase-Fix, Memory aktualisiert
+- [2026-05-19] tsx-watch Fix — 9 Services + IPs aktualisiert, Auth+Search healthy (7fd0550)
 
 ## Offene Tasks (s-plan)
-s7: Strain-DB Texte auf Deutsch
-s8: Werbung Layout-Templates
-s9: Suche mehr Seeds
-s10: Landing Page Texte
+(keine)
 
 ## Kontext
 - v1 ist Produktion, läuft parallel zum Rewrite (v2)
-- AnnouncementModal: Schriftart-Umfrage aktiv — User müssen es einmalig schließen
+- main-Branch ist aktuell und auf dem Server aktiv (PR #3 gemergt 2026-05-18)
+- Git-Workflow: Feature-Branches → PR → merge in main → Container-Neustart

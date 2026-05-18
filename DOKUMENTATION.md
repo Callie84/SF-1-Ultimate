@@ -1,12 +1,30 @@
 # SF-1 Ultimate — Vollständige Entwicklungsdokumentation
 
 **Projekt:** seedfinderpro.de — Cannabis Growing Community Platform
-**Stand:** 2026-05-01 (Session s10 Complete) — Landing Page + User-Texte aktualisiert  
+**Stand:** 2026-05-18 — Skills-Audit + dk-Skill + Commit-Sync-Hook + s1-Plan angelegt  
 **Status:** ✅ Production-Ready (RAG validated, Chat tested, ready for user testing)
 **Stack:** Next.js 14, Express Microservices, MongoDB, PostgreSQL, Redis, Meilisearch, Docker Compose, Traefik, Ollama (KI)
 
 > **⚠️ Hinweis:** Sessions 30–92 sind hauptsächlich in `/root/SF-Brain/SF-1 Projekt/Status & Roadmap.md` dokumentiert (Vault).
 > Diese Datei wird systematisch aktualisiert ab Session 94.
+
+---
+
+## Auth-Service + Services tsx-watch Fix [abgeschlossen 2026-05-19]
+
+### Commits
+- `7fd0550` — fix: tsx watch → tsx in allen Services — Production-Stabilität
+
+### Ergebnis
+`tsx watch` lief in allen 9 Services im Production-Container mit Volume-Mount.
+Filesystem-Events (unlink/change) triggerten Neustarts → `ERR_MODULE_NOT_FOUND`.
+`watch` aus allen `docker-compose.yml`-Commands entfernt. Außerdem IPs in
+`tests/helpers/client.ts` nach Container-Neustart aktualisiert (alle 8 Services neu).
+Auth-Service: healthy ✅ | Search-Service: healthy ✅ | 7+3 Tests grün ✅
+
+### Betroffene Dateien
+- `docker-compose.yml` — 9× `tsx watch` → `tsx`
+- `tests/helpers/client.ts` — alle Service-IPs aktualisiert
 
 ---
 
@@ -6361,3 +6379,116 @@ Server-RAM-Krise: `qwen2.5:7b` (4,4 GiB) konnte auf dem 7,8 GiB Server nicht meh
 - DELETE /api/community/ads/layouts/:id
 - POST /api/community/ads/layouts/:id/activate
 - POST /api/community/ads/layouts/:id/duplicate
+
+---
+
+## Session 2026-05-18 — Harnisch-Verbesserungen: dk-Skill, Commit-Sync-Hook, Skills-Audit + s1-Plan [abgeschlossen 2026-05-18]
+
+### Problem / Ziel
+LIVE-PROGRESS.md war veraltet (offene Tasks s7–s10 noch als offen markiert, obwohl längst erledigt). `dk`-Shortcode hatte kein erzwingbares Protokoll — Dokumentation war inkonsistent und nicht reproduzierbar. Skills `ss`, `se`, `plan`, `task-done`, `quickfix` existierten nur als Memory-Notizen ohne SKILL.md. Lernphase-Memory widersprach Erkenntnisse-Memory.
+
+### Warum
+- `dk` ohne Template führte zu Einträgen die zu knapp waren (keine Befehle, keine Fallstricke, keine Verifikation) — jemand anderes konnte das Ergebnis nicht reproduzieren.
+- LIVE-PROGRESS-Staleness entstand weil Sessions ohne explizites Cleanup endeten (Context-Overflow). Ein automatischer Hook nach git commit verhindert das künftig.
+- Shortcode-Skills ohne SKILL.md = Claude interpretiert sie frei = inkonsistente Ausführung.
+- Zwei widersprechende Memory-Einträge zur Lernphase = Claude muss raten welcher gilt.
+
+### Lösung
+1. **dk-Skill** als echtes SKILL.md mit 5-Schritte-Pflichtprotokoll und 7-Punkte-Selbst-Check. Qualitätsstandard: jemand ohne dieses Gespräch muss Ergebnis alleine nachbauen können.
+2. **sf1-progress-commit-sync.py** Hook: feuert nach jedem `git commit`, aktualisiert Last-Update-Timestamp und gibt Erinnerung aus LIVE-PROGRESS zu aktualisieren.
+3. **LIVE-PROGRESS.md bereinigt**: veraltete offene Tasks entfernt, korrekter Stand mit allen abgeschlossenen Sessions.
+4. **Skills-Audit**: ss, se, plan, task-done, quickfix identifiziert als "nur Memory, kein SKILL.md".
+5. **Spec + Plan** für s1-Session erstellt: detaillierter Implementierungsplan für alle 5 Skills + Lernphase-Fix.
+6. **s1-Skill + overview.md** angelegt für nächste Session.
+
+### Geänderte Dateien
+- `/root/.claude/skills/dk/SKILL.md` (neu) — dk-Skill mit Pflicht-Template, 5 Schritte, Selbst-Check
+- `/root/.claude/hooks/sf1-progress-commit-sync.py` (neu) — PostToolUse-Hook auf Bash: erkennt git commit, aktualisiert Timestamp, gibt Erinnerung aus
+- `/root/.claude/settings.json` — neuer Bash PostToolUse Hook-Eintrag für sf1-progress-commit-sync.py
+- `/root/SF-1-Ultimate-/LIVE-PROGRESS.md` — bereinigt: veraltete offene Tasks entfernt, s1-Plan als NEXT ACTION
+- `/root/.claude/projects/-root/memory/feedback_dk_shortcode.md` — auf Skill-Aufruf aktualisiert
+- `/root/.claude/session-plan/overview.md` — s1 auf neuen Skills-Audit-Plan umgestellt
+- `/root/.claude/skills/s1/SKILL.md` (neu) — s1-Shortcut für Skills-Audit-Session
+- `/root/SF-1-Ultimate-/docs/superpowers/specs/2026-05-18-skills-audit-design.md` (neu) — Spec für Skills-Audit
+- `/root/SF-1-Ultimate-/docs/superpowers/plans/2026-05-18-skills-audit.md` (neu) — Implementierungsplan (7 Tasks)
+
+### Ausgeführte Befehle
+```bash
+# Hook testen
+echo '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"test\""},"tool_response":{"exit_code":0}}' \
+  | python3 /root/.claude/hooks/sf1-progress-commit-sync.py
+
+# Hook in settings.json eintragen
+python3 - <<'EOF'  # (Python-Script zum Eintragen des Bash PostToolUse Hooks)
+EOF
+
+# Vault-Kopien
+cp /root/SF-1-Ultimate-/docs/superpowers/specs/2026-05-18-skills-audit-design.md \
+   "/root/SF-Brain/SF-1 Projekt/Plans/2026-05-18-skills-audit-design.md"
+cp /root/SF-1-Ultimate-/docs/superpowers/plans/2026-05-18-skills-audit.md \
+   "/root/SF-Brain/SF-1 Projekt/Plans/2026-05-18-skills-audit.md"
+```
+
+### Fallstricke / Was schiefging
+- Erster Hook-Entwurf ersetzte den gesamten "Letzter abgeschlossener Task"-Block mit nur Commit-Hash+Message — zu aggressiv, hat formatierten Inhalt zerstört. Fix: Hook schreibt nur Timestamp + gibt Erinnerung aus, Inhalt bleibt manuell.
+- `ACTIVE-PROJECT`-Datei enthält vollen Pfad (`/root/SF-1-Ultimate-/LIVE-PROGRESS.md`), nicht den Projekt-Key (`sf1-v1`). Hook musste angepasst werden um beide Formate zu unterstützen.
+- Hook-Test hat LIVE-PROGRESS.md überschrieben bevor Korrektur implementiert war — Inhalt musste wiederhergestellt werden.
+
+### Verifikation
+```bash
+# dk-Skill lädt korrekt
+# → Skill tool name: dk → lädt SKILL.md mit 5 Schritten ✅
+
+# Hook aktualisiert Timestamp nach git commit Simulation
+echo '{"tool_name":"Bash","tool_input":{"command":"git commit"},"tool_response":{"exit_code":0}}' \
+  | python3 /root/.claude/hooks/sf1-progress-commit-sync.py
+grep "Last-Update" /root/SF-1-Ultimate-/LIVE-PROGRESS.md
+# → Last-Update wird auf aktuellen Timestamp gesetzt ✅
+
+# Skill s1 ist in der Skills-Liste verfügbar
+# → Skill tool name: s1 → lädt SKILL.md ✅
+```
+
+### Abhängigkeiten / Voraussetzungen
+- Claude Code Skills-System muss funktionieren (`/root/.claude/skills/`)
+- `/root/.claude/ACTIVE-PROJECT` muss auf LIVE-PROGRESS.md zeigen
+- `settings.json` Bash PostToolUse Hook muss eingetragen sein
+
+### Commits
+Keine Code-Commits in SF-1-Repo — alle Änderungen sind in `/root/.claude/` (Harnisch-Konfiguration, nicht versioniert im SF-1-Repo).
+
+---
+
+## s1 Skills-Audit Ausführung [abgeschlossen 2026-05-19]
+
+### Ziel
+5 Shortcode-Skills (ss, se, plan, task-done, quickfix) von losen Memory-Notizen zu echten SKILL.md Dateien upgraden + Lernphase-Widerspruch in Memory bereinigen.
+
+### Geänderte Dateien
+- `/root/.claude/skills/ss/SKILL.md` (neu) — 5 Schritte: REMINDERS → Backup → Container → Beta → LIVE-PROGRESS
+- `/root/.claude/skills/se/SKILL.md` (neu) — 4 Schritte: dk → LIVE-PROGRESS → Offene Tasks → Zusammenfassung
+- `/root/.claude/skills/plan/SKILL.md` (neu) — 5 Schritte: brainstorming → writing-plans → Vault-Kopie → [geplant] → LIVE-PROGRESS
+- `/root/.claude/skills/task-done/SKILL.md` (neu) — 5 Schritte: DOKUMENTATION [abgeschlossen] → Erledigt-Zeile → Offene Tasks → QUICKFIX löschen → NEXT ACTION
+- `/root/.claude/skills/quickfix/SKILL.md` (neu) — 4 Schritte: QUICKFIX-ACTIVE → fix → task-done → cleanup
+- `/root/.claude/projects/-root/memory/feedback_ss_shortcode.md` — auf Skill-Aufruf aktualisiert
+- `/root/.claude/projects/-root/memory/feedback_se_shortcode.md` — auf Skill-Aufruf aktualisiert
+- `/root/.claude/projects/-root/memory/feedback_plan_shortcode.md` (neu) — Skill-Pointer für plan
+- `/root/.claude/projects/-root/memory/feedback_task_done_shortcode.md` (neu) — Skill-Pointer für task-done
+- `/root/.claude/projects/-root/memory/feedback_quickfix_shortcode.md` (neu) — Skill-Pointer für quickfix
+- `/root/.claude/projects/-root/memory/feedback_lernphase.md` — SUPERSEDED-Marker hinzugefügt
+- `/root/.claude/projects/-root/memory/feedback_erkenntnisse_speichern.md` — als "Primäre Regel" markiert
+- `/root/.claude/projects/-root/memory/MEMORY.md` — 5 neue Skill-Einträge verlinkt
+
+### Verifikation
+```bash
+ls /root/.claude/skills/{ss,se,plan,task-done,quickfix}/SKILL.md
+# → 5 Dateien vorhanden ✅
+grep -l "SELBST-CHECK" /root/.claude/skills/{ss,se,plan,task-done,quickfix}/SKILL.md | wc -l
+# → 5 ✅
+grep "SUPERSEDED" /root/.claude/projects/-root/memory/feedback_lernphase.md
+# → vorhanden ✅
+```
+
+### Commits
+Keine Code-Commits in SF-1-Repo — alle Änderungen sind in `/root/.claude/` (Skills-System, nicht versioniert).
+
