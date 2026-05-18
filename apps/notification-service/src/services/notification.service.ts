@@ -1,8 +1,6 @@
 import { Notification, INotification } from '../models/Notification.model';
 import { Preference } from '../models/Preference.model';
-import { Device } from '../models/Device.model';
 import { emailService } from './email.service';
-import { pushService } from './push.service';
 import { websocketService } from './websocket.service';
 import { redis } from '../config/redis';
 import { logger } from '../utils/logger';
@@ -140,7 +138,7 @@ export class NotificationService {
    * Queue Email
    */
   private async queueEmail(notificationId: string): Promise<void> {
-    await redis.lpush('queue:email', JSON.stringify({
+    await redis.lPush('queue:email', JSON.stringify({
       notificationId,
       timestamp: Date.now()
     }));
@@ -150,7 +148,7 @@ export class NotificationService {
    * Queue Push
    */
   private async queuePush(notificationId: string): Promise<void> {
-    await redis.lpush('queue:push', JSON.stringify({
+    await redis.lPush('queue:push', JSON.stringify({
       notificationId,
       timestamp: Date.now()
     }));

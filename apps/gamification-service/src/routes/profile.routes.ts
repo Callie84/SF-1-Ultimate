@@ -3,8 +3,37 @@ import { Router } from 'express';
 import { profileService } from '../services/profile.service';
 import { achievementService } from '../services/achievement.service';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
+import { cacheOrFetch } from '../utils/cache';
 
 const router = Router();
+
+/**
+ * GET /api/gamification/profile/leaderboard
+ * Global Leaderboard - MUSS VOR /:userId stehen!
+ */
+router.get('/leaderboard',
+  async (req, res, next) => {
+    try {
+      const metric = (req.query.metric as string) || 'xp';
+      const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
+
+      if (!['xp', 'reputation', 'level'].includes(metric)) {
+        return res.status(400).json({ error: 'Invalid metric' });
+      }
+
+      const cacheKey = `cache:leaderboard:${metric}:${limit}`;
+      const result = await cacheOrFetch(cacheKey, 5 * 60, () =>
+        profileService.getTopUsers({ metric: metric as any, limit })
+          .then(topUsers => ({ metric, users: topUsers, count: topUsers.length }))
+      );
+
+      res.json(result);
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /**
  * GET /api/gamification/profile/:userId
@@ -62,37 +91,6 @@ router.get('/:userId/summary',
         badgeCount: profile.badges.length,
         achievementCount: profile.achievements.length,
         globalRank: profile.globalRank
-      });
-      
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-/**
- * GET /api/gamification/leaderboard
- * Global Leaderboard
- */
-router.get('/leaderboard',
-  async (req, res, next) => {
-    try {
-      const metric = (req.query.metric as string) || 'xp';
-      const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
-      
-      if (!['xp', 'reputation', 'level'].includes(metric)) {
-        return res.status(400).json({ error: 'Invalid metric' });
-      }
-      
-      const topUsers = await profileService.getTopUsers({
-        metric: metric as any,
-        limit
-      });
-      
-      res.json({
-        metric,
-        users: topUsers,
-        count: topUsers.length
       });
       
     } catch (error) {

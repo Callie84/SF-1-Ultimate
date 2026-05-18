@@ -1,0 +1,148 @@
+{
+  "date": "2026-04-04T00:21:31.775939",
+  "url": "https://seedfinderpro.de",
+  "total_passed": 5,
+  "total": 13,
+  "duration": 522,
+  "suites": [
+    {
+      "suite": "auth",
+      "passed": 1,
+      "total": 3,
+      "results": [
+        {
+          "name": "Login — bestehender Account",
+          "passed": true,
+          "duration": 37.0,
+          "result": "PASS: Dashboard erfolgreich angezeigt\n\nDie Anmeldung war erfolgreich. Nach dem Login mit den Anmeldedaten (E-Mail: e2e-persistent@test.de, Passwort: E2ETest2026!) wurde das Dashboard angezeigt.\n\nBeweis:\n- Aktuelle URL: https://seedfinderpro.de/dashboard\n- Seite zeigt: \"Willkommen zurück, e2epersistent\"\n- Dashboard-Inhalte sichtbar:\n  - Übersicht der Growing-Aktivitäten\n  - Meine Grows (0 aktiv)\n  - Journal Einträge\n  - Schnellaktionen (Neuer Grow, Preise vergleichen, Community)\n  - Tools & Rechner (VPD, DLI, EC/PPM)\n  - Benachrichtigung: \"Login erfolgreich!\" angezeigt\n  - E-Mail-Bestätigungsaufforderung für e2e-persistent@test.de\n\nDas Dashboard ist vollständig geladen und funktionsfähig.",
+          "error": "",
+          "time": "23:49:26"
+        },
+        {
+          "name": "Login — falsches Passwort",
+          "passed": false,
+          "duration": 44.8,
+          "result": "",
+          "error": "",
+          "time": "23:52:11"
+        },
+        {
+          "name": "Logout — Session beenden",
+          "passed": false,
+          "duration": 55.6,
+          "result": "",
+          "error": "",
+          "time": "23:55:07"
+        }
+      ]
+    },
+    {
+      "suite": "journal",
+      "passed": 1,
+      "total": 2,
+      "results": [
+        {
+          "name": "Journal — Öffentlicher Grow sichtbar",
+          "passed": true,
+          "duration": 18.8,
+          "result": "PASS: Seite lädt korrekt — Die Seite https://seedfinderpro.de/grows wurde erfolgreich geladen. Es werden 2 Grows in der Community angezeigt:\n\n1. **Test-Strain** - Status: Planung, Umgebung: Indoor, Substrat: soil, feminized, Datum: 06.03.2026\n2. **bjhgf** - Status: Planung, Umgebung: Indoor, Substrat: soil, feminized, Datum: 02.02.2026\n\nDie Seite lädt ohne Fehler, zeigt die öffentliche Grows-Übersicht mit Filteroptionen (Status, Umgebung, Substrat, Level) und mindestens 2 Grows sind sichtbar. Keine 404 oder 500 Fehlerseite vorhanden.",
+          "error": "",
+          "time": "23:57:26"
+        },
+        {
+          "name": "Journal — Grow erstellen",
+          "passed": false,
+          "duration": 43.1,
+          "result": "",
+          "error": "",
+          "time": "00:00:09"
+        }
+      ]
+    },
+    {
+      "suite": "community",
+      "passed": 1,
+      "total": 2,
+      "results": [
+        {
+          "name": "Community — Forum öffentlich sichtbar",
+          "passed": true,
+          "duration": 15.8,
+          "result": "PASS: Forum lädt korrekt — Das Community Forum von SeedFinderPro ist erfolgreich geladen. Folgende Elemente sind sichtbar:\n\n✓ Seite lädt ohne Fehler (HTTP 200, keine 404/500 Fehler)\n✓ Thread-Liste und Kategorien sind sichtbar:\n  - Kategorien-Bereich mit 3 Kategorien:\n    1. \"Test Kategorie\" (10 Threads)\n    2. \"testtest\" (Threads/Beiträge)\n    3. \"Erfahrungen\" (Threads/Beiträge)\n  - \"Aktive Bereiche\" Sektion mit Threads und Beiträgen\n  - \"Neuer Thread\" Button zum Erstellen neuer Threads\n  - Gesamt-Diskussionen: 10 Community Beiträge\n\n✓ Keine Fehlerseite (404/500) - vollständiges Forum-Interface wird angezeigt\n\nDas Forum funktioniert einwandfrei und zeigt alle erwarteten Elemente.",
+          "error": "",
+          "time": "00:02:25"
+        },
+        {
+          "name": "Community — Thread erstellen",
+          "passed": false,
+          "duration": 45.0,
+          "result": "",
+          "error": "",
+          "time": "00:05:10"
+        }
+      ]
+    },
+    {
+      "suite": "strains",
+      "passed": 2,
+      "total": 3,
+      "results": [
+        {
+          "name": "Strains — Übersicht lädt",
+          "passed": true,
+          "duration": 15.4,
+          "result": "PASS: Strain-Liste lädt — 10 sichtbare Strains\n\nDie Seite https://seedfinderpro.de/strains wurde erfolgreich geladen. Es sind keine Fehler (404/500) vorhanden. Die Strain-Datenbank zeigt 183 verfügbare Strains insgesamt, und auf der aktuellen Ansicht sind mindestens 10 Strains sichtbar:\n\n1. 501St Og (indica, THC: 11.99%, CBD: 0.075%)\n2. Acdc (sativa, THC: 0.01%, CBD: 0.39%)\n3. Afghani (hybrid, THC: 16.1%, CBD: 0.17%)\n4. Afternoon Delight (indica, THC: 15.8%, CBD: 0.14%)\n5. Agent Orange (hybrid, THC: 10.58%, CBD: 0.068%)\n6. Alien Kush (hybrid, THC: 0.76%, CBD: 0.01%)\n7. Allen Wrench (sativa, THC: 16.2%, CBD: 0.14%)\n8. Amnesia (sativa, THC: 0.65%, CBD: 0.01%)\n9. Amnesia Haze (sativa, THC: 0.53%, CBD: 0.01%)\n10. Ancient Og (indica, THC: 14.6%, CBD: 0.32%)\n\nDie Seite funktioniert einwandfrei und zeigt die Strain-Einträge mit Bildern, Namen, Typ (indica/sativa/hybrid), THC- und CBD-Werten.",
+          "error": "",
+          "time": "00:07:25"
+        },
+        {
+          "name": "Strains — Suche funktioniert",
+          "passed": false,
+          "duration": 60.5,
+          "result": "Die Aufgabe konnte nicht vollständig abgeschlossen werden. Der Agent ist nach 5 fehlgeschlagenen Versuchen terminiert worden.\n\nBisheriger Fortschritt:\n1. Navigation zu https://seedfinderpro.de/strains war erfolgreich\n2. Die Seite zeigt eine Strain-Datenbank mit 183 verfügbaren Strains\n3. Zwei Popups wurden geschlossen (Font-Auswahl und App-Installation)\n4. Die Seite ist nun sichtbar mit einer Suchfunktion\n\nVerfügbare Suchelemente:\n- Suchfeld im Header (Shadow DOM): [5] input mit Placeholder \"Suche nach Strains, Threads, Grows, Usern...\"\n- Suchfeld in der Hauptsektion: [6] input mit Placeholder \"Strain suchen...\"\n\nSichtbare Strains auf der Seite:\n- 501St Og (indica)\n- Acdc (sativa)\n- Afghani (hybrid)\n- Afternoon Delight (indica)\n- Agent Orange (hybrid)\n- Alien Kush (hybrid)\n- Allen Wrench (sativa)\n- Amnesia (sativa)\n- Amnesia Haze (sativa)\n- Ancient Og (indica)\n\nDie Suche nach \"OG Kush\" oder \"Haze\" konnte nicht durchgeführt werden, da der Agent nach mehreren Formatierungsfehlern terminiert wurde. Die Seite ist jedoch funktionsfähig und die Suchfunktion ist vorhanden und einsatzbereit.",
+          "error": "",
+          "time": "00:10:26"
+        },
+        {
+          "name": "Strains — Detailseite öffnen",
+          "passed": true,
+          "duration": 37.4,
+          "result": "PASS: Detailseite lädt — 501St Og\n\nDie Detailseite wurde erfolgreich geladen und zeigt:\n- **Strain-Name**: 501St Og (sichtbar als Überschrift)\n- **Beschreibung**: Vollständige Beschreibung vorhanden: \"501st OG is a potent indica-dominant hybrid cannabis strain known for its strong, relaxing effects. It boasts a high THC content, making it ideal for experienced users. The strain features a unique blend of earthy pine and sweet skunk flavors, with a hint of berry undertones. It's often used to alleviate stress, pain, and insomnia, providing a deep sense of calm and tranquility.\"\n- **Zusätzliche Informationen**: \n  - Indica-Typ\n  - THC: 11.99%\n  - CBD: 0.075%\n  - CBG: 0.395%\n  - Wirkungen (happy, relaxed, uplifted, creative, euphoric)\n  - Aromen & Geschmack (lemon)\n  - Terpenprofil (myrcene, caryophyllene, limonene, etc.)\n\nKeine 404 oder 500 Fehlerseite - die Seite lädt korrekt.",
+          "error": "",
+          "time": "00:13:03"
+        }
+      ]
+    },
+    {
+      "suite": "prices",
+      "passed": 0,
+      "total": 3,
+      "results": [
+        {
+          "name": "Preise — Übersicht lädt",
+          "passed": false,
+          "duration": 24.5,
+          "result": "FAIL: Die Seite https://seedfinderpro.de/preise erfordert eine Anmeldung. Der Zugriff auf die Preisübersicht ist nicht möglich ohne Login-Credentials.\n\nBeobachtungen:\n- Die URL wurde korrekt navigiert zu https://seedfinderpro.de/auth/login?redirect=%2Fpreise\n- Eine Login-Seite wird angezeigt mit E-Mail und Passwort-Feldern\n- Die Seite lädt ohne technische Fehler (kein 404 oder 500 Fehler)\n- Preiseinträge oder Seedbank-Daten sind NICHT sichtbar, da eine Authentifizierung erforderlich ist\n- Es gibt keine öffentlich zugängliche Preisübersicht ohne Login\n\nDie Seite selbst funktioniert (kein 404/500 Fehler), aber die angeforderten Preisdaten sind hinter einer Login-Mauer verborgen.",
+          "error": "",
+          "time": "00:15:28"
+        },
+        {
+          "name": "Preise — Strain-Preissuche",
+          "passed": false,
+          "duration": 77.8,
+          "result": "",
+          "error": "",
+          "time": "00:18:45"
+        },
+        {
+          "name": "Preise — Preisalarm setzen (eingeloggt)",
+          "passed": false,
+          "duration": 45.8,
+          "result": "",
+          "error": "",
+          "time": "00:21:31"
+        }
+      ]
+    }
+  ]
+}

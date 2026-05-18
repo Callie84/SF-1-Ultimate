@@ -147,7 +147,7 @@ export class ProfileService {
     
     if (profile) {
       // Cache 5 Min
-      await redis.setex(cacheKey, 300, JSON.stringify(profile));
+      await redis.set(cacheKey, JSON.stringify(profile), { EX: 300 });
     }
     
     return profile;
@@ -175,7 +175,7 @@ export class ProfileService {
    * Event publizieren
    */
   private async publishEvent(type: string, data: any): Promise<void> {
-    await redis.lpush('queue:notifications', JSON.stringify({
+    await redis.lPush('queue:notifications', JSON.stringify({
       type,
       data,
       timestamp: Date.now()

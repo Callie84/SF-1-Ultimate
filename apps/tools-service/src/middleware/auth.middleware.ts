@@ -28,6 +28,7 @@ export interface AuthRequest extends Request {
     id: string;
     email: string;
     role: string;
+    premium: boolean;
   };
 }
 
@@ -63,7 +64,7 @@ export const authMiddleware = (trustTraefik: boolean = true) => {
       // Wenn Request von Traefik kommt (erkennbar an X-Forwarded-For Header),
       // dann hat Traefik bereits Auth-Service aufgerufen und X-User-* gesetzt
       
-      if (trustTraefik && req.headers['x-forwarded-for']) {
+      if (trustTraefik && req.headers['x-forwarded-for'] && req.headers['x-user-id']) {
         const userId = req.headers['x-user-id'] as string;
         const userRole = req.headers['x-user-role'] as string;
         const userEmail = req.headers['x-user-email'] as string;
@@ -81,6 +82,8 @@ export const authMiddleware = (trustTraefik: boolean = true) => {
           id: userId,
           email: userEmail || '',
           role: userRole || 'user'
+          ,
+          premium: false || false
         };
 
         // Log für Debugging (nur in Development)
@@ -155,7 +158,8 @@ export const authMiddleware = (trustTraefik: boolean = true) => {
       req.user = {
         id: payload.userId,
         email: payload.email,
-        role: payload.role || 'user'
+        role: payload.role || 'user',
+        premium: false,
       };
 
       // Log für Debugging (nur in Development)

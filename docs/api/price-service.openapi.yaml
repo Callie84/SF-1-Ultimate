@@ -1,0 +1,467 @@
+openapi: 3.0.3
+info:
+  title: SF-1 Ultimate Price Service API
+  description: |
+    Cryptocurrency and stock price tracking service with real-time data and historical charts.
+
+    ## Features
+    - Real-time price data from multiple exchanges
+    - Historical price charts (1h, 24h, 7d, 30d, 1y)
+    - Price alerts and notifications
+    - Market statistics (market cap, volume, price changes)
+    - Web scraping for price discovery
+
+    ## Data Sources
+    - CoinGecko API
+    - Binance API
+    - Custom web scrapers
+
+  version: 1.0.0
+  contact:
+    name: SF-1 Ultimate Team
+    email: support@seedfinderpro.de
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:3002
+    description: Local development
+  - url: http://localhost:8080/api/prices
+    description: Local via API Gateway
+  - url: https://api.seedfinderpro.de/api/prices
+    description: Production
+
+tags:
+  - name: Prices
+    description: Current price operations
+  - name: History
+    description: Historical price data
+  - name: Statistics
+    description: Market statistics
+  - name: Admin
+    description: Administrative operations (requires ADMIN role)
+  - name: Health
+    description: Service health
+
+paths:
+  /api/prices/current/{symbol}:
+    get:
+      tags:
+        - Prices
+      summary: Get current price
+      description: Retrieves current price for a cryptocurrency or stock
+      operationId: getCurrentPrice
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: Cryptocurrency or stock symbol
+          schema:
+            type: string
+            example: BTC
+      responses:
+        '200':
+          description: Current price retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceData'
+        '404':
+          description: Symbol not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/prices/list:
+    get:
+      tags:
+        - Prices
+      summary: List all tracked prices
+      description: Returns current prices for all tracked symbols
+      operationId: listPrices
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of results
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 500
+        - name: offset
+          in: query
+          description: Pagination offset
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: Price list retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PriceData'
+                  total:
+                    type: integer
+                    example: 150
+                  limit:
+                    type: integer
+                    example: 100
+                  offset:
+                    type: integer
+                    example: 0
+
+  /api/prices/history/{symbol}:
+    get:
+      tags:
+        - History
+      summary: Get price history
+      description: Retrieves historical price data for charting
+      operationId: getPriceHistory
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: Cryptocurrency or stock symbol
+          schema:
+            type: string
+            example: BTC
+        - name: timeframe
+          in: query
+          required: true
+          description: Historical timeframe
+          schema:
+            type: string
+            enum: [1h, 24h, 7d, 30d, 1y, all]
+            example: 7d
+      responses:
+        '200':
+          description: Historical data retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryResponse'
+        '404':
+          description: Symbol not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/prices/stats/{symbol}:
+    get:
+      tags:
+        - Statistics
+      summary: Get market statistics
+      description: Returns comprehensive market statistics for a symbol
+      operationId: getMarketStats
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: Cryptocurrency or stock symbol
+          schema:
+            type: string
+            example: BTC
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketStats'
+        '404':
+          description: Symbol not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/prices/admin/scrape:
+    post:
+      tags:
+        - Admin
+      summary: Trigger price scraping
+      description: Manually triggers web scraping for price updates (requires ADMIN role)
+      operationId: triggerScraping
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                symbols:
+                  type: array
+                  items:
+                    type: string
+                  description: Specific symbols to scrape (optional, defaults to all)
+                  example: ["BTC", "ETH", "SOL"]
+      responses:
+        '200':
+          description: Scraping job started successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Scraping job started
+                  jobId:
+                    type: string
+                    example: scrape-job-12345
+                  symbols:
+                    type: array
+                    items:
+                      type: string
+                    example: ["BTC", "ETH", "SOL"]
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - requires ADMIN role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Returns service health status with database connectivity
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token from auth-service
+
+  schemas:
+    PriceData:
+      type: object
+      properties:
+        symbol:
+          type: string
+          description: Cryptocurrency or stock symbol
+          example: BTC
+        name:
+          type: string
+          description: Full name
+          example: Bitcoin
+        currentPrice:
+          type: number
+          format: float
+          description: Current price in USD
+          example: 45000.50
+        priceChange24h:
+          type: number
+          format: float
+          description: Price change in last 24 hours (USD)
+          example: 1500.25
+        priceChangePercent24h:
+          type: number
+          format: float
+          description: Price change percentage in last 24 hours
+          example: 3.45
+        marketCap:
+          type: number
+          format: float
+          description: Market capitalization in USD
+          example: 880000000000
+        volume24h:
+          type: number
+          format: float
+          description: Trading volume in last 24 hours (USD)
+          example: 35000000000
+        high24h:
+          type: number
+          format: float
+          description: Highest price in last 24 hours
+          example: 46200.00
+        low24h:
+          type: number
+          format: float
+          description: Lowest price in last 24 hours
+          example: 43500.00
+        lastUpdated:
+          type: string
+          format: date-time
+          description: Last price update timestamp
+          example: "2024-01-06T10:30:00Z"
+
+    HistoryResponse:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: BTC
+        timeframe:
+          type: string
+          enum: [1h, 24h, 7d, 30d, 1y, all]
+          example: 7d
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoryPoint'
+        count:
+          type: integer
+          description: Number of data points
+          example: 168
+
+    HistoryPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-06T10:00:00Z"
+        price:
+          type: number
+          format: float
+          example: 45000.50
+        volume:
+          type: number
+          format: float
+          description: Trading volume at this point
+          example: 1500000000
+
+    MarketStats:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: BTC
+        name:
+          type: string
+          example: Bitcoin
+        currentPrice:
+          type: number
+          format: float
+          example: 45000.50
+        marketCap:
+          type: number
+          format: float
+          example: 880000000000
+        marketCapRank:
+          type: integer
+          description: Market cap ranking
+          example: 1
+        volume24h:
+          type: number
+          format: float
+          example: 35000000000
+        circulatingSupply:
+          type: number
+          format: float
+          description: Circulating supply
+          example: 19500000
+        totalSupply:
+          type: number
+          format: float
+          description: Total supply
+          example: 21000000
+        maxSupply:
+          type: number
+          format: float
+          description: Maximum supply
+          example: 21000000
+        ath:
+          type: number
+          format: float
+          description: All-time high price
+          example: 69000.00
+        athDate:
+          type: string
+          format: date-time
+          example: "2021-11-10T14:24:00Z"
+        athChangePercent:
+          type: number
+          format: float
+          description: Percentage change from ATH
+          example: -34.78
+        atl:
+          type: number
+          format: float
+          description: All-time low price
+          example: 67.81
+        atlDate:
+          type: string
+          format: date-time
+          example: "2013-07-06T00:00:00Z"
+        atlChangePercent:
+          type: number
+          format: float
+          description: Percentage change from ATL
+          example: 66278.45
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+          example: healthy
+        database:
+          type: string
+          enum: [connected, disconnected]
+          example: connected
+        redis:
+          type: string
+          enum: [connected, disconnected]
+          example: connected
+        lastScrape:
+          type: string
+          format: date-time
+          description: Last successful scraping job timestamp
+          example: "2024-01-06T10:00:00Z"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-06T10:30:00Z"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: SYMBOL_NOT_FOUND
+        message:
+          type: string
+          description: Human-readable error message
+          example: Symbol not found in database
+        details:
+          type: object
+          description: Additional error details (optional)
+          additionalProperties: true

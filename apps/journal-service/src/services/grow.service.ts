@@ -31,7 +31,7 @@ export class GrowService {
     limit?: number;
     skip?: number;
   } = {}): Promise<{ grows: IGrow[]; total: number }> {
-    const query: any = { userId, deletedAt: { $exists: false } };
+    const query: any = { userId, deletedAt: { $exists: false }, isPermanentlyDeleted: { $ne: true } };
     
     if (options.status) {
       query.status = options.status;
@@ -122,27 +122,55 @@ export class GrowService {
     
     grow.deletedAt = new Date();
     await grow.save();
-    
+
     logger.info(`[Grow] Soft-deleted ${growId}`);
   }
-  
+
+  async restore(growId: string, userId: string): Promise<IGrow> {
+    const grow = await Grow.findById(growId);
+    if (!grow) throw new AppError('NOT_FOUND', 404);
+    if (grow.userId !== userId) throw new AppError('FORBIDDEN', 403);
+    grow.deletedAt = undefined;
+    grow.isPermanentlyDeleted = false;
+    await grow.save();
+    return grow;
+  }
+
+  async purge(growId: string): Promise<void> {
+    const grow = await Grow.findById(growId);
+    if (!grow) throw new AppError('NOT_FOUND', 404);
+    grow.isPermanentlyDeleted = true;
+    await grow.save();
+  }
+
+  async getDeleted(page: number, limit: number): Promise<{ grows: IGrow[]; total: number }> {
+    const query = { deletedAt: { $ne: null, $exists: true }, isPermanentlyDeleted: { $ne: true } };
+    const [grows, total] = await Promise.all([
+      Grow.find(query).sort({ deletedAt: -1 }).skip((page - 1) * limit).limit(limit),
+      Grow.countDocuments(query),
+    ]);
+    return { grows, total };
+  }
+
   async markHarvested(growId: string, userId: string, data: {
     harvestDate: Date;
     yieldWet?: number;
     yieldDry?: number;
+    growAreaM2?: number;
     quality?: number;
   }): Promise<IGrow | null> {
     const grow = await Grow.findOne({ _id: growId, userId });
-    
+
     if (!grow) {
       throw new AppError('NOT_FOUND', 404);
     }
-    
+
     grow.status = 'harvested';
     grow.harvestDate = data.harvestDate;
     grow.yieldWet = data.yieldWet;
     grow.yieldDry = data.yieldDry;
     grow.quality = data.quality;
+    if (data.growAreaM2 !== undefined) grow.growAreaM2 = data.growAreaM2;
     
     await grow.save();
     
@@ -179,7 +207,7 @@ export class GrowService {
   }
   
   private async publishEvent(type: string, data: any): Promise<void> {
-    await redis.lpush('queue:events', JSON.stringify({ type, data, timestamp: Date.now() }));
+    await redis.lPush('queue:events', JSON.stringify({ type, data, timestamp: Date.now() }));
   }
 }
 

@@ -1,0 +1,58 @@
+version: '3.8'
+
+# KI-Integration Shadow Setup (Ansatz C)
+# AI-Stack (Ollama, Open WebUI, RAG-Service) entfernt 2026-04-29 — RAM-Krise
+# n8n läuft weiterhin als Automatisierungs-Engine
+# Start: docker-compose -f docker-compose.ki.yml up -d
+
+networks:
+  sf1-ki-network:
+    driver: bridge
+
+volumes:
+  n8n_data:
+
+services:
+  # ============================================
+  # N8N — Automatisierungs-Engine
+  # ============================================
+  n8n:
+    image: n8nio/n8n:1.85.0
+    container_name: sf1-n8n
+    restart: always
+    ports:
+      - "5679:5678"
+    environment:
+      # Basis-Konfiguration
+      N8N_HOST: "0.0.0.0"
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: "http"
+      # Datenbankverbindung (für Workflows & Credentials)
+      # Option 1: SQLite (einfach, lokal)
+      DB_TYPE: "sqlite"
+      DB_SQLITE_PATH: "/root/.n8n/database.sqlite"
+      # Option 2: PostgreSQL (für Production)
+      # DB_TYPE: "postgres"
+      # DB_POSTGRESDB_HOST: "postgres"
+      # DB_POSTGRESDB_PORT: "5432"
+      # DB_POSTGRESDB_DATABASE: "n8n"
+      # DB_POSTGRESDB_USER: "n8n_user"
+      # DB_POSTGRESDB_PASSWORD: "${N8N_DB_PASSWORD}"
+
+      # Security
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-change-me-in-production}
+      N8N_USER_MANAGEMENT_DISABLED: "true"
+
+      # Slack/Webhook-URLs
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+
+      # Logging
+      LOG_LEVEL: "info"
+    volumes:
+      - n8n_data:/root/.n8n
+    networks:
+      - sf1-ki-network
+    deploy:
+      resources:
+        limits:
+          memory: 300m

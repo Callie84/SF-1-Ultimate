@@ -23,24 +23,24 @@ export function ChatSessions({
   onSelectSession,
 }: ChatSessionsProps) {
   return (
-    <div className="neo-deep rounded-3xl p-6 h-full flex flex-col">
-      <div className="mb-6">
+    <div className="rounded-xl border bg-card p-4 h-full flex flex-col">
+      <div className="mb-4">
         <button
           onClick={onNewSession}
-          className="w-full bubble-soft px-6 py-4 rounded-xl font-bold text-white text-lg flex items-center justify-center gap-2"
+          className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="h-4 w-4" />
           Neue Session
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-3 custom-scroll">
-        <h3 className="text-cannabis font-black text-xl mb-4">Sessions</h3>
-        
+      <div className="flex-1 overflow-y-auto space-y-2">
+        <h3 className="font-semibold text-sm mb-3">Sessions</h3>
+
         {sessions.length === 0 ? (
-          <div className="text-center py-10">
-            <MessageSquare className="w-12 h-12 text-white/30 mx-auto mb-3" />
-            <p className="text-white/50 text-sm font-medium">Noch keine Sessions</p>
+          <div className="text-center py-8">
+            <MessageSquare className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+            <p className="text-xs text-muted-foreground">Noch keine Sessions</p>
           </div>
         ) : (
           sessions.map((session) => (
@@ -48,19 +48,19 @@ export function ChatSessions({
               key={session.id}
               onClick={() => onSelectSession(session.id)}
               className={cn(
-                'w-full text-left p-4 rounded-xl transition',
+                'w-full text-left rounded-lg p-3 transition-colors text-sm',
                 currentSessionId === session.id
-                  ? 'neo-deep border-2 border-emerald-500/50'
-                  : 'neo-deep hover:scale-105'
+                  ? 'bg-primary/10 border border-primary/20 text-primary'
+                  : 'hover:bg-accent'
               )}
             >
-              <div className="flex items-start gap-3">
-                <MessageSquare className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-1" />
+              <div className="flex items-start gap-2">
+                <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-bold text-sm line-clamp-2 mb-1">
+                  <p className="font-medium text-sm line-clamp-2 mb-0.5">
                     {session.title}
                   </p>
-                  <p className="text-white/50 text-xs font-medium">
+                  <p className="text-xs text-muted-foreground">
                     {new Date(session.lastMessage).toLocaleDateString('de-DE', {
                       day: '2-digit',
                       month: '2-digit',

@@ -11,7 +11,8 @@ const router = Router();
 const createReplySchema = z.object({
   threadId: z.string().min(1),
   content: z.string().min(1).max(5000),
-  parentId: z.string().optional()
+  parentId: z.string().optional(),
+  imageUrls: z.array(z.string().url()).max(5).optional()
 });
 
 const updateReplySchema = z.object({
@@ -90,6 +91,22 @@ router.delete('/:id',
     try {
       await replyService.delete(req.params.id, req.user!.id);
       res.json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * PATCH /api/community/replies/:id/restore
+ * Reply wiederherstellen (Owner oder Admin)
+ */
+router.patch('/:id/restore',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      const reply = await replyService.restore(req.params.id, req.user!.id);
+      res.json({ success: true, reply });
     } catch (error) {
       next(error);
     }

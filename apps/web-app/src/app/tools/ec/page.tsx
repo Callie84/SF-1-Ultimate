@@ -76,29 +76,29 @@ export default function ECCalculatorPage() {
               EC (Electrical Conductivity) misst die elektrische Leitfähigkeit deiner Nährlösung 
               und gibt an, wie viele gelöste Salze (Nährstoffe) in der Lösung sind.
             </p>
-            <div className="strain-card-3d rounded-xl p-6">
-              <h4 className="font-black text-white text-xl mb-3">Optimale EC-Werte:</h4>
+            <div className="rounded-lg border p-6">
+              <h4 className="font-medium text-foreground mb-3">Optimale EC-Werte:</h4>
               <ul className="space-y-2">
                 <li className="flex items-start gap-3">
-                  <span className="text-green-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Setzlinge:</strong> 0.8 - 1.3 mS/cm</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Setzlinge:</strong> 0.8 - 1.3 mS/cm</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-green-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Vegetativ:</strong> 1.5 - 2.5 mS/cm</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Vegetativ:</strong> 1.5 - 2.5 mS/cm</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-green-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Blüte:</strong> 2.0 - 3.0 mS/cm</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Blüte:</strong> 2.0 - 3.0 mS/cm</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-green-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Flush:</strong> 0.0 - 0.4 mS/cm</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Flush:</strong> 0.0 - 0.4 mS/cm</span>
                 </li>
               </ul>
             </div>
             <p>
-              <strong className="text-cannabis">Wichtig:</strong> Messe immer vor UND nach der Düngung. 
+              <strong className="text-foreground">Wichtig:</strong> Messe immer vor UND nach der Düngung.
               Der EC-Wert steigt nach der Nährstoffzugabe an.
             </p>
           </div>

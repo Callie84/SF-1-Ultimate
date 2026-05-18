@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, KeyboardEvent } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Search, X, Clock, TrendingUp, Loader2 } from 'lucide-react';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -31,8 +32,8 @@ export function SearchBar({ className }: SearchBarProps) {
     const loadSearchData = async () => {
       try {
         const [recent, popular] = await Promise.all([
-          apiClient.get('/search/history/recent'),
-          apiClient.get('/search/popular')
+          apiClient.get('/api/search/history/recent'),
+          apiClient.get('/api/search/popular')
         ]);
         setRecentSearches(recent.searches || []);
         setPopularSearches(popular.searches || []);
@@ -55,7 +56,7 @@ export function SearchBar({ className }: SearchBarProps) {
       setIsLoading(true);
       try {
         const response = await apiClient.get(
-          `/search/strains/suggest?q=${encodeURIComponent(debouncedQuery)}&limit=5`
+          `/api/search/strains/suggest?q=${encodeURIComponent(debouncedQuery)}&limit=5`
         );
         setSuggestions(response.results || []);
       } catch (error) {
@@ -204,9 +205,11 @@ export function SearchBar({ className }: SearchBarProps) {
                       )}
                     >
                       {result.imageUrl && (
-                        <img
+                        <Image
                           src={result.imageUrl}
                           alt={result.title}
+                          width={40}
+                          height={40}
                           className="h-10 w-10 rounded object-cover"
                         />
                       )}

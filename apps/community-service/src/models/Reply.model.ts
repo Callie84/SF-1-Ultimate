@@ -20,13 +20,17 @@ export interface IReply extends Document {
   deletedAt?: Date;
   deletedBy?: string;
   deleteReason?: string;
+  isPermanentlyDeleted: boolean;
   
   isEdited: boolean;
   editedAt?: Date;
   
+  // Media
+  imageUrls: string[];
+
   // Mentions
   mentions: string[];
-  
+
   depth: number;
   
   createdAt: Date;
@@ -44,9 +48,8 @@ const ReplySchema = new Schema<IReply>({
     required: true, 
     index: true 
   },
-  parentId: { 
-    type: String, 
-    index: true 
+  parentId: {
+    type: String
   },
   
   content: { 
@@ -71,18 +74,21 @@ const ReplySchema = new Schema<IReply>({
     index: true
   },
   
-  isDeleted: { 
-    type: Boolean, 
+  imageUrls: [{ type: String }],
+
+  isDeleted: {
+    type: Boolean,
     default: false,
     index: true
   },
   deletedAt: Date,
   deletedBy: String,
   deleteReason: String,
-  
-  isEdited: { 
-    type: Boolean, 
-    default: false 
+  isPermanentlyDeleted: { type: Boolean, default: false, index: true },
+
+  isEdited: {
+    type: Boolean,
+    default: false
   },
   editedAt: Date,
   

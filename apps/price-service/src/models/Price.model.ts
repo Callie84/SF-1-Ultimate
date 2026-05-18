@@ -83,6 +83,9 @@ PriceSchema.index({ seedSlug: 1, seedbank: 1, packSize: 1 });
 PriceSchema.index({ seedbank: 1, scrapedAt: -1 });
 PriceSchema.index({ price: 1, inStock: 1 });
 PriceSchema.index({ validUntil: 1 });
+// Session 52: Günstigste verfügbare Preise + Seedbank-Übersicht
+PriceSchema.index({ seedSlug: 1, inStock: 1, price: 1 });
+PriceSchema.index({ seedbankSlug: 1, scrapedAt: -1, inStock: 1 });
 
 // Virtuals
 PriceSchema.virtual('pricePerSeed').get(function() {

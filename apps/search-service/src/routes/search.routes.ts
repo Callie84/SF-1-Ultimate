@@ -8,6 +8,102 @@ import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 
 const router = Router();
 
+// ============================================
+// WICHTIG: Spezifische Routen VOR parametrisierten Routen!
+// ============================================
+
+/**
+ * GET /api/search/analytics
+ * Search Analytics (nur Admin)
+ */
+router.get('/analytics',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      // Admin-Check
+      if (req.user!.role !== 'ADMIN') {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
+      const popularSearches = await searchService.getPopularSearches(20);
+
+      res.json({
+        popularSearches,
+        totalSearches: popularSearches.reduce((sum, s) => sum + s.count, 0)
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/search/history/recent
+ * Recent Searches (muss VOR /:index stehen!)
+ */
+router.get('/history/recent',
+  optionalAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      const { limit } = req.query;
+
+      // Ohne Auth: leeres Array zurückgeben
+      if (!req.user) {
+        return res.json({ searches: [] });
+      }
+
+      const searches = await searchService.getRecentSearches(
+        req.user.id,
+        parseInt(limit as string) || 10
+      );
+
+      res.json({ searches });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * DELETE /api/search/history/recent
+ * Clear Recent Searches
+ */
+router.delete('/history/recent',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      await searchService.clearRecentSearches(req.user!.id);
+      res.json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/search/popular
+ * Popular Searches (muss VOR /:index stehen!)
+ */
+router.get('/popular',
+  async (req, res, next) => {
+    try {
+      const { limit } = req.query;
+
+      const searches = await searchService.getPopularSearches(
+        parseInt(limit as string) || 10
+      );
+
+      res.json({ searches });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ============================================
+// Parametrisierte Routen (NACH den spezifischen!)
+// ============================================
+
 /**
  * GET /api/search
  * Universal Search (alle Indexes)
@@ -17,20 +113,20 @@ router.get('/',
   async (req, res, next) => {
     try {
       const { q, limit } = req.query;
-      
+
       if (!q || typeof q !== 'string' || q.length < 2) {
         return res.status(400).json({ error: 'Query must be at least 2 characters' });
       }
-      
+
       const results = await searchService.searchAll(q, {
         limit: parseInt(limit as string) || 5
       });
-      
+
       // Track search (wenn eingeloggt)
       if (req.user) {
         await searchService.trackSearch(req.user.id, q, 'all');
       }
-      
+
       res.json(results);
     } catch (error) {
       next(error);
@@ -81,6 +177,41 @@ router.get('/:index',
 );
 
 /**
+ * GET /api/search/strains/suggest
+ * Strain-Autocomplete mit vollständigen Objekten (id, name, breeder, type)
+ * Muss VOR /:index/suggest stehen!
+ */
+router.get('/strains/suggest',
+  async (req, res, next) => {
+    try {
+      const { q, limit } = req.query;
+      if (!q || typeof q !== 'string' || q.length < 2) {
+        return res.json({ suggestions: [] });
+      }
+
+      const results = await searchService.search({
+        query: q,
+        index: 'STRAINS',
+        limit: parseInt(limit as string) || 6,
+        attributesToRetrieve: ['id', 'name', 'breeder', 'type', 'slug'],
+      });
+
+      const suggestions = results.hits.map((hit: any) => ({
+        id: hit.id,
+        name: hit.name,
+        breeder: hit.breeder,
+        type: hit.type,
+        slug: hit.slug,
+      }));
+
+      res.json({ suggestions });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
  * GET /api/search/:index/suggest
  * Autocomplete / Suggestions
  */
@@ -113,57 +244,30 @@ router.get('/:index/suggest',
 );
 
 /**
- * GET /api/search/history/recent
- * Recent Searches
+ * POST /api/search/internal/grows
+ * Internes Indexieren (von anderen Services, X-Internal-Secret)
  */
-router.get('/history/recent',
-  authMiddleware,
+router.post('/internal/grows',
   async (req, res, next) => {
     try {
-      const { limit } = req.query;
-      
-      const searches = await searchService.getRecentSearches(
-        req.user!.id,
-        parseInt(limit as string) || 10
-      );
-      
-      res.json({ searches });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
+      const secret = req.headers['x-internal-secret'];
+      if (secret !== process.env.INTERNAL_SECRET) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
 
-/**
- * DELETE /api/search/history/recent
- * Clear Recent Searches
- */
-router.delete('/history/recent',
-  authMiddleware,
-  async (req, res, next) => {
-    try {
-      await searchService.clearRecentSearches(req.user!.id);
-      res.json({ success: true });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
+      const { action, document, id } = req.body;
 
-/**
- * GET /api/search/popular
- * Popular Searches
- */
-router.get('/popular',
-  async (req, res, next) => {
-    try {
-      const { limit } = req.query;
-      
-      const searches = await searchService.getPopularSearches(
-        parseInt(limit as string) || 10
-      );
-      
-      res.json({ searches });
+      if (action === 'delete' && id) {
+        await indexingService.deleteDocument('GROWS', id);
+        return res.json({ success: true });
+      }
+
+      if (document) {
+        await indexingService.indexDocument('GROWS', document);
+        return res.json({ success: true });
+      }
+
+      res.status(400).json({ error: 'Missing document or id' });
     } catch (error) {
       next(error);
     }
@@ -224,6 +328,9 @@ router.post('/reindex/:index',
           break;
         case 'grows':
           await indexingService.reindexGrows();
+          break;
+        case 'users':
+          await indexingService.reindexUsers();
           break;
         case 'all':
           await indexingService.reindexAll();

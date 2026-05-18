@@ -42,9 +42,8 @@ const BanSchema = new Schema<IBan>({
     required: true
   },
   
-  expiresAt: { 
-    type: Date,
-    index: true
+  expiresAt: {
+    type: Date
   },
   
   isActive: { 

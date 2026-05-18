@@ -1,54 +1,96 @@
 import { Grow } from '../models/Grow.model';
 import { redis } from '../config/redis';
+import http from 'http';
+
+const COMMUNITY_URL = process.env.COMMUNITY_SERVICE_URL || 'http://community-service:3005';
+
+async function getFollowedUserIds(userId: string): Promise<string[]> {
+  return new Promise((resolve) => {
+    const path = `/api/community/follows/following/${userId}?limit=500`;
+    http.get({ hostname: 'community-service', port: 3005, path },
+      (res) => {
+        let data = '';
+        res.on('data', c => data += c);
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            // following is array of userId strings
+            resolve(Array.isArray(json.following) ? json.following.filter((f: any) => typeof f === 'string') : []);
+          } catch { resolve([]); }
+        });
+      }
+    ).on('error', () => resolve([]));
+  });
+}
 
 export class FeedService {
   async getPublicFeed(options: {
     limit: number;
     skip: number;
     sortBy: string;
+    status?: string;
+    environment?: string;
+    medium?: string;
+    lightType?: string;
+    difficulty?: string;
     userId?: string;
+    filterUserId?: string;
   }): Promise<{ grows: any[]; total: number }> {
-    const cacheKey = `feed:public:${options.sortBy}:${options.limit}:${options.skip}`;
-    
-    const cached = await redis.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
+    const hasFilters = options.status || options.environment || options.filterUserId || options.medium || options.lightType || options.difficulty;
+    const cacheKey = `feed:public:${options.sortBy}:${options.limit}:${options.skip}:${options.status || ''}:${options.environment || ''}:${options.medium || ''}:${options.lightType || ''}:${options.difficulty || ''}:${options.filterUserId || ''}`;
+
+    if (!hasFilters) {
+      const cached = await redis.get(cacheKey);
+      if (cached) return JSON.parse(cached);
     }
-    
+
     let sort: any = {};
-    
     switch (options.sortBy) {
-      case 'recent':
-        sort = { createdAt: -1 };
-        break;
-      case 'trending':
-        sort = { viewCount: -1, createdAt: -1 };
-        break;
-      case 'top':
-        sort = { likeCount: -1, createdAt: -1 };
-        break;
+      case 'recent':  sort = { createdAt: -1 }; break;
+      case 'trending': sort = { viewCount: -1, createdAt: -1 }; break;
+      case 'top':     sort = { likeCount: -1, createdAt: -1 }; break;
+      default:        sort = { createdAt: -1 };
     }
-    
+
+    const filter: any = {
+      isPublic: true,
+      deletedAt: { $exists: false }
+    };
+
+    if (options.status === 'active') {
+      filter.status = { $in: ['germination', 'vegetative', 'flowering', 'drying', 'curing'] };
+    } else if (options.status && options.status !== 'all') {
+      filter.status = options.status;
+    }
+
+    if (options.environment && options.environment !== 'all') {
+      filter.environment = options.environment;
+    }
+
+    if (options.medium && options.medium !== 'all') {
+      filter.medium = options.medium;
+    }
+
+    if (options.lightType && options.lightType !== 'all') {
+      filter.lightType = options.lightType;
+    }
+
+    if (options.difficulty && options.difficulty !== 'all') {
+      filter.difficulty = options.difficulty;
+    }
+
+    if (options.filterUserId) {
+      filter.userId = options.filterUserId;
+    }
+
     const [grows, total] = await Promise.all([
-      Grow.find({ 
-        isPublic: true,
-        deletedAt: { $exists: false }
-      })
-        .sort(sort)
-        .skip(options.skip)
-        .limit(options.limit)
-        .select('-userId')
-        .lean(),
-      Grow.countDocuments({ 
-        isPublic: true,
-        deletedAt: { $exists: false }
-      })
+      Grow.find(filter).sort(sort).skip(options.skip).limit(options.limit).lean(),
+      Grow.countDocuments(filter)
     ]);
-    
+
     const result = { grows, total };
-    
-    await redis.setex(cacheKey, 120, JSON.stringify(result));
-    
+    if (!hasFilters) await redis.setEx(cacheKey, 120, JSON.stringify(result));
+
     return result;
   }
   
@@ -57,8 +99,8 @@ export class FeedService {
     limit: number;
     skip: number;
   }): Promise<{ grows: any[]; total: number }> {
-    const followedUserIds: string[] = [];
-    
+    const followedUserIds = await getFollowedUserIds(options.userId);
+
     if (followedUserIds.length === 0) {
       return { grows: [], total: 0 };
     }

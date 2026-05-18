@@ -63,7 +63,7 @@ export const authMiddleware = (trustTraefik: boolean = true) => {
       // Wenn Request von Traefik kommt (erkennbar an X-Forwarded-For Header),
       // dann hat Traefik bereits Auth-Service aufgerufen und X-User-* gesetzt
       
-      if (trustTraefik && req.headers['x-forwarded-for']) {
+      if (trustTraefik && req.headers['x-forwarded-for'] && req.headers['x-user-id']) {
         const userId = req.headers['x-user-id'] as string;
         const userRole = req.headers['x-user-role'] as string;
         const userEmail = req.headers['x-user-email'] as string;

@@ -6,6 +6,7 @@ import { Ban } from '../models/Ban.model';
 import { AppError } from '../utils/errors';
 import { logger } from '../utils/logger';
 import { gamificationHooks } from './gamification-hooks';
+import { sendNotification } from './notification-client';
 
 const MAX_DEPTH = 3;
 
@@ -17,6 +18,7 @@ export class ReplyService {
     threadId: string;
     content: string;
     parentId?: string;
+    imageUrls?: string[];
   }): Promise<IReply> {
     // Ban-Check
     await this.checkBan(userId);
@@ -51,6 +53,7 @@ export class ReplyService {
       userId,
       parentId: data.parentId,
       content: data.content.trim(),
+      imageUrls: (data.imageUrls || []).slice(0, 5),
       depth
     });
     
@@ -73,7 +76,39 @@ export class ReplyService {
     
     // Gamification-Event
     await gamificationHooks.onReplyCreated(userId, reply._id.toString());
-    
+
+    // Notifications (fire-and-forget)
+    const threadUrl = `/community/thread/${data.threadId}`;
+
+    // Thread-Author benachrichtigen (nicht sich selbst)
+    if (thread.userId && thread.userId !== userId) {
+      sendNotification({
+        userId: thread.userId,
+        type: 'reply',
+        title: 'Neue Antwort in deinem Thread',
+        message: `Jemand hat auf deinen Thread „${thread.title}" geantwortet`,
+        relatedUrl: threadUrl,
+        relatedId: reply._id.toString(),
+        relatedType: 'reply',
+      });
+    }
+
+    // Parent-Reply-Author benachrichtigen bei Nested Reply
+    if (data.parentId) {
+      const parent = await Reply.findById(data.parentId).lean();
+      if (parent && parent.userId && parent.userId !== userId && parent.userId !== thread.userId) {
+        sendNotification({
+          userId: parent.userId,
+          type: 'reply',
+          title: 'Jemand hat auf deine Antwort geantwortet',
+          message: reply.content.substring(0, 100),
+          relatedUrl: threadUrl,
+          relatedId: reply._id.toString(),
+          relatedType: 'reply',
+        });
+      }
+    }
+
     // Notifications für Mentions
     if (reply.mentions.length > 0) {
       await this.notifyMentions(reply);
@@ -146,7 +181,18 @@ export class ReplyService {
     
     logger.info(`[Reply] Deleted ${replyId} by ${userId} (mod: ${isModAction})`);
   }
-  
+
+  async restore(replyId: string, userId: string): Promise<IReply> {
+    const reply = await Reply.findById(replyId);
+    if (!reply) throw new AppError('NOT_FOUND', 404);
+    if (reply.userId !== userId) throw new AppError('FORBIDDEN', 403);
+    reply.isDeleted = false;
+    reply.deletedAt = undefined;
+    reply.isPermanentlyDeleted = false;
+    await reply.save();
+    return reply;
+  }
+
   /**
    * Replies eines Threads abrufen
    */
@@ -231,8 +277,20 @@ export class ReplyService {
    * Mentions benachrichtigen
    */
   private async notifyMentions(reply: IReply): Promise<void> {
-    // TODO: Integration mit Notification-Service (Canvas #9)
-    logger.debug(`[Reply] Notify mentions: ${reply.mentions.join(', ')}`);
+    // mentions enthält userIds
+    const threadUrl = `/community/thread/${reply.threadId}`;
+    for (const mentionedUserId of reply.mentions) {
+      if (mentionedUserId === reply.userId) continue;
+      sendNotification({
+        userId: mentionedUserId,
+        type: 'mention',
+        title: 'Du wurdest erwähnt',
+        message: reply.content.substring(0, 100),
+        relatedUrl: threadUrl,
+        relatedId: reply._id.toString(),
+        relatedType: 'reply',
+      });
+    }
   }
 }
 

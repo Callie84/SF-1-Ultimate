@@ -82,32 +82,32 @@ export default function DLICalculatorPage() {
               DLI (Daily Light Integral) misst die gesamte Menge an photosynthetisch aktivem Licht, 
               die eine Pflanze pro Tag erhält. Es ist die Summe aus PPFD × Zeit.
             </p>
-            <div className="strain-card-3d rounded-xl p-6">
-              <h4 className="font-black text-white text-xl mb-3">Optimale DLI-Werte:</h4>
+            <div className="rounded-lg border p-6">
+              <h4 className="font-medium text-foreground mb-3">Optimale DLI-Werte:</h4>
               <ul className="space-y-2">
                 <li className="flex items-start gap-3">
-                  <span className="text-orange-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Setzlinge:</strong> 15 - 25 mol/m²/day</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Setzlinge:</strong> 15 - 25 mol/m²/day</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-orange-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Vegetativ:</strong> 25 - 40 mol/m²/day</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Vegetativ:</strong> 25 - 40 mol/m²/day</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-orange-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Blüte:</strong> 35 - 50 mol/m²/day</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Blüte:</strong> 35 - 50 mol/m²/day</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <span className="text-orange-400 text-xl">•</span>
-                  <span><strong className="text-cannabis">Maximum:</strong> 65 mol/m²/day</span>
+                  <span className="text-primary">•</span>
+                  <span><strong className="text-foreground">Maximum:</strong> 65 mol/m²/day</span>
                 </li>
               </ul>
             </div>
             <p>
-              <strong className="text-cannabis">Formel:</strong> DLI = PPFD × Photoperiode × 0.0036
+              <strong className="text-foreground">Formel:</strong> DLI = PPFD × Photoperiode × 0.0036
             </p>
             <p>
-              <strong className="text-cannabis">Tipp:</strong> Du kannst die gleiche DLI mit verschiedenen 
+              <strong className="text-foreground">Tipp:</strong> Du kannst die gleiche DLI mit verschiedenen
               Kombinationen aus PPFD und Beleuchtungszeit erreichen!
             </p>
           </div>

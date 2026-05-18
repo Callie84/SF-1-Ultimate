@@ -1,211 +1,489 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, TrendingDown, TrendingUp, ExternalLink, Filter } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Search, TrendingDown, TrendingUp, ExternalLink, Filter,
+  ChevronLeft, ChevronRight, Leaf, Loader2, Store, Package
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { apiClient } from '@/lib/api-client';
+import { cn } from '@/lib/utils';
+import { PriceHistoryChart } from '@/components/prices/price-history-chart';
+import Link from 'next/link';
 
-interface PriceData {
-  strainName: string;
+interface PriceEntry {
   seedbank: string;
+  seedbankSlug: string;
   price: number;
   currency: string;
   seedCount: number;
+  packSize: string;
   url: string;
   inStock: boolean;
 }
 
+interface SeedWithPrices {
+  _id: string;
+  name: string;
+  slug: string;
+  breeder: string;
+  type: 'feminized' | 'autoflower' | 'regular';
+  lowestPrice?: number;
+  avgPrice?: number;
+  priceCount: number;
+  viewCount: number;
+  prices: PriceEntry[];
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  feminized: 'Feminisiert',
+  autoflower: 'Autoflower',
+  regular: 'Regular',
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  feminized: 'bg-pink-500/10 text-pink-500',
+  autoflower: 'bg-blue-500/10 text-blue-500',
+  regular: 'bg-amber-500/10 text-amber-500',
+};
+
+function uniqueBankCount(prices: PriceEntry[]): number {
+  return new Set(prices.map((p) => p.seedbankSlug || p.seedbank)).size;
+}
+
 export default function PricesPage() {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<PriceData[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [sortBy, setSortBy] = useState<'price' | 'seedbank'>('price');
+  const [seeds, setSeeds] = useState<SeedWithPrices[]>([]);
+  const [total, setTotal] = useState(0);
+  const [breeders, setBreeders] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [expandedSeed, setExpandedSeed] = useState<string | null>(null);
 
-  const handleSearch = async () => {
-    if (!query.trim()) return;
+  // Filters
+  const [filterType, setFilterType] = useState<string>('');
+  const [filterBreeder, setFilterBreeder] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('price');
+  const [minPrice, setMinPrice] = useState<string>('');
+  const [maxPrice, setMaxPrice] = useState<string>('');
+  const [onlyInStock, setOnlyInStock] = useState(false);
+
+  const LIMIT = 24;
+
+  const fetchSeeds = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await apiClient.get(`/prices/search?q=${encodeURIComponent(query)}`);
-      setResults(response.prices || []);
+      if (query.trim().length >= 2) {
+        const params = new URLSearchParams({
+          q: query.trim(),
+          limit: String(LIMIT),
+          skip: String(page * LIMIT),
+        });
+        if (filterType) params.set('type', filterType);
+        if (filterBreeder) params.set('breeder', filterBreeder);
+
+        const response = await apiClient.get(`/api/prices/search?${params}`);
+        setSeeds(response.seeds || []);
+        setTotal(response.total || 0);
+      } else {
+        const params = new URLSearchParams({
+          limit: String(LIMIT),
+          skip: String(page * LIMIT),
+          sort: sortBy,
+        });
+        if (filterType) params.set('type', filterType);
+        if (filterBreeder) params.set('breeder', filterBreeder);
+        if (minPrice) params.set('minPrice', minPrice);
+        if (maxPrice) params.set('maxPrice', maxPrice);
+        if (onlyInStock) params.set('inStock', 'true');
+
+        const response = await apiClient.get(`/api/prices/browse?${params}`);
+        setSeeds(response.seeds || []);
+        setTotal(response.total || 0);
+        if (response.breeders) setBreeders(response.breeders);
+      }
     } catch (error) {
-      console.error('Price search failed:', error);
+      console.error('Failed to fetch seeds:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [query, page, filterType, filterBreeder, sortBy, minPrice, maxPrice, onlyInStock]);
 
-  const sortedResults = [...results].sort((a, b) => {
-    if (sortBy === 'price') {
-      const priceA = a.price / a.seedCount;
-      const priceB = b.price / b.seedCount;
-      return priceA - priceB;
-    }
-    return a.seedbank.localeCompare(b.seedbank);
-  });
+  useEffect(() => {
+    fetchSeeds();
+  }, [fetchSeeds]);
 
-  const cheapest = sortedResults[0];
-  const mostExpensive = sortedResults[sortedResults.length - 1];
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [query, filterType, filterBreeder, sortBy, minPrice, maxPrice, onlyInStock]);
+
+  const totalPages = Math.ceil(total / LIMIT);
+
+  const cheapestSeed = seeds.length > 0
+    ? seeds.reduce((min, s) => (s.lowestPrice && (!min.lowestPrice || s.lowestPrice < min.lowestPrice) ? s : min), seeds[0])
+    : null;
 
   return (
-    <div className="container mx-auto px-6 py-10">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-block icon-emboss p-8 rounded-2xl mb-5 bg-gradient-to-br from-green-500 to-emerald-500">
-            <Search className="w-16 h-16 text-white" />
-          </div>
-          <h1 className="text-6xl font-black text-cannabis mb-3">Preisvergleich</h1>
-          <p className="text-2xl text-emerald-200 font-bold">
-            Finde die besten Preise für deine Lieblings-Strains
-          </p>
-        </div>
+    <div className="space-y-6">
+      <div className="rounded-lg border bg-muted/50 px-4 py-3 text-xs text-muted-foreground">
+        <strong>Hinweis:</strong> Diese Seite dient ausschließlich zu Informationszwecken (Preisvergleich)
+        und stellt keine Werbung im Sinne des Gesetzes zum kontrollierten Umgang mit Cannabis (KCanG) dar.
+        Alle Inhalte richten sich an Erwachsene (18+) in Jurisdiktionen, in denen der Erwerb von Pflanzensamen legal ist.
+      </div>
 
-        {/* Search */}
-        <div className="neo-deep rounded-2xl p-8 mb-8">
-          <div className="flex gap-4">
+      {/* Header */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 text-primary flex-shrink-0" />
+          <h1 className="text-xl sm:text-2xl font-bold">Preisvergleich</h1>
+        </div>
+        <p className="text-muted-foreground">
+          Vergleiche Preise von {total} Seeds aus {breeders.length} Seedbanks
+        </p>
+      </div>
+
+      {/* Search */}
+      <div className="rounded-xl border bg-card p-4">
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="Suche nach Strain... (z.B. 'Northern Lights')"
-              className="flex-1 input-inset rounded-xl px-6 py-4 text-white text-xl"
-              disabled={isLoading}
+              placeholder="Strain oder Seedbank suchen..."
+              className="pl-10"
             />
-            <button
-              onClick={handleSearch}
-              disabled={!query.trim() || isLoading}
-              className="bubble-soft px-10 py-4 rounded-xl font-black text-white text-xl"
-            >
-              {isLoading ? 'Suche...' : 'Suchen'}
-            </button>
           </div>
         </div>
 
-        {/* Results */}
-        {results.length > 0 && (
-          <>
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="neo-deep rounded-2xl p-6 text-center">
-                <div className="text-4xl font-black text-cannabis mb-2">
-                  {results.length}
-                </div>
-                <div className="text-lg text-emerald-200 font-bold">Angebote gefunden</div>
-              </div>
-              {cheapest && (
-                <div className="neo-deep rounded-2xl p-6 text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <TrendingDown className="w-6 h-6 text-green-400" />
-                    <div className="text-4xl font-black text-green-400">
-                      €{(cheapest.price / cheapest.seedCount).toFixed(2)}
-                    </div>
-                  </div>
-                  <div className="text-lg text-emerald-200 font-bold">Günstigster Preis/Seed</div>
-                </div>
-              )}
-              {mostExpensive && (
-                <div className="neo-deep rounded-2xl p-6 text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <TrendingUp className="w-6 h-6 text-red-400" />
-                    <div className="text-4xl font-black text-red-400">
-                      €{(mostExpensive.price / mostExpensive.seedCount).toFixed(2)}
-                    </div>
-                  </div>
-                  <div className="text-lg text-emerald-200 font-bold">Teuerster Preis/Seed</div>
-                </div>
-              )}
-            </div>
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          <Filter className="h-4 w-4 text-muted-foreground" />
 
-            {/* Sort */}
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-black text-cannabis">Alle Angebote</h3>
-              <div className="flex gap-3">
-                <Button
-                  variant={sortBy === 'price' ? 'default' : 'outline'}
-                  onClick={() => setSortBy('price')}
-                  className="font-bold"
-                >
-                  Nach Preis
-                </Button>
-                <Button
-                  variant={sortBy === 'seedbank' ? 'default' : 'outline'}
-                  onClick={() => setSortBy('seedbank')}
-                  className="font-bold"
-                >
-                  Nach Seedbank
-                </Button>
-              </div>
-            </div>
+          {/* Type filter */}
+          <Button
+            variant={filterType === '' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilterType('')}
+          >
+            Alle
+          </Button>
+          {['feminized', 'autoflower', 'regular'].map((type) => (
+            <Button
+              key={type}
+              variant={filterType === type ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterType(filterType === type ? '' : type)}
+            >
+              {TYPE_LABELS[type]}
+            </Button>
+          ))}
 
-            {/* Price Cards */}
-            <div className="space-y-4">
-              {sortedResults.map((price, index) => (
-                <div key={index} className="neo-deep rounded-2xl p-6 hover:scale-105 transition">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h4 className="text-2xl font-black text-cannabis mb-2">{price.seedbank}</h4>
-                      <p className="text-lg text-emerald-100 font-medium mb-2">
-                        {price.strainName}
-                      </p>
-                      <div className="flex items-center gap-4">
-                        <span className="badge-3d px-4 py-1 text-base text-white font-bold">
-                          {price.seedCount} Seeds
-                        </span>
-                        {price.inStock ? (
-                          <span className="text-green-400 font-bold">✓ Verfügbar</span>
-                        ) : (
-                          <span className="text-red-400 font-bold">✗ Ausverkauft</span>
+          <div className="h-4 w-px bg-border mx-1" />
+
+          {/* Sort */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="h-8 rounded-md border bg-background px-2 text-sm"
+          >
+            <option value="price">Preis aufsteigend</option>
+            <option value="price_desc">Preis absteigend</option>
+            <option value="name">Name A-Z</option>
+            <option value="popular">Beliebtheit</option>
+          </select>
+
+          {/* Breeder filter */}
+          {breeders.length > 0 && (
+            <select
+              value={filterBreeder}
+              onChange={(e) => setFilterBreeder(e.target.value)}
+              className="h-8 rounded-md border bg-background px-2 text-sm"
+            >
+              <option value="">Alle Seedbanks</option>
+              {breeders.map((b) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          )}
+
+          <div className="h-4 w-px bg-border mx-1" />
+
+          {/* Price range */}
+          <div className="flex items-center gap-1">
+            <Input
+              type="number"
+              placeholder="Min €"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value)}
+              className="h-8 w-20 text-sm"
+              min={0}
+            />
+            <span className="text-muted-foreground text-xs">–</span>
+            <Input
+              type="number"
+              placeholder="Max €"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value)}
+              className="h-8 w-20 text-sm"
+              min={0}
+            />
+          </div>
+
+          {/* In-stock toggle */}
+          <Button
+            variant={onlyInStock ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setOnlyInStock(!onlyInStock)}
+          >
+            Nur lieferbar
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats bar */}
+      {!isLoading && seeds.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="rounded-xl border bg-card p-3 text-center">
+            <div className="text-xl font-bold text-primary">{total}</div>
+            <div className="text-xs text-muted-foreground">Seeds gefunden</div>
+          </div>
+          <div className="rounded-xl border bg-card p-3 text-center">
+            <div className="text-xl font-bold">{breeders.length}</div>
+            <div className="text-xs text-muted-foreground">Seedbanks</div>
+          </div>
+          {cheapestSeed && cheapestSeed.lowestPrice && (
+            <div className="rounded-xl border bg-card p-3 text-center">
+              <div className="flex items-center justify-center gap-1">
+                <TrendingDown className="h-3.5 w-3.5 text-green-500" />
+                <span className="text-xl font-bold text-green-500">
+                  {cheapestSeed.lowestPrice.toFixed(2)}€
+                </span>
+              </div>
+              <div className="text-xs text-muted-foreground truncate">{cheapestSeed.name}</div>
+            </div>
+          )}
+          <div className="rounded-xl border bg-card p-3 text-center">
+            <div className="text-xl font-bold">
+              {seeds.reduce((sum, s) => sum + (s.prices?.length || 0), 0)}
+            </div>
+            <div className="text-xs text-muted-foreground">Preisangebote</div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading */}
+      {isLoading && (
+        <div className="rounded-xl border bg-card p-12 text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Lade Preisdaten...</p>
+        </div>
+      )}
+
+      {/* Seed Cards Grid */}
+      {!isLoading && seeds.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {seeds.map((seed) => (
+            <div
+              key={seed._id}
+              className={cn(
+                'rounded-xl border bg-card overflow-hidden transition-all hover:border-primary/50',
+                expandedSeed === seed._id && 'ring-2 ring-primary/20'
+              )}
+            >
+              {/* Card Header */}
+              <div
+                className="p-4 cursor-pointer"
+                onClick={() => setExpandedSeed(expandedSeed === seed._id ? null : seed._id)}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-sm leading-tight truncate">
+                      {seed.name}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                      <Store className="h-3 w-3" />
+                      {seed.breeder}
+                    </p>
+                  </div>
+                  {seed.lowestPrice && (
+                    <div className="text-right flex-shrink-0 ml-2">
+                      <div className="text-lg font-bold text-primary">
+                        {seed.lowestPrice.toFixed(2)}€
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">ab</div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={cn(
+                    'text-[10px] font-medium px-1.5 py-0.5 rounded-full',
+                    TYPE_COLORS[seed.type] || 'bg-muted text-muted-foreground'
+                  )}>
+                    {TYPE_LABELS[seed.type] || seed.type}
+                  </span>
+                  {seed.prices && seed.prices.length > 0 && (
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center gap-0.5">
+                      <Package className="h-3 w-3" />
+                      {uniqueBankCount(seed.prices)} Anbieter
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Expanded: Show all prices + chart */}
+              {expandedSeed === seed._id && seed.prices && seed.prices.length > 0 && (
+                <div className="border-t bg-muted/30">
+                  {/* Bestpreis-Kopfzeile */}
+                  <div className="px-4 py-2 flex items-center gap-2 flex-wrap text-sm border-b border-border/50 bg-green-500/5">
+                    <span className="text-muted-foreground">
+                      {uniqueBankCount(seed.prices)} Anbieter
+                    </span>
+                    <span className="text-muted-foreground">·</span>
+                    <span>
+                      Bester Preis:{' '}
+                      <span className="font-bold text-green-600 dark:text-green-400">
+                        {seed.prices[0].price.toFixed(2)}€
+                      </span>
+                      {' bei '}
+                      <Link
+                        href={`/seedbanks#${seed.prices[0].seedbankSlug || seed.prices[0].seedbank.toLowerCase().replace(/\s+/g, '-')}`}
+                        className="font-medium underline underline-offset-2 hover:text-primary"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {seed.prices[0].seedbank}
+                      </Link>
+                    </span>
+                  </div>
+                  {seed.prices.map((price, idx) => (
+                    <div
+                      key={idx}
+                      className={cn(
+                        'flex items-center justify-between px-4 py-2.5',
+                        idx > 0 && 'border-t border-border/50'
+                      )}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/seedbanks#${price.seedbankSlug || price.seedbank.toLowerCase().replace(/\s+/g, '-')}`}
+                            className="text-sm font-medium hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {price.seedbank}
+                          </Link>
+                          {idx === 0 && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-600 dark:text-green-400">
+                              Bester Preis
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-muted-foreground">
+                            {price.packSize || `${price.seedCount} Seeds`}
+                          </span>
+                          {price.inStock ? (
+                            <span className="text-[10px] text-green-500 font-medium">Verfügbar</span>
+                          ) : (
+                            <span className="text-[10px] text-red-500 font-medium">Ausverkauft</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <div className="text-right">
+                          <div className="text-sm font-bold">{price.price.toFixed(2)}€</div>
+                          {price.seedCount > 1 && (
+                            <div className="text-[10px] text-muted-foreground">
+                              {(price.price / price.seedCount).toFixed(2)}€/Seed
+                            </div>
+                          )}
+                        </div>
+                        {price.url && (
+                          <a
+                            href={`/api/prices/affiliate/redirect?to=${encodeURIComponent(price.url)}&seedbank=${encodeURIComponent(price.seedbankSlug || price.seedbank)}&strain=${encodeURIComponent(seed.slug)}&strainName=${encodeURIComponent(seed.name)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1.5 text-[10px] font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Shop
+                            <ExternalLink className="h-2.5 w-2.5" />
+                          </a>
                         )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-5xl font-black text-cannabis mb-2">
-                        €{price.price.toFixed(2)}
-                      </div>
-                      <div className="text-lg text-emerald-200 font-bold mb-3">
-                        €{(price.price / price.seedCount).toFixed(2)}/Seed
-                      </div>
-                      <a
-                        href={price.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 bubble-soft px-6 py-3 rounded-xl font-bold text-white"
-                      >
-                        Zum Shop
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </div>
+                  ))}
+                  {/* Preisverlauf-Chart */}
+                  <div className="px-4 py-4 border-t border-border/50">
+                    <PriceHistoryChart seedSlug={seed.slug} seedName={seed.name} />
                   </div>
                 </div>
-              ))}
+              )}
+
+              {/* Quick action: best price link */}
+              {expandedSeed !== seed._id && seed.prices && seed.prices[0]?.url && (
+                <div className="border-t px-4 py-2 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    Bestes Angebot: {seed.prices[0].seedbank}
+                  </span>
+                  <a
+                    href={`/api/prices/affiliate/redirect?to=${encodeURIComponent(seed.prices[0].url)}&seedbank=${encodeURIComponent(seed.prices[0].seedbankSlug || seed.prices[0].seedbank)}&strain=${encodeURIComponent(seed.slug)}&strainName=${encodeURIComponent(seed.name)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"
+                  >
+                    Zum Shop <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              )}
             </div>
-          </>
-        )}
+          ))}
+        </div>
+      )}
 
-        {/* Empty State */}
-        {!isLoading && results.length === 0 && query && (
-          <div className="neo-deep rounded-2xl p-12 text-center">
-            <Search className="w-16 h-16 text-white/30 mx-auto mb-4" />
-            <h3 className="text-2xl font-black text-white mb-2">Keine Ergebnisse</h3>
-            <p className="text-lg text-emerald-200 font-medium">
-              Versuche es mit einem anderen Strain-Namen
-            </p>
-          </div>
-        )}
+      {/* Empty State */}
+      {!isLoading && seeds.length === 0 && (
+        <div className="rounded-xl border bg-card p-12 text-center">
+          <Leaf className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+          <h3 className="font-semibold mb-1">Keine Seeds gefunden</h3>
+          <p className="text-sm text-muted-foreground">
+            {query
+              ? 'Versuche es mit einem anderen Suchbegriff'
+              : 'Es sind noch keine Preisdaten verfügbar'}
+          </p>
+        </div>
+      )}
 
-        {/* Initial State */}
-        {results.length === 0 && !query && (
-          <div className="neo-deep rounded-2xl p-12 text-center">
-            <Search className="w-16 h-16 text-white/30 mx-auto mb-4" />
-            <h3 className="text-2xl font-black text-white mb-2">Starte deine Suche</h3>
-            <p className="text-lg text-emerald-200 font-medium">
-              Gib einen Strain-Namen ein, um Preise zu vergleichen
-            </p>
-          </div>
-        )}
-      </div>
+      {/* Pagination */}
+      {!isLoading && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page === 0}
+            onClick={() => setPage(p => p - 1)}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Zurück
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Seite {page + 1} von {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages - 1}
+            onClick={() => setPage(p => p + 1)}
+          >
+            Weiter
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

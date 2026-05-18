@@ -4,6 +4,35 @@ import { Grow } from '../models/Grow.model';
 import { redis } from '../config/redis';
 import { AppError } from '../utils/errors';
 import { logger } from '../utils/logger';
+import https from 'https';
+import http from 'http';
+
+const NOTIFICATION_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://notification-service:3006';
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET || '';
+
+function sendNotification(payload: object): void {
+  try {
+    const body = JSON.stringify(payload);
+    const url = new URL(`${NOTIFICATION_URL}/api/notifications/internal/create`);
+    const lib = url.protocol === 'https:' ? https : http;
+    const req = lib.request({
+      hostname: url.hostname,
+      port: url.port || (url.protocol === 'https:' ? 443 : 80),
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
+        'X-Internal-Secret': INTERNAL_SECRET,
+      },
+    });
+    req.on('error', (e) => logger.warn('[Social] Notification send failed:', e.message));
+    req.write(body);
+    req.end();
+  } catch (e: any) {
+    logger.warn('[Social] Notification send error:', e.message);
+  }
+}
 
 export class SocialService {
   async toggleReaction(data: {
@@ -39,12 +68,23 @@ export class SocialService {
     
     const reaction = new Reaction(data);
     await reaction.save();
-    
+
     await Grow.updateOne(
       { _id: data.growId },
       { $inc: { likeCount: 1 } }
     );
-    
+
+    // Notify grow owner on first like (fire-and-forget)
+    if (grow.userId && grow.userId !== data.userId && grow.likeCount === 0) {
+      sendNotification({
+        userId: grow.userId,
+        type: 'reaction',
+        title: '❤️ Jemand mag deinen Grow!',
+        message: `Dein Grow "${grow.strainName}" hat sein erstes Like bekommen.`,
+        relatedUrl: `/grows/${data.growId}`,
+      });
+    }
+
     return reaction;
   }
   
@@ -110,9 +150,20 @@ export class SocialService {
       { _id: data.growId },
       { $inc: { commentCount: 1 } }
     );
-    
+
     logger.info(`[Social] Comment ${comment._id} on grow ${data.growId}`);
-    
+
+    // Notify grow owner (fire-and-forget, only if commenter ≠ owner)
+    if (grow.userId && grow.userId !== data.userId) {
+      sendNotification({
+        userId: grow.userId,
+        type: 'comment',
+        title: '💬 Neuer Kommentar auf deinem Grow',
+        message: `Jemand hat deinen Grow "${grow.strainName}" kommentiert.`,
+        relatedUrl: `/grows/${data.growId}`,
+      });
+    }
+
     return comment;
   }
   

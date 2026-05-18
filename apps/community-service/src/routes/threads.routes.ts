@@ -2,8 +2,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { threadService } from '../services/thread.service';
+import { replyService } from '../services/reply.service';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth';
 import { validate } from '../middleware/validate';
+import { cacheOrFetch, invalidateCache } from '../utils/cache';
 
 const router = Router();
 
@@ -12,7 +14,8 @@ const createThreadSchema = z.object({
   categoryId: z.string().min(1),
   title: z.string().min(5).max(200),
   content: z.string().min(10).max(10000),
-  tags: z.array(z.string().max(30)).max(5).optional()
+  tags: z.array(z.string().max(30)).max(5).optional(),
+  imageUrls: z.array(z.string().url()).max(5).optional()
 });
 
 const updateThreadSchema = z.object({
@@ -31,6 +34,7 @@ router.post('/',
   async (req, res, next) => {
     try {
       const thread = await threadService.create(req.user!.id, req.body);
+      await invalidateCache('cache:threads:*');
       res.status(201).json({ thread });
     } catch (error) {
       next(error);
@@ -47,16 +51,103 @@ router.get('/',
   async (req, res, next) => {
     try {
       const { categoryId, userId, sort, limit, skip, tag } = req.query;
-      
-      const result = await threadService.getThreads({
+      const parsedLimit = parseInt(limit as string) || 20;
+      const parsedSkip = parseInt(skip as string) || 0;
+      const parsedSort = (sort as string) || 'latest';
+
+      // Trending-Cache (10min) nur für default/trending ohne User-Filter
+      const isCacheable = parsedSort === 'trending' && !userId && parsedSkip === 0;
+      const cacheKey = `cache:threads:trending:${categoryId || 'all'}:${parsedLimit}`;
+
+      const result = isCacheable
+        ? await cacheOrFetch(cacheKey, 10 * 60, () =>
+            threadService.getThreads({
+              categoryId: categoryId as string,
+              sort: 'trending',
+              limit: parsedLimit,
+              skip: 0,
+            })
+          )
+        : await threadService.getThreads({
+            categoryId: categoryId as string,
+            userId: userId as string,
+            sort: parsedSort as any,
+            limit: parsedLimit,
+            skip: parsedSkip,
+            tag: tag as string,
+          });
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/community/threads/search
+ * Volltext-Suche (muss VOR /:id stehen!)
+ */
+router.get('/search',
+  optionalAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      const { q, categoryId, limit, skip } = req.query;
+
+      if (!q || typeof q !== 'string') {
+        return res.status(400).json({ error: 'Query required' });
+      }
+
+      const result = await threadService.search(q, {
         categoryId: categoryId as string,
-        userId: userId as string,
-        sort: (sort as any) || 'latest',
         limit: parseInt(limit as string) || 20,
-        skip: parseInt(skip as string) || 0,
-        tag: tag as string
+        skip: parseInt(skip as string) || 0
       });
-      
+
+      res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/community/threads/admin/deleted
+ * Admin: gelöschte Threads auflisten (muss VOR /:id stehen!)
+ */
+router.get('/admin/deleted',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      if (req.user!.role !== 'ADMIN' && req.user!.role !== 'MODERATOR') {
+        return res.status(403).json({ error: 'Nicht berechtigt' });
+      }
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const result = await threadService.getDeleted(page, limit);
+      res.json({ ...result, page, totalPages: Math.ceil(result.total / limit) });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/community/threads/:id/replies
+ * Alle Replies eines Threads
+ */
+router.get('/:id/replies',
+  optionalAuthMiddleware,
+  async (req, res, next) => {
+    try {
+      const { sort, limit, skip } = req.query;
+
+      const result = await replyService.getByThread(req.params.id, {
+        sort: (sort as any) || 'best',
+        limit: parseInt(limit as string) || 50,
+        skip: parseInt(skip as string) || 0
+      });
+
       res.json(result);
     } catch (error) {
       next(error);
@@ -76,7 +167,7 @@ router.get('/:id',
         req.params.id,
         req.user?.id
       );
-      
+
       res.json({ thread });
     } catch (error) {
       next(error);
@@ -123,6 +214,41 @@ router.delete('/:id',
 );
 
 /**
+ * PATCH /api/community/threads/:id/restore
+ * Thread wiederherstellen (Owner oder Admin)
+ */
+router.patch('/:id/restore',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      const thread = await threadService.restore(req.params.id, req.user!.id);
+      res.json({ success: true, thread });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * PATCH /api/community/threads/:id/purge
+ * Thread dauerhaft ausblenden (Admin only)
+ */
+router.patch('/:id/purge',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      if (req.user!.role !== 'ADMIN' && req.user!.role !== 'MODERATOR') {
+        return res.status(403).json({ error: 'Nicht berechtigt' });
+      }
+      await threadService.purge(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
  * POST /api/community/threads/:id/solve
  * Thread als gelöst markieren (Best Answer)
  */
@@ -138,33 +264,6 @@ router.post('/:id/solve',
       );
       
       res.json({ success: true });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-/**
- * GET /api/community/threads/search
- * Volltext-Suche
- */
-router.get('/search',
-  optionalAuthMiddleware,
-  async (req, res, next) => {
-    try {
-      const { q, categoryId, limit, skip } = req.query;
-      
-      if (!q || typeof q !== 'string') {
-        return res.status(400).json({ error: 'Query required' });
-      }
-      
-      const result = await threadService.search(q, {
-        categoryId: categoryId as string,
-        limit: parseInt(limit as string) || 20,
-        skip: parseInt(skip as string) || 0
-      });
-      
-      res.json(result);
     } catch (error) {
       next(error);
     }

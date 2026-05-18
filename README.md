@@ -9,6 +9,50 @@
 
 ---
 
+## ⚙️ Betrieb (Produktionsserver)
+
+```bash
+# Service-Status
+make ps
+
+# Logs verfolgen
+make logs
+make logs-frontend
+
+# Einzelne Services neu starten
+make restart-auth
+make restart-community
+make restart-frontend   # ~8 Min (Next.js Build)
+
+# Backup manuell triggern
+make backup
+make backup-list
+
+# Datenbank-Shells
+make shell-mongo
+make shell-postgres
+make shell-redis
+```
+
+Alle verfügbaren Befehle: `make help`
+
+---
+
+## 🆕 Recent Updates (März 2026 — Sessions 55–62)
+
+**Aktuelle Features (Stand März 2026):**
+- ✅ **SEO** — JSON-LD + OpenGraph + dynamische Sitemap (206 URLs)
+- ✅ **CI/CD** — GitHub Actions (Lint, TypeCheck, SSH-Deploy)
+- ✅ **TypeScript Strict** — alle `any`-Typen eliminiert, Shared-Types-Package
+- ✅ **Stripe Premium** — Monats- und Jahres-Abo (4,99€ / 39,99€/Jahr)
+- ✅ **Affiliate-Dashboard** — MongoDB-persistentes Click-Tracking, Admin-Stats
+- ✅ **Next.js Image** — alle `<img>` auf `<Image>` migriert, WebP/AVIF aktiviert
+- ✅ **Sentry** — Error Tracking in allen Services (Frontend + Backend)
+- ✅ **Rate Limiting** — Redis-basiert, global + service-spezifisch
+- ✅ **Beta-Modus** — 50 Registrierungen bis 07.04.2026
+
+---
+
 ## 🎯 Über das Projekt
 
 **SF-1 Ultimate** ist eine professionelle, production-ready Cannabis-Cultivation-Plattform mit modernem Microservices-Backend und Premium Next.js Frontend. Das Projekt richtet sich an die Cannabis-Growing-Community und bietet umfassende Tools für jeden Aspekt des Anbaus.
@@ -79,31 +123,61 @@
 
 ## 🚀 Quick Start
 
+> 📖 **Für detaillierte Setup-Anweisungen siehe [SETUP.md](SETUP.md)**
+
+### ⚠️ KRITISCHE SECURITY-WARNUNG
+
+**Vor dem ersten Start MÜSSEN folgende Environment-Variablen gesetzt werden:**
+
+```bash
+# Generiere sichere Secrets:
+openssl rand -base64 64  # Für JWT_SECRET
+openssl rand -base64 64  # Für JWT_REFRESH_SECRET
+openssl rand -base64 32  # Für Database Passwords
+```
+
+**Ohne korrekt gesetzte `JWT_SECRET` wird die Authentifizierung NICHT funktionieren!**
+
+Details siehe [.env.example](.env.example) und [SETUP.md](SETUP.md)
+
+---
+
 ### Voraussetzungen
 
 - Node.js 20+
 - Docker & Docker Compose
 - Git
+- OpenSSL (für Secret-Generierung)
 
-### Installation
+### Schnellinstallation
 
 ```bash
-# Repository klonen
+# 1. Repository klonen
 git clone https://github.com/Callie84/SF-1-Ultimate.git
 cd SF-1-Ultimate
 
-# Environment Setup
+# 2. Environment Setup (KRITISCH!)
 cp .env.example .env
-# Fülle .env mit deinen echten Keys!
+# Öffne .env und ersetze ALLE "CHANGE_ME" Werte!
+# Siehe SETUP.md für detaillierte Anweisungen
 
-# Backend Services starten
+# 3. Datenbanken starten
 docker-compose up -d
 
-# Frontend starten
+# 4. Auth-Service Dependencies & Prisma
+cd apps/auth-service
+npm install
+npm run prisma:generate
+npm run prisma:migrate
+cd ../..
+
+# 5. Frontend starten
 cd apps/web-app
 npm install
 npm run dev
 ```
+
+**Vollständige Anleitung:** Siehe [SETUP.md](SETUP.md) für Schritt-für-Schritt Setup aller 11 Services.
 
 ### URLs
 

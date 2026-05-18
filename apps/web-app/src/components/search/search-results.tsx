@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { MessageSquare, Heart, Eye, Calendar, User, Sprout, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import type { SearchResult } from '@/types/search';
@@ -12,7 +13,7 @@ interface SearchResultsProps {
 }
 
 export function SearchResults({ results }: SearchResultsProps) {
-  if (results.length === 0) {
+  if (!results || results.length === 0) {
     return null;
   }
 
@@ -35,9 +36,11 @@ function ResultCard({ result }: { result: SearchResult }) {
           <div className="flex items-start gap-4">
             {/* Image */}
             {result.imageUrl && (
-              <img
+              <Image
                 src={result.imageUrl}
                 alt={result.title}
+                width={80}
+                height={80}
                 className="h-20 w-20 flex-shrink-0 rounded-lg object-cover"
               />
             )}
@@ -140,27 +143,20 @@ function ResultCard({ result }: { result: SearchResult }) {
 
               {result.type === 'GROW' && (
                 <>
-                  {result.metadata.strain && (
-                    <div className="flex items-center gap-1">
+                  {result.metadata.status && (
+                    <div className="rounded-full bg-primary/10 px-2 py-0.5 text-primary capitalize">
+                      {result.metadata.status}
+                    </div>
+                  )}
+                  {result.metadata.environment && (
+                    <div className="flex items-center gap-1 capitalize">
                       <Sprout className="h-3 w-3" />
-                      <span>{result.metadata.strain}</span>
+                      <span>{result.metadata.environment}</span>
                     </div>
                   )}
-                  {result.metadata.phase && (
-                    <div className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
-                      {result.metadata.phase}
-                    </div>
-                  )}
-                  {result.metadata.daysSinceStart !== undefined && (
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>Tag {result.metadata.daysSinceStart}</span>
-                    </div>
-                  )}
-                  {result.metadata.author && (
-                    <div className="flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      <span>{result.metadata.author}</span>
+                  {result.metadata.yieldDry && (
+                    <div className="flex items-center gap-1 text-green-600">
+                      <span>{result.metadata.yieldDry} g</span>
                     </div>
                   )}
                   {result.metadata.views !== undefined && (

@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SF-1 · Schriftarten Vergleich</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;600;700&family=DM+Sans:wght@300;400;600;700&family=Nunito:wght@300;400;600;700&family=Manrope:wght@300;400;600;700&family=Sora:wght@300;400;600;700&family=Poppins:wght@300;400;600;700&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --bg3: #18181f;
+    --border: #ffffff12;
+    --accent: #22c55e;
+    --accent2: #16a34a;
+    --muted: #6b7280;
+    --text: #e5e7eb;
+    --text2: #9ca3af;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(180deg, #0d1a11 0%, var(--bg) 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 40px 40px 32px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+  }
+  .header-inner {
+    max-width: 1300px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo-badge {
+    background: var(--accent);
+    color: #000;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    letter-spacing: 0.05em;
+  }
+  .logo-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .logo-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .header-note {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--text2);
+  }
+  .header-note span {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* FILTERS */
+  .filters {
+    max-width: 1300px;
+    margin: 32px auto 0;
+    padding: 0 40px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-right: 4px;
+  }
+  .filter-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .sample-input {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    width: 260px;
+    margin-left: auto;
+    transition: border-color 0.2s;
+  }
+  .sample-input:focus { border-color: var(--accent); }
+
+  /* GRID */
+  .grid {
+    max-width: 1300px;
+    margin: 32px auto 60px;
+    padding: 0 40px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(580px, 1fr));
+    gap: 20px;
+  }
+
+  /* CARD */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+    position: relative;
+  }
+  .card:hover {
+    border-color: #ffffff20;
+    transform: translateY(-2px);
+  }
+  .card.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent), 0 0 32px #22c55e18;
+  }
+
+  .card-header {
+    padding: 18px 24px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .card-num {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .card-name {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+    margin-top: 2px;
+  }
+  .card-desc {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 3px;
+    line-height: 1.5;
+  }
+  .card-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-top: 2px;
+  }
+  .tag {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text2);
+  }
+  .tag.green { background: #052e16; border-color: #166534; color: #4ade80; }
+
+  .card-body {
+    padding: 22px 24px;
+  }
+
+  /* SPECIMEN ROW */
+  .specimen-block {
+    margin-bottom: 18px;
+  }
+  .size-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+    font-family: 'Inter', sans-serif;
+  }
+  .s-xl  { font-size: 38px; line-height: 1.1; font-weight: 700; color: var(--text); }
+  .s-lg  { font-size: 26px; line-height: 1.2; font-weight: 600; color: var(--text); }
+  .s-md  { font-size: 18px; line-height: 1.4; font-weight: 400; color: var(--text); }
+  .s-sm  { font-size: 14px; line-height: 1.6; font-weight: 400; color: var(--text2); }
+  .s-xs  { font-size: 11px; line-height: 1.7; font-weight: 300; color: var(--muted); }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 18px 0;
+  }
+
+  /* UI PREVIEW SECTION */
+  .ui-preview {
+    background: var(--bg3);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-top: 4px;
+  }
+  .ui-preview-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 12px;
+    font-family: 'Inter', sans-serif;
+  }
+  .ui-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .ui-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 4px;
+    background: #052e16;
+    border: 1px solid #166534;
+    color: #4ade80;
+  }
+  .ui-price {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .ui-price-old {
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: line-through;
+  }
+  .ui-strain {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .ui-meta {
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .ui-btn {
+    display: inline-block;
+    background: var(--accent);
+    color: #000;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 16px;
+    border-radius: 7px;
+    cursor: pointer;
+    margin-top: 2px;
+  }
+  .ui-nav {
+    font-size: 13px;
+    color: var(--text2);
+    display: flex;
+    gap: 18px;
+    margin-bottom: 10px;
+  }
+  .ui-nav span { cursor: pointer; }
+  .ui-nav span.active { color: var(--accent); font-weight: 600; }
+
+  /* VOTE BUTTON */
+  .card-footer {
+    padding: 14px 24px 18px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .vote-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 7px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .vote-btn:hover {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+  .vote-btn.voted {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+  .vote-count {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .vote-tally {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .vote-tally-num {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text2);
+    min-width: 20px;
+    text-align: right;
+  }
+  .vote-tally-num.has-votes { color: var(--accent); }
+  .login-hint {
+    max-width: 1300px;
+    margin: 16px auto 0;
+    padding: 0 40px;
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+  }
+  .login-hint a { color: var(--accent); text-decoration: none; }
+  .login-hint a:hover { text-decoration: underline; }
+
+  /* WINNER BANNER */
+  .winner-banner {
+    display: none;
+    max-width: 1300px;
+    margin: 32px auto 0;
+    padding: 0 40px;
+  }
+  .winner-banner.show { display: block; }
+  .winner-inner {
+    background: linear-gradient(135deg, #052e16, #0a3d1e);
+    border: 1px solid #166534;
+    border-radius: 12px;
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .winner-title { font-size: 13px; color: #4ade80; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+  .winner-font { font-size: 22px; font-weight: 700; color: #fff; margin-top: 2px; }
+  .winner-reset {
+    background: transparent;
+    border: 1px solid #166534;
+    color: #4ade80;
+    padding: 7px 16px;
+    border-radius: 7px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.2s;
+  }
+  .winner-reset:hover { background: #166534; color: #fff; }
+
+  @media (max-width: 700px) {
+    .grid { grid-template-columns: 1fr; padding: 0 16px; }
+    .header { padding: 24px 16px 20px; }
+    .filters { padding: 0 16px; }
+    .winner-banner { padding: 0 16px; }
+    .sample-input { width: 100%; margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="logo-badge">SF-1</div>
+          <div class="logo-title">Schriftarten Vergleich</div>
+        </div>
+        <div class="logo-sub">SeedFinder PRO · Typografie-Auswahl</div>
+      </div>
+    </div>
+    <div class="header-note">Klick auf <span>Abstimmen</span> um deine Favoriten zu wählen</div>
+  </div>
+</div>
+
+<div class="winner-banner" id="winnerBanner">
+  <div class="winner-inner">
+    <div>
+      <div class="winner-title">🏆 Community-Favorit</div>
+      <div class="winner-font" id="winnerName">—</div>
+    </div>
+    <div style="text-align:right">
+      <div id="totalVotersLabel" style="font-size:13px;color:#4ade80;font-weight:600"></div>
+      <div style="font-size:11px;color:#86efac;margin-top:2px">abgestimmte Mitglieder</div>
+    </div>
+  </div>
+</div>
+
+<div class="login-hint" id="loginHint" style="display:none">
+  Du bist nicht eingeloggt. <a href="/auth/login">Jetzt anmelden</a> um für deine Lieblingsschrift abzustimmen.
+</div>
+
+<div class="filters">
+  <span class="filter-label">Vorschautext:</span>
+  <button class="filter-btn active" onclick="setSample('default', this)">Standard</button>
+  <button class="filter-btn" onclick="setSample('headline', this)">Headlines</button>
+  <button class="filter-btn" onclick="setSample('ui', this)">UI-Text</button>
+  <button class="filter-btn" onclick="setSample('cannabis', this)">Cannabis-Kontext</button>
+  <button class="filter-btn" onclick="setSample('numbers', this)">Zahlen & Preise</button>
+  <input class="sample-input" type="text" placeholder="Eigenen Text eingeben…" oninput="setCustomSample(this.value)" id="customInput">
+</div>
+
+<div class="grid" id="fontGrid"></div>
+
+<script>
+const FONTS = [
+  { id: 1, name: "Inter", family: "'Inter', sans-serif", desc: "Der Industriestandard – extrem lesbar, pixelperfekt auch in kleinen Größen.", tags: ["Neutral", "Tech", "Vielseitig"], green: "Empfohlen" },
+  { id: 2, name: "Geist", family: "'Geist', sans-serif", desc: "Vercels eigene Font – minimalistisch, technisch, perfekt für Developer-Tools.", tags: ["Minimalistisch", "Developer"], green: null },
+  { id: 3, name: "Outfit", family: "'Outfit', sans-serif", desc: "Freundlich und modern – runde Formen, gut für Community-Plattformen.", tags: ["Freundlich", "Modern"], green: null },
+  { id: 4, name: "Plus Jakarta Sans", family: "'Plus Jakarta Sans', sans-serif", desc: "Professionell und ausgewogen – wirkt hochwertig und seriös.", tags: ["Professionell", "Clean"], green: "Premium" },
+  { id: 5, name: "DM Sans", family: "'DM Sans', sans-serif", desc: "Luftig und leicht – angenehme Lesbarkeit auch bei längeren Texten.", tags: ["Leicht", "Lesbar"], green: null },
+  { id: 6, name: "Nunito", family: "'Nunito', sans-serif", desc: "Weich und einladend – ideal für Community-Funktionen und Social Features.", tags: ["Community", "Warm"], green: null },
+  { id: 7, name: "Manrope", family: "'Manrope', sans-serif", desc: "Geometrisch und modern – tech-nah mit eigenem Charakter.", tags: ["Geometrisch", "Tech"], green: null },
+  { id: 8, name: "Sora", family: "'Sora', sans-serif", desc: "Futuristisch und klar – fällt auf, wirkt innovativ und progressiv.", tags: ["Futuristisch", "Bold"], green: null },
+  { id: 9, name: "Poppins", family: "'Poppins', sans-serif", desc: "Der Klassiker – verwendet auf Millionen Websites, zeitlos und vertraut.", tags: ["Klassisch", "Populär"], green: null },
+  { id: 10, name: "Space Grotesk", family: "'Space Grotesk', sans-serif", desc: "Kantig und charakterstark – perfekter Vibe für Cannabis-Tech-Plattformen.", tags: ["Kantig", "Charakter"], green: "Cannabis-Vibe" },
+];
+
+const SAMPLES = {
+  default: {
+    xl: "SeedFinder PRO",
+    lg: "Dein Cannabis-Samenvergleich",
+    md: "Vergleiche Preise, entdecke neue Strains und tausche dich mit der Community aus.",
+    sm: "Über 2.800 Samenprodukte aus 15+ Seedbanks im direkten Vergleich.",
+    xs: "Alle Preise inkl. MwSt. · Letzte Aktualisierung: heute 02:00 Uhr · Keine Werbung"
+  },
+  headline: {
+    xl: "Beste Preise 2025",
+    lg: "Jetzt Strains vergleichen",
+    md: "Finde den günstigsten Anbieter für deine Lieblings-Strain in Sekunden.",
+    sm: "Täglich aktualisierte Preisdaten – automatisch, zuverlässig, kostenlos.",
+    xs: "Preisalarm aktivieren · Newsletter abonnieren · App installieren"
+  },
+  ui: {
+    xl: "Mein Profil",
+    lg: "Grow-Tagebuch anlegen",
+    md: "Gib deiner Community-Grow einen Namen und wähle deine Strain aus.",
+    sm: "Pflichtfelder sind mit * markiert. Deine Daten werden nicht weitergegeben.",
+    xs: "Abbrechen · Speichern · Als Entwurf sichern"
+  },
+  cannabis: {
+    xl: "White Widow Auto",
+    lg: "Indica-dominant · 20% THC",
+    md: "Klassische, harzreiche Sorte mit erdigem Aroma und entspannender Wirkung. Ideal für SCROG-Setups.",
+    sm: "Blütezeit: 8–9 Wochen · Ertrag: 400–500g/m² · Schwierigkeit: Mittel",
+    xs: "Verfügbar bei: Sensi Seeds, Dutch Passion, Royal Queen Seeds, Barney's Farm"
+  },
+  numbers: {
+    xl: "€ 12,90 – 34,50",
+    lg: "Preisvergleich: 8 Anbieter",
+    md: "Du sparst bis zu 41% beim günstigsten Anbieter gegenüber dem Durchschnittspreis.",
+    sm: "5 Samen: ab €12,90 · 10 Samen: ab €22,00 · 25 Samen: ab €48,50",
+    xs: "Preise vom 11.03.2025 · zzgl. Versandkosten · Preise können sich jederzeit ändern"
+  }
+};
+
+const API = '/api/community/font-votes';
+
+let currentSample = 'default';
+let customText = '';
+let voteCounts = {};   // { 1: 5, 2: 3, ... } — von der API
+let myVotes = {};      // { 1: true, 3: true } — eigene Stimmen
+let totalVoters = 0;
+let jwtToken = null;
+let pending = {};      // verhindert Doppelklick
+
+function getToken() {
+  const m = document.cookie.match(/(?:^|;\s*)sf1_access_token=([^;]+)/);
+  return m ? m[1] : null;
+}
+
+async function loadData() {
+  jwtToken = getToken();
+
+  // Öffentliche Vote-Counts laden
+  try {
+    const r = await fetch(API);
+    const d = await r.json();
+    voteCounts = d.counts || {};
+    totalVoters = d.totalVoters || 0;
+  } catch(e) {}
+
+  // Eigene Stimmen laden (nur wenn eingeloggt)
+  if (jwtToken) {
+    try {
+      const r = await fetch(API + '/mine', {
+        headers: { 'Authorization': 'Bearer ' + jwtToken }
+      });
+      const d = await r.json();
+      myVotes = {};
+      (d.votedFonts || []).forEach(id => myVotes[id] = true);
+    } catch(e) {}
+    document.getElementById('loginHint').style.display = 'none';
+  } else {
+    document.getElementById('loginHint').style.display = 'block';
+  }
+
+  renderAll();
+  updateWinner();
+}
+
+async function vote(id) {
+  if (pending[id]) return;
+
+  if (!jwtToken) {
+    window.location.href = '/auth/login';
+    return;
+  }
+
+  pending[id] = true;
+  renderAll(); // Button-Loading-State
+
+  try {
+    const r = await fetch(API + '/' + id, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + jwtToken }
+    });
+    const d = await r.json();
+
+    if (d.voted) {
+      myVotes[id] = true;
+      voteCounts[id] = (voteCounts[id] || 0) + 1;
+      // Zähle Voter nur wenn das die erste Stimme überhaupt ist
+      if (Object.keys(myVotes).length === 1) totalVoters++;
+    } else {
+      delete myVotes[id];
+      voteCounts[id] = Math.max(0, (voteCounts[id] || 1) - 1);
+    }
+  } catch(e) {
+    alert('Fehler beim Abstimmen. Bitte versuche es erneut.');
+  }
+
+  delete pending[id];
+  renderAll();
+  updateWinner();
+}
+
+function setSample(key, btn) {
+  currentSample = key;
+  customText = '';
+  document.getElementById('customInput').value = '';
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAll();
+}
+
+function setCustomSample(val) {
+  customText = val;
+  if (val) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    currentSample = null;
+  }
+  renderAll();
+}
+
+function getSample() {
+  if (customText) return { xl: customText, lg: customText, md: customText, sm: customText, xs: customText };
+  return SAMPLES[currentSample] || SAMPLES.default;
+}
+
+function updateWinner() {
+  const banner = document.getElementById('winnerBanner');
+  const winnerName = document.getElementById('winnerName');
+  const label = document.getElementById('totalVotersLabel');
+
+  // Font mit den meisten Stimmen bestimmen
+  let maxVotes = 0;
+  let winners = [];
+  for (const font of FONTS) {
+    const c = voteCounts[font.id] || 0;
+    if (c > maxVotes) { maxVotes = c; winners = [font.name]; }
+    else if (c === maxVotes && c > 0) winners.push(font.name);
+  }
+
+  if (maxVotes > 0) {
+    winnerName.textContent = winners.join(' · ') + ' (' + maxVotes + ' Stimmen)';
+    label.textContent = totalVoters;
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+function renderCard(font) {
+  const s = getSample();
+  const isVoted = !!myVotes[font.id];
+  const isPending = !!pending[font.id];
+  const count = voteCounts[font.id] || 0;
+
+  const btnLabel = isPending ? '…' : (isVoted ? '✓ Gewählt' : 'Abstimmen');
+  const tallyClass = count > 0 ? 'has-votes' : '';
+
+  return `
+  <div class="card ${isVoted ? 'selected' : ''}" id="card-${font.id}">
+    <div class="card-header">
+      <div>
+        <div class="card-num">Font ${font.id < 10 ? '0'+font.id : font.id} / 10</div>
+        <div class="card-name" style="font-family:${font.family}">${font.name}</div>
+        <div class="card-desc">${font.desc}</div>
+      </div>
+      <div class="card-tags">
+        ${font.green ? `<span class="tag green">${font.green}</span>` : ''}
+        ${font.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+      </div>
+    </div>
+
+    <div class="card-body" style="font-family:${font.family}">
+      <div class="specimen-block">
+        <div class="size-label">XL — 38px · Bold · Überschrift H1</div>
+        <div class="s-xl" style="font-family:${font.family}">${s.xl}</div>
+      </div>
+      <div class="specimen-block">
+        <div class="size-label">LG — 26px · SemiBold · Überschrift H2</div>
+        <div class="s-lg" style="font-family:${font.family}">${s.lg}</div>
+      </div>
+      <div class="specimen-block">
+        <div class="size-label">MD — 18px · Regular · Fließtext</div>
+        <div class="s-md" style="font-family:${font.family}">${s.md}</div>
+      </div>
+      <div class="specimen-block">
+        <div class="size-label">SM — 14px · Regular · Sekundärtext</div>
+        <div class="s-sm" style="font-family:${font.family}">${s.sm}</div>
+      </div>
+      <div class="specimen-block">
+        <div class="size-label">XS — 11px · Light · Metainfo / Labels</div>
+        <div class="s-xs" style="font-family:${font.family}">${s.xs}</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="ui-preview">
+        <div class="ui-preview-label">UI-Vorschau — Wie wirkt die Schrift in echten Elementen?</div>
+        <div class="ui-nav" style="font-family:${font.family}">
+          <span class="active">Übersicht</span>
+          <span>Preise</span>
+          <span>Community</span>
+          <span>Mein Konto</span>
+        </div>
+        <div class="ui-row">
+          <span class="ui-badge" style="font-family:${font.family}">Indica</span>
+          <span class="ui-strain" style="font-family:${font.family}">White Widow Auto</span>
+          <span class="ui-meta" style="font-family:${font.family}">· Feminized</span>
+        </div>
+        <div class="ui-row">
+          <span class="ui-price" style="font-family:${font.family}">€ 12,90</span>
+          <span class="ui-price-old" style="font-family:${font.family}">€ 21,90</span>
+          <span class="ui-badge" style="font-family:${font.family}">–41%</span>
+        </div>
+        <div class="ui-btn" style="font-family:${font.family}">Zum Anbieter →</div>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <button class="vote-btn ${isVoted ? 'voted' : ''}" onclick="vote(${font.id})" ${isPending ? 'disabled' : ''}>
+        ${btnLabel}
+      </button>
+      <div class="vote-tally">
+        <span class="vote-tally-num ${tallyClass}">${count}</span>
+        <span>${count === 1 ? 'Stimme' : 'Stimmen'}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderAll() {
+  document.getElementById('fontGrid').innerHTML = FONTS.map(f => renderCard(f)).join('');
+}
+
+loadData();
+</script>
+</body>
+</html>

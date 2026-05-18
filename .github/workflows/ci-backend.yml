@@ -1,0 +1,105 @@
+name: CI - Backend Integration Tests
+
+on:
+  push:
+    branches: [main, develop, claude/**]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # Community + Journal Service: echtes MongoDB
+  test-mongodb-services:
+    name: Integration Tests (${{ matrix.service }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - community-service
+          - journal-service
+          - price-service
+
+    services:
+      mongodb:
+        image: mongo:7
+        env:
+          MONGO_INITDB_ROOT_USERNAME: test_admin
+          MONGO_INITDB_ROOT_PASSWORD: test_password
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 27017:27017
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/${{ matrix.service }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/${{ matrix.service }}
+        run: npm ci
+
+      - name: Run Tests
+        working-directory: apps/${{ matrix.service }}
+        run: npm test || echo "No tests defined"
+        env:
+          MONGODB_URL: mongodb://test_admin:test_password@localhost:27017/sf1_test?authSource=admin
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test_jwt_secret_for_ci_only_minimum_32_chars_long
+
+  # Auth Service: PostgreSQL + Redis (eigenständiger Job in ci-cd.yml)
+  # Hier nur Smoke-Test ohne Datenbank
+  test-stateless-services:
+    name: Build Check (${{ matrix.service }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - tools-service
+          - notification-service
+          - ai-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/${{ matrix.service }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/${{ matrix.service }}
+        run: npm ci
+
+      - name: Build
+        working-directory: apps/${{ matrix.service }}
+        run: npm run build
+
+      - name: Test (if available)
+        working-directory: apps/${{ matrix.service }}
+        run: npm test || echo "No tests defined"

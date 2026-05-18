@@ -86,5 +86,6 @@ const SeedSchema = new Schema<ISeed>({
 SeedSchema.index({ name: 'text', breeder: 'text' });
 SeedSchema.index({ lowestPrice: 1 });
 SeedSchema.index({ viewCount: -1 });
+SeedSchema.index({ priceCount: 1 }); // für browseSeeds({ priceCount: { $gt: 0 } })
 
 export const Seed = mongoose.model<ISeed>('Seed', SeedSchema);

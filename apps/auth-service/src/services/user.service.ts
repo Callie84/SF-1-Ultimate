@@ -20,10 +20,14 @@ const prisma = new PrismaClient();
 export interface CreateUserDto {
   email: string;
   password: string;
+  username?: string;
   name?: string;
   role?: 'user' | 'premium' | 'moderator' | 'admin';
   provider?: 'LOCAL' | 'GOOGLE' | 'DISCORD';
   providerId?: string;
+  isVerified?: boolean;
+  avatar?: string;
+  ageVerified?: boolean;
 }
 
 /**
@@ -65,6 +69,23 @@ export class UserService {
   }
 
   /**
+   * Findet User anhand Username
+   * @param username - Username
+   * @returns User oder null
+   */
+  async findByUsername(username: string): Promise<User | null> {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { username }
+      });
+      return user;
+    } catch (error) {
+      console.error('Error finding user by username:', error);
+      return null;
+    }
+  }
+
+  /**
    * Erstellt neuen User mit gehashtem Passwort
    * @param userData - User-Daten (email, password, name, role)
    * @returns Erstellter User
@@ -95,14 +116,16 @@ export class UserService {
       const user = await prisma.user.create({
         data: {
           email: userData.email,
-          username: userData.name || userData.email.split('@')[0],
+          username: userData.username || userData.name || userData.email.split('@')[0],
           passwordHash,
           role: roleEnum,
           provider: userData.provider || 'LOCAL',
           providerId: userData.providerId,
-          isVerified: false,
+          isVerified: userData.isVerified ?? false,
           isActive: true,
-          isBanned: false
+          isBanned: false,
+          avatar: userData.avatar,
+          ageVerified: userData.ageVerified ?? false,
         }
       });
 
@@ -171,6 +194,31 @@ export class UserService {
       console.error('Error updating password:', error);
       throw new Error('Password update failed');
     }
+  }
+
+  /**
+   * Update User Profile (bio, displayName, avatar)
+   */
+  async updateProfile(userId: string, data: {
+    bio?: string;
+    displayName?: string;
+    avatar?: string;
+    profilePublic?: boolean;
+    showEmail?: boolean;
+    showGrows?: boolean;
+  }): Promise<User> {
+    const updateData: any = {};
+    if (data.bio !== undefined) updateData.bio = data.bio;
+    if (data.displayName !== undefined) updateData.displayName = data.displayName;
+    if (data.avatar !== undefined) updateData.avatar = data.avatar;
+    if (data.profilePublic !== undefined) updateData.profilePublic = data.profilePublic;
+    if (data.showEmail !== undefined) updateData.showEmail = data.showEmail;
+    if (data.showGrows !== undefined) updateData.showGrows = data.showGrows;
+
+    return prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
   }
 
   /**

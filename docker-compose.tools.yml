@@ -1,0 +1,68 @@
+version: '3.8'
+
+networks:
+  sf1-network:
+    external: true
+    name: sf-1-ultimate-_sf1-network
+
+volumes:
+  n8n_data:
+  open_webui_data:
+
+services:
+
+  # ─────────────────────────────────────────────
+  # n8n — Workflow-Automatisierung
+  # https://n8n.seedfinderpro.de
+  # ─────────────────────────────────────────────
+  n8n:
+    image: n8nio/n8n:1.85.0
+    container_name: sf1-n8n
+    restart: always
+    environment:
+      - N8N_HOST=n8n.seedfinderpro.de
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://n8n.seedfinderpro.de/
+      - N8N_EDITOR_BASE_URL=https://n8n.seedfinderpro.de/
+      - GENERIC_TIMEZONE=Europe/Berlin
+      - TZ=Europe/Berlin
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - sf1-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n.rule=Host(`n8n.seedfinderpro.de`)"
+      - "traefik.http.routers.n8n.entrypoints=websecure"
+      - "traefik.http.routers.n8n.tls=true"
+      - "traefik.http.routers.n8n.tls.certresolver=letsencrypt"
+      - "traefik.http.services.n8n.loadbalancer.server.port=5678"
+
+  # ─────────────────────────────────────────────
+  # Open WebUI — Chat-Interface für Ollama
+  # https://chat.seedfinderpro.de
+  # ─────────────────────────────────────────────
+  open-webui:
+    image: openwebui/open-webui:latest
+    container_name: sf1-open-webui
+    restart: always
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - WEBUI_SECRET_KEY=${OPEN_WEBUI_SECRET:-changeme_bitte_aendern}
+      - WEBUI_URL=https://chat.seedfinderpro.de
+      - DEFAULT_LOCALE=de
+      - ENABLE_SIGNUP=false
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - open_webui_data:/app/backend/data
+    networks:
+      - sf1-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.open-webui.rule=Host(`chat.seedfinderpro.de`)"
+      - "traefik.http.routers.open-webui.entrypoints=websecure"
+      - "traefik.http.routers.open-webui.tls=true"
+      - "traefik.http.routers.open-webui.tls.certresolver=letsencrypt"
+      - "traefik.http.services.open-webui.loadbalancer.server.port=8080"

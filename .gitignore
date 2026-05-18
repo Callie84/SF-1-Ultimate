@@ -41,6 +41,7 @@ dist/
 
 *.log
 logs/
+!**/admin/logs/
 *.log.*
 
 # ==========================================
@@ -133,7 +134,23 @@ secrets/
 *.BACKUP*
 *.COMPROMISED*
 
-# Environment Variables (enth‰lt Secrets!)
+# Environment Variables (enth√§lt Secrets!)
 .env
 .env.*
 !.env.template
+
+# ==========================================
+# BACKUPS (Binary-Daten, kein Code)
+# ==========================================
+backups/*.tar.gz.enc
+backups/*.meta.json
+backups/20*/
+backups/reports/
+
+# ==========================================
+# ALTE/KAPUTTE DATEIEN
+# ==========================================
+docker-compose.yml.BROKEN-*
+docker-compose.yml.OLD-*
+docker-compose.yml.UNSAFE-*
+la docker-compose*

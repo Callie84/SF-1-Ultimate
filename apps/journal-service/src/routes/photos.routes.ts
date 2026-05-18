@@ -5,6 +5,18 @@ import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
 
+router.get('/:entryId/photos',
+  authMiddleware,
+  async (req, res, next) => {
+    try {
+      const photos = await photoService.getByEntry(req.params.entryId, req.user!.id);
+      res.json({ photos });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {

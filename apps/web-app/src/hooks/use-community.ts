@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import api from '@/lib/api-client';
-import { Thread, Reply } from '@/types/community';
+import { Thread, Reply, ApiThread, ApiReply, ThreadListResponse } from '@/types/community';
 
 // Query Keys
 export const communityKeys = {
@@ -16,14 +17,14 @@ export function useCategories() {
   return useQuery({
     queryKey: communityKeys.categories(),
     queryFn: async () => {
-      const { data } = await api.get('/api/community/categories');
+      const data = await api.get('/api/community/categories');
       return data;
     },
   });
 }
 
 // Get threads (optionally filtered by category)
-export function useThreads(categoryId?: string, filters?: any) {
+export function useThreads(categoryId?: string, filters?: Record<string, string | number | boolean>) {
   return useQuery({
     queryKey: communityKeys.threads(categoryId),
     queryFn: async () => {
@@ -34,7 +35,7 @@ export function useThreads(categoryId?: string, filters?: any) {
           params.append(key, String(value));
         });
       }
-      const { data } = await api.get(`/api/community/threads?${params}`);
+      const data = await api.get(`/api/community/threads?${params}`);
       return data;
     },
   });
@@ -45,7 +46,7 @@ export function useThread(id: string) {
   return useQuery({
     queryKey: communityKeys.thread(id),
     queryFn: async () => {
-      const { data } = await api.get(`/api/community/threads/${id}`);
+      const data = await api.get(`/api/community/threads/${id}`);
       return data;
     },
     enabled: !!id,
@@ -58,7 +59,7 @@ export function useCreateThread() {
 
   return useMutation({
     mutationFn: async (threadData: Partial<Thread>) => {
-      const { data } = await api.post('/api/community/threads', threadData);
+      const data = await api.post('/api/community/threads', threadData);
       return data;
     },
     onSuccess: () => {
@@ -73,7 +74,7 @@ export function useUpdateThread(id: string) {
 
   return useMutation({
     mutationFn: async (threadData: Partial<Thread>) => {
-      const { data } = await api.patch(`/api/community/threads/${id}`, threadData);
+      const data = await api.patch(`/api/community/threads/${id}`, threadData);
       return data;
     },
     onSuccess: () => {
@@ -90,9 +91,25 @@ export function useDeleteThread() {
   return useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/api/community/threads/${id}`);
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (id: string) => {
       queryClient.invalidateQueries({ queryKey: communityKeys.threads() });
+      toast('Thread gelöscht', {
+        duration: 10000,
+        action: {
+          label: 'Rückgängig',
+          onClick: async () => {
+            try {
+              await api.patch(`/api/community/threads/${id}/restore`);
+              queryClient.invalidateQueries({ queryKey: communityKeys.threads() });
+              toast.success('Thread wiederhergestellt');
+            } catch {
+              toast.error('Fehler beim Wiederherstellen des Threads');
+            }
+          },
+        },
+      });
     },
   });
 }
@@ -102,7 +119,7 @@ export function useReplies(threadId: string) {
   return useQuery({
     queryKey: communityKeys.replies(threadId),
     queryFn: async () => {
-      const { data } = await api.get(`/api/community/threads/${threadId}/replies`);
+      const data = await api.get(`/api/community/threads/${threadId}/replies`);
       return data;
     },
     enabled: !!threadId,
@@ -115,7 +132,7 @@ export function useCreateReply(threadId: string) {
 
   return useMutation({
     mutationFn: async (replyData: Partial<Reply>) => {
-      const { data } = await api.post(`/api/community/threads/${threadId}/replies`, replyData);
+      const data = await api.post(`/api/community/threads/${threadId}/replies`, replyData);
       return data;
     },
     onSuccess: () => {
@@ -131,7 +148,7 @@ export function useUpdateReply(id: string, threadId: string) {
 
   return useMutation({
     mutationFn: async (replyData: Partial<Reply>) => {
-      const { data } = await api.patch(`/api/community/replies/${id}`, replyData);
+      const data = await api.patch(`/api/community/replies/${id}`, replyData);
       return data;
     },
     onSuccess: () => {
@@ -147,9 +164,25 @@ export function useDeleteReply(threadId: string) {
   return useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/api/community/replies/${id}`);
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (id: string) => {
       queryClient.invalidateQueries({ queryKey: communityKeys.replies(threadId) });
+      toast('Reply gelöscht', {
+        duration: 10000,
+        action: {
+          label: 'Rückgängig',
+          onClick: async () => {
+            try {
+              await api.patch(`/api/community/replies/${id}/restore`);
+              queryClient.invalidateQueries({ queryKey: communityKeys.replies(threadId) });
+              toast.success('Reply wiederhergestellt');
+            } catch {
+              toast.error('Fehler beim Wiederherstellen der Reply');
+            }
+          },
+        },
+      });
     },
   });
 }
@@ -159,8 +192,12 @@ export function useVoteThread(threadId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (type: 'UPVOTE' | 'DOWNVOTE') => {
-      const { data } = await api.post(`/api/community/threads/${threadId}/vote`, { type });
+    mutationFn: async (type: 'upvote' | 'downvote') => {
+      const data = await api.post('/api/community/vote', {
+        targetId: threadId,
+        targetType: 'thread',
+        type,
+      });
       return data;
     },
     onSuccess: () => {
@@ -175,13 +212,43 @@ export function useVoteReply(replyId: string, threadId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (type: 'UPVOTE' | 'DOWNVOTE') => {
-      const { data } = await api.post(`/api/community/replies/${replyId}/vote`, { type });
+    mutationFn: async (type: 'upvote' | 'downvote') => {
+      const data = await api.post('/api/community/vote', {
+        targetId: replyId,
+        targetType: 'reply',
+        type,
+      });
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: communityKeys.replies(threadId) });
     },
+  });
+}
+
+// Get user's votes for a batch of item IDs (to show highlighted state)
+export function useUserVotesBatch(ids: string[]) {
+  return useQuery({
+    queryKey: [...communityKeys.all, 'votes', ids.join(',')],
+    queryFn: async () => {
+      const data = await api.post('/api/community/votes/batch', { targetIds: ids });
+      return (data as { votes: Record<string, 'upvote' | 'downvote'> }).votes;
+    },
+    enabled: ids.length > 0,
+    staleTime: 30 * 1000,
+  });
+}
+
+// Search threads via community service
+export function useSearchThreads(query: string) {
+  return useQuery({
+    queryKey: [...communityKeys.all, 'search', query],
+    queryFn: async () => {
+      const data = await api.get(`/api/community/threads/search?q=${encodeURIComponent(query)}&limit=20`);
+      return data as ThreadListResponse;
+    },
+    enabled: query.length >= 2,
+    staleTime: 30 * 1000,
   });
 }
 
@@ -191,12 +258,27 @@ export function useAcceptReply(threadId: string) {
 
   return useMutation({
     mutationFn: async (replyId: string) => {
-      const { data } = await api.post(`/api/community/replies/${replyId}/accept`);
+      const data = await api.post(`/api/community/replies/${replyId}/accept`);
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: communityKeys.replies(threadId) });
       queryClient.invalidateQueries({ queryKey: communityKeys.thread(threadId) });
+    },
+  });
+}
+
+// Inhalt melden (Thread oder Reply)
+export function useReportContent() {
+  return useMutation({
+    mutationFn: async (data: {
+      targetId: string;
+      targetType: 'thread' | 'reply';
+      reason: 'spam' | 'abuse' | 'harassment' | 'illegal' | 'misinformation' | 'other';
+      description?: string;
+    }) => {
+      const result = await api.post('/api/community/moderation/reports', data);
+      return result;
     },
   });
 }
