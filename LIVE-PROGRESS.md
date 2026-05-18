@@ -1,19 +1,27 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-05-18T23:10:06Z
+**Last-Update:** 2026-05-18T23:18:30Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
-Automations-Audit Prio 2: Strain-Import Cron debuggen.
-Schritt 1: `bash /root/scripts/strain-import/run-description-batches.sh` manuell ausführen → Output prüfen.
-Details: `/root/SF-1-Ultimate-/docs/automations-audit-2026-05-19.md` (Punkt 3)
+Automations-Audit Prio 3: Offsite-Backup einrichten (Hetzner Credentials nötig).
+Alternativ: Audit-Punkte 5–8 (Healthchecks, Price-Service Alarm, etc.) angehen.
+Details: `/root/SF-1-Ultimate-/docs/automations-audit-2026-05-19.md`
 
 ## Aktueller Task
-Automations-Audit Nacharbeit — offene Punkte: Strain-Import Cron (Prio 2), Offsite-Backup (Prio 3), SessionEnd-Hook (Prio 4)
+Automations-Audit Nacharbeit — offene Punkte: Offsite-Backup (Prio 3, Credentials nötig), dann Prio 5–8
 Details: `/root/SF-1-Ultimate-/docs/automations-audit-2026-05-19.md`
 
 ## Letzter abgeschlossener Task
-2026-05-19: Auth-Service + alle Services tsx-watch Fix (7fd0550)
+2026-05-19: SessionEnd-Hook (Stop-Hook) geschrieben
+- `/root/.claude/hooks/sf1-session-end.py` — uncommitted, [geplant], Backup-Alter, NEXT ACTION
+- In settings.json als Stop-Hook eingetragen, getestet ✅
+
+Vorheriger: Strain-Import Cron Fix (7721de5)
+- MongoDB-IP dynamisch via docker inspect statt hardcoded 172.17.0.3
+- Cron läuft jetzt durch, 4503 ausstehende Seeds (Ollama-Port separates Issue)
+
+Vorheriger: Auth-Service + alle Services tsx-watch Fix (7fd0550)
 - 9 Services von `tsx watch` → `tsx` umgestellt
 - client.ts IPs nach Container-Neustart aktualisiert
 - Auth-Service: healthy ✅ | 7/7 + 3/3 Tests grün
@@ -39,6 +47,8 @@ Vorheriger: s1: Skills-Audit 2026-05-19:
 - [2026-05-18] Harnisch: dk-Skill + Commit-Sync-Hook + Skills-Audit + s1-Plan (keine Commits im SF-1-Repo)
 - [2026-05-19] s1: Skills-Audit — 5 SKILL.md angelegt (ss/se/plan/task-done/quickfix), Lernphase-Fix, Memory aktualisiert
 - [2026-05-19] tsx-watch Fix — 9 Services + IPs aktualisiert, Auth+Search healthy (7fd0550)
+- [2026-05-19] Strain-Import Cron Fix — MongoDB-IP dynamisch, Script läuft durch (7721de5)
+- [2026-05-19] SessionEnd-Hook — Stop-Hook in settings.json, uncommitted/geplant/Backup-Check ✅
 
 ## Offene Tasks (s-plan)
 (keine)

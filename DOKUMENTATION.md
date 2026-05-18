@@ -10,6 +10,39 @@
 
 ---
 
+## SessionEnd-Hook (Stop-Hook) [abgeschlossen 2026-05-19]
+
+### Commits
+- (kein SF-1-Repo-Commit — Hook liegt in `/root/.claude/hooks/`)
+
+### Ergebnis
+`/root/.claude/hooks/sf1-session-end.py` geschrieben + als `Stop`-Hook in `settings.json` eingetragen.
+Feuert nach jedem Claude-Turn. Prüft: uncommittete Änderungen, offene [geplant]-Einträge,
+Backup-Alter (>26h Warnung), NEXT ACTION Anzeige. Kein Block — nur Info-Output.
+
+### Betroffene Dateien
+- `/root/.claude/hooks/sf1-session-end.py` (neu)
+- `/root/.claude/settings.json` — `Stop`-Hook-Eintrag ergänzt
+
+---
+
+## Strain-Import Cron Fix [abgeschlossen 2026-05-19]
+
+### Commits
+- `7721de5` — docs: Strain-Import Cron Fix dokumentiert
+
+### Ergebnis
+MongoDB-IP war hardcoded als `172.17.0.3`, nach Container-Neustarts auf `172.17.0.16` verschoben.
+Cron lief zwar alle 5min, aber `ECONNREFUSED` — silent fail weil alles in `batch-runner.log` landete.
+Fix: IP wird nun dynamisch per `docker inspect sf1-mongodb` ermittelt (Shell-Script + JS-Fallback).
+Script läuft jetzt durch: 4503 ausstehende Seeds, Ollama-Port-Problem ist separates Issue.
+
+### Betroffene Dateien
+- `/root/scripts/strain-import/run-description-batches.sh` — dynamische MONGO_IP
+- `/root/scripts/strain-import/generate-descriptions.js` — MONGO_IP via env oder docker inspect
+
+---
+
 ## Auth-Service + Services tsx-watch Fix [abgeschlossen 2026-05-19]
 
 ### Commits
