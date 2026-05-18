@@ -221,7 +221,7 @@ services:
     security_opt:
       - no-new-privileges:true
     working_dir: /app
-    command: sh -c "apt-get update && apt-get install -y openssl ca-certificates && npm install && npx prisma generate && npx prisma db push && npm install -g tsx && npx tsx watch src/index.ts"
+    command: sh -c "apt-get update && apt-get install -y openssl ca-certificates && npm install && npx prisma generate && npx prisma db push && npm install -g tsx && npx tsx src/index.ts"
     volumes:
       - ./apps/auth-service:/app
     environment:
@@ -276,7 +276,7 @@ services:
     security_opt:
       - no-new-privileges:true
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
     volumes:
       - ./apps/journal-service:/app
     environment:
@@ -331,7 +331,7 @@ services:
     security_opt:
       - no-new-privileges:true
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
     volumes:
       - ./apps/search-service:/app
     environment:
@@ -379,7 +379,7 @@ services:
     security_opt:
       - no-new-privileges:true
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
     volumes:
       - ./apps/gamification-service:/app
     environment:
@@ -419,7 +419,7 @@ services:
     security_opt:
       - no-new-privileges:true
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
     volumes:
       - ./apps/price-service:/app
     environment:
@@ -464,7 +464,7 @@ services:
     security_opt:
       - no-new-privileges:true
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
     volumes:
       - ./apps/media-service:/app
     environment:
@@ -500,7 +500,7 @@ services:
     security_opt:
       - no-new-privileges:true
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
     volumes:
       - ./apps/tools-service:/app
     environment:
@@ -544,7 +544,7 @@ services:
     security_opt:
       - no-new-privileges:true
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
     volumes:
       - ./apps/notification-service:/app
     environment:
@@ -593,7 +593,7 @@ services:
     security_opt:
       - no-new-privileges:true
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx watch src/index.ts"
+    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
     volumes:
       - ./apps/community-service:/app
     environment:

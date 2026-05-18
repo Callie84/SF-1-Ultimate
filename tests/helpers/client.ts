@@ -2,17 +2,17 @@ import axios from 'axios';
 
 // Docker internal IPs — services are not exposed on localhost ports
 // Use SF1_AUTH_BASE etc. env vars to override (e.g. in CI with port-forwarding)
-const AUTH_BASE   = process.env.SF1_AUTH_BASE   || 'http://172.17.0.13:3001';
-const COMM_BASE   = process.env.SF1_COMM_BASE   || 'http://172.17.0.12:3005';
-const JOURN_BASE  = process.env.SF1_JOURN_BASE  || 'http://172.17.0.11:3003';
-const MEDIA_BASE  = process.env.SF1_MEDIA_BASE  || 'http://172.17.0.2:3008';
+const AUTH_BASE   = process.env.SF1_AUTH_BASE   || 'http://172.17.0.25:3001';
+const COMM_BASE   = process.env.SF1_COMM_BASE   || 'http://172.17.0.4:3005';
+const JOURN_BASE  = process.env.SF1_JOURN_BASE  || 'http://172.17.0.17:3003';
+const MEDIA_BASE  = process.env.SF1_MEDIA_BASE  || 'http://172.17.0.27:3008';
 const PRICE_BASE  = process.env.SF1_PRICE_BASE  || 'http://172.17.0.5:3002';
-const GAM_BASE    = process.env.SF1_GAM_BASE    || 'http://172.17.0.27:3009';
-const SEARCH_BASE = process.env.SF1_SEARCH_BASE || 'http://172.17.0.4:3007';
+const GAM_BASE    = process.env.SF1_GAM_BASE    || 'http://172.17.0.22:3009';
+const SEARCH_BASE = process.env.SF1_SEARCH_BASE || 'http://172.17.0.12:3007';
 const BACKUP_BASE = process.env.SF1_BACKUP_BASE || 'http://172.17.0.18:3011';
-const TOOLS_BASE  = process.env.SF1_TOOLS_BASE  || 'http://172.17.0.17:3004';
+const TOOLS_BASE  = process.env.SF1_TOOLS_BASE  || 'http://172.17.0.2:3004';
 const AI_BASE     = process.env.SF1_AI_BASE     || 'http://0.0.0.0:3010';
-const NOTIF_BASE  = process.env.SF1_NOTIF_BASE  || 'http://172.17.0.22:3006';
+const NOTIF_BASE  = process.env.SF1_NOTIF_BASE  || 'http://172.17.0.11:3006';
 
 export const authClient      = axios.create({ baseURL: AUTH_BASE,   timeout: 10000 });
 export const communityClient = axios.create({ baseURL: COMM_BASE,   timeout: 10000 });
