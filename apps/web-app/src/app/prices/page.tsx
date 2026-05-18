@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { apiClient } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { PriceHistoryChart } from '@/components/prices/price-history-chart';
+import Link from 'next/link';
 
 interface PriceEntry {
   seedbank: string;
@@ -46,6 +47,10 @@ const TYPE_COLORS: Record<string, string> = {
   autoflower: 'bg-blue-500/10 text-blue-500',
   regular: 'bg-amber-500/10 text-amber-500',
 };
+
+function uniqueBankCount(prices: PriceEntry[]): number {
+  return new Set(prices.map((p) => p.seedbankSlug || p.seedbank)).size;
+}
 
 export default function PricesPage() {
   const [query, setQuery] = useState('');
@@ -322,9 +327,9 @@ export default function PricesPage() {
                     {TYPE_LABELS[seed.type] || seed.type}
                   </span>
                   {seed.prices && seed.prices.length > 0 && (
-                    <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center gap-0.5">
                       <Package className="h-3 w-3" />
-                      {seed.prices.length} {seed.prices.length === 1 ? 'Angebot' : 'Angebote'}
+                      {uniqueBankCount(seed.prices)} Anbieter
                     </span>
                   )}
                 </div>
@@ -333,6 +338,27 @@ export default function PricesPage() {
               {/* Expanded: Show all prices + chart */}
               {expandedSeed === seed._id && seed.prices && seed.prices.length > 0 && (
                 <div className="border-t bg-muted/30">
+                  {/* Bestpreis-Kopfzeile */}
+                  <div className="px-4 py-2 flex items-center gap-2 flex-wrap text-sm border-b border-border/50 bg-green-500/5">
+                    <span className="text-muted-foreground">
+                      {uniqueBankCount(seed.prices)} Anbieter
+                    </span>
+                    <span className="text-muted-foreground">·</span>
+                    <span>
+                      Bester Preis:{' '}
+                      <span className="font-bold text-green-600 dark:text-green-400">
+                        {seed.prices[0].price.toFixed(2)}€
+                      </span>
+                      {' bei '}
+                      <Link
+                        href={`/seedbanks#${seed.prices[0].seedbankSlug || seed.prices[0].seedbank.toLowerCase().replace(/\s+/g, '-')}`}
+                        className="font-medium underline underline-offset-2 hover:text-primary"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {seed.prices[0].seedbank}
+                      </Link>
+                    </span>
+                  </div>
                   {seed.prices.map((price, idx) => (
                     <div
                       key={idx}
@@ -342,7 +368,20 @@ export default function PricesPage() {
                       )}
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium">{price.seedbank}</div>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/seedbanks#${price.seedbankSlug || price.seedbank.toLowerCase().replace(/\s+/g, '-')}`}
+                            className="text-sm font-medium hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {price.seedbank}
+                          </Link>
+                          {idx === 0 && (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-600 dark:text-green-400">
+                              Bester Preis
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-xs text-muted-foreground">
                             {price.packSize || `${price.seedCount} Seeds`}
