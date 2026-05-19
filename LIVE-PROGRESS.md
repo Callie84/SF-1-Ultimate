@@ -1,19 +1,23 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-05-18T23:18:30Z
+**Last-Update:** 2026-05-19T00:57:16Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
-Automations-Audit Prio 3: Offsite-Backup einrichten (Hetzner Credentials nötig).
-Alternativ: Audit-Punkte 5–8 (Healthchecks, Price-Service Alarm, etc.) angehen.
-Details: `/root/SF-1-Ultimate-/docs/automations-audit-2026-05-19.md`
+Alle 4 kritischen Audit-Befunde erledigt ✅. Nächste Priorität: Audit-Punkt 5 — Healthchecks für 10 Services.
+Schritt 1: `/health`-Endpoint in einem Service implementieren (z.B. search-service), dann als Template übernehmen.
+Details: `/root/SF-1-Ultimate-/docs/automations-audit-2026-05-19.md` (Punkt 5)
 
 ## Aktueller Task
-Automations-Audit Nacharbeit — offene Punkte: Offsite-Backup (Prio 3, Credentials nötig), dann Prio 5–8
+Automations-Audit Nacharbeit — Prio 5–8 (Healthchecks, Price-Service Alarm, Backup-Alter-Check, n8n-Doku)
 Details: `/root/SF-1-Ultimate-/docs/automations-audit-2026-05-19.md`
 
 ## Letzter abgeschlossener Task
-2026-05-19: SessionEnd-Hook (Stop-Hook) geschrieben
+2026-05-19: Offsite-Backup Google Drive eingerichtet
+- gdrive-backup Remote konfiguriert, Test-Upload ✅ (430 KB/s)
+- sf1-backup.sh: hetzner-backup → gdrive-backup
+
+Vorheriger: SessionEnd-Hook (Stop-Hook) geschrieben
 - `/root/.claude/hooks/sf1-session-end.py` — uncommitted, [geplant], Backup-Alter, NEXT ACTION
 - In settings.json als Stop-Hook eingetragen, getestet ✅
 
@@ -49,6 +53,7 @@ Vorheriger: s1: Skills-Audit 2026-05-19:
 - [2026-05-19] tsx-watch Fix — 9 Services + IPs aktualisiert, Auth+Search healthy (7fd0550)
 - [2026-05-19] Strain-Import Cron Fix — MongoDB-IP dynamisch, Script läuft durch (7721de5)
 - [2026-05-19] SessionEnd-Hook — Stop-Hook in settings.json, uncommitted/geplant/Backup-Check ✅
+- [2026-05-19] Offsite-Backup Google Drive — gdrive-backup Remote, sf1-backup.sh umgestellt ✅
 
 ## Offene Tasks (s-plan)
 (keine)

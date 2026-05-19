@@ -1,7 +1,7 @@
 # SF-1 Ultimate — Vollständige Entwicklungsdokumentation
 
 **Projekt:** seedfinderpro.de — Cannabis Growing Community Platform
-**Stand:** 2026-05-18 — Skills-Audit + dk-Skill + Commit-Sync-Hook + s1-Plan angelegt  
+**Stand:** 2026-05-19 — Automations-Audit Prio 1–4 abgearbeitet (tsx-watch, Strain-Import, SessionEnd-Hook, Google Drive Backup)  
 **Status:** ✅ Production-Ready (RAG validated, Chat tested, ready for user testing)
 **Stack:** Next.js 14, Express Microservices, MongoDB, PostgreSQL, Redis, Meilisearch, Docker Compose, Traefik, Ollama (KI)
 
@@ -10,54 +10,311 @@
 
 ---
 
-## SessionEnd-Hook (Stop-Hook) [abgeschlossen 2026-05-19]
+## Offsite-Backup Google Drive [abgeschlossen 2026-05-19]
+
+### Problem / Ziel
+Backups existierten nur lokal (`/root/SF-1-Ultimate-/backups/`). Bei Server-Ausfall: Datenverlust.
+Ziel: tägliches Backup automatisch auf externen Speicher hochladen.
+
+### Warum
+Hetzner Storage Box war ursprünglich geplant, User entschied sich für Google Drive (bereits vorhanden,
+kostenlos, kein Zusatz-Abo nötig). rclone unterstützt Google Drive nativ.
+
+### Lösung
+rclone OAuth-Token auf lokalem Rechner generiert (`rclone authorize "drive"`), Token auf Server
+in `~/.config/rclone/rclone.conf` eingetragen. Remote heißt `gdrive-backup`. Backup-Script von
+`hetzner-backup:sf1-ultimate` auf `gdrive-backup:sf1-ultimate` umgestellt.
+
+### Geänderte Dateien
+- `~/.config/rclone/rclone.conf` — neuer Remote `gdrive-backup` mit OAuth-Token (neu, nicht in Git)
+- `/root/scripts/sf1-backup.sh` — 4 Stellen: `hetzner-backup` → `gdrive-backup`, Kommentar aktualisiert
+
+### Ausgeführte Befehle
+```bash
+# Lokal (auf User-Rechner):
+rclone authorize "drive"   # Browser-OAuth → Token ausgegeben
+
+# Auf Server:
+mkdir -p ~/.config/rclone
+# Token manuell in rclone.conf geschrieben (type=drive, token=...)
+
+# Test:
+rclone lsd gdrive-backup: --max-depth 1          # Verbindung prüfen
+rclone copy backup-2026-05-18T02-00-00.tar.gz.enc gdrive-backup:sf1-ultimate/test/
+rclone ls gdrive-backup:sf1-ultimate/test/       # Upload verifizieren
+rclone delete gdrive-backup:sf1-ultimate/test/   # Test-Ordner löschen
+```
+
+### Fallstricke / Was schiefging
+- rclone auf Server alleine kann keinen Google OAuth-Flow starten (kein Browser).
+  Lösung: `rclone authorize "drive"` lokal ausführen, Token kopieren.
+- access_token läuft nach 1h ab — aber refresh_token ist dauerhaft. rclone refresht automatisch.
+- Google Drive Ordner `sf1-ultimate/` wird beim ersten echten Backup-Lauf automatisch erstellt.
+
+### Verifikation
+```bash
+rclone lsd gdrive-backup:   # zeigt alle Drive-Ordner des Accounts
+# Test-Upload: 1,3MB in 3,1s (430 KB/s) ✅
+```
+
+### Abhängigkeiten / Voraussetzungen
+- `~/.config/rclone/rclone.conf` muss existieren (nicht in Git — liegt nur auf dem Server)
+- Bei Server-Neusatz: Token neu generieren via `rclone authorize "drive"` auf lokalem Rechner
 
 ### Commits
-- (kein SF-1-Repo-Commit — Hook liegt in `/root/.claude/hooks/`)
+- Kein SF-1-Repo-Commit (Dateien außerhalb des Repos)
 
-### Ergebnis
-`/root/.claude/hooks/sf1-session-end.py` geschrieben + als `Stop`-Hook in `settings.json` eingetragen.
-Feuert nach jedem Claude-Turn. Prüft: uncommittete Änderungen, offene [geplant]-Einträge,
-Backup-Alter (>26h Warnung), NEXT ACTION Anzeige. Kein Block — nur Info-Output.
+---
 
-### Betroffene Dateien
-- `/root/.claude/hooks/sf1-session-end.py` (neu)
-- `/root/.claude/settings.json` — `Stop`-Hook-Eintrag ergänzt
+## ⚡ OFFENE PUNKTE — Nächste Session sofort starten
+
+> Stand: 2026-05-19. Alle Prio-1-4 Befunde aus `docs/automations-audit-2026-05-19.md` erledigt.
+> Prio 5–8 sind offen. Reihenfolge wie unten.
+
+### Prio 5 — Healthchecks für 10 Services (🟡 diese Woche)
+
+**Problem:** 10 Services haben keinen `/health`-Endpoint → Docker markiert sie als `unhealthy` ohne echten Grund.
+Betroffen: `journal-service`, `search-service`, `notification-service`, `gamification-service`,
+`media-service`, `community-service`, `tools-service`, `frontend`, `price-service`, `n8n`
+
+**Was zu tun ist:**
+1. In jedem Service-`index.ts` einen simplen Endpoint ergänzen:
+   ```ts
+   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+   ```
+2. In `docker-compose.yml` pro Service einen Healthcheck ergänzen:
+   ```yaml
+   healthcheck:
+     test: ["CMD", "wget", "-qO-", "http://localhost:PORT/health"]
+     interval: 30s
+     timeout: 5s
+     retries: 3
+   ```
+3. Services neu starten: `docker-compose up -d <service-name>`
+
+**Template zuerst an `search-service` testen** (Port 3007), dann auf alle 9 anderen übertragen.
+
+**Dateien:** `apps/*/src/index.ts` (je 1 Zeile) + `docker-compose.yml` (je ~5 Zeilen pro Service)
+
+---
+
+### Prio 6 — Price-Service System-Alarm (🟡 diese Woche)
+
+**Problem:** Wenn >3 Adapter Circuit-Breaker offen sind, wird kein Alert gesendet.
+User-Alerts (targetPrice etc.) funktionieren ✅ — aber System-Alarms fehlen.
+
+**Was zu tun ist:**
+Neues Cron-Script `/root/scripts/price-service-alarm.sh`:
+```bash
+#!/bin/bash
+# Prüft ob >3 Circuit-Breaker offen sind → Telegram-Alert
+STATUS=$(curl -s http://172.17.0.X:3002/api/prices/circuit-breaker/status)
+OPEN=$(echo "$STATUS" | jq '[.adapters[] | select(.state=="open")] | length')
+if [ "$OPEN" -gt 3 ]; then
+  bash /root/scripts/send-telegram.sh "⚠️ Price-Service: $OPEN Adapter Circuit-Breaker offen"
+fi
+```
+Cron: `*/30 * * * * /root/scripts/price-service-alarm.sh`
+
+**Voraussetzung:** Price-Service IP prüfen (`docker inspect sf1-price-service`), Telegram-Script-Pfad prüfen.
+
+---
+
+### Prio 7 — Backup-Alter-Check Cron (🟡 diese Woche)
+
+**Problem:** Wenn Backup-Cron still ausfällt, merkt niemand es.
+
+**Was zu tun ist:**
+Neues Script `/root/scripts/backup-age-check.sh`:
+```bash
+#!/bin/bash
+LAST=$(ls -t /root/SF-1-Ultimate-/backups/backup-*.enc | head -1)
+AGE=$(( ($(date +%s) - $(stat -c %Y "$LAST")) / 3600 ))
+if [ "$AGE" -gt 30 ]; then
+  bash /root/scripts/send-telegram.sh "⚠️ SF-1 Backup: Letztes Backup ist ${AGE}h alt!"
+fi
+```
+Cron: `0 9 * * * /root/scripts/backup-age-check.sh`  (täglich 09:00)
+
+---
+
+### Prio 8 — n8n Workflows dokumentieren (🟡 später)
+
+**Problem:** Welche n8n-Workflows aktiv sind ist unbekannt.
+
+**Was zu tun ist:**
+1. n8n Admin aufrufen: `http://172.17.0.X:5678` (IP via `docker inspect sf1-n8n`)
+   oder Traefik-Route prüfen: `https://n8n.seedfinderpro.de` (falls konfiguriert)
+2. Alle aktiven Workflows auflisten + in Vault dokumentieren:
+   `/root/SF-Brain/SF-1 Projekt/n8n-workflows.md`
+
+---
+
+### Bekannte offene Nebenprobleme (kein kritischer Handlungsbedarf)
+
+| Problem | Details |
+|---------|---------|
+| **Ollama Port falsch** | `generate-descriptions.js` nutzt Port 11435, Ollama läuft auf 11434. 4503 Strain-Beschreibungen stehen aus. Fix: `OLLAMA_URL` in der Datei auf `http://localhost:11434` ändern + Modell `qwen2.5:7b` prüfen ob geladen (`curl http://localhost:11434/api/tags`) |
+| **sw.js uncommitted** | `apps/web-app/public/sw.js` + `sw.js.map` sind modifiziert aber nicht committed. Wahrscheinlich auto-generiert — prüfen ob commit nötig |
+| **DOKUMENTATION.md [geplant]-Einträge** | SessionEnd-Hook meldet noch offene [geplant]-Einträge — bitte prüfen welche das sind und auf [abgeschlossen] setzen |
+| **Hardcodierte IPs in anderen Scripts** | `sync-to-community.js` und `reindex-meilisearch.js` haben noch `172.17.0.3` (MongoDB) und `172.17.0.10` (Meilisearch) hardcodiert — gleicher Fix wie bei `generate-descriptions.js` |
+
+---
+
+## SessionEnd-Hook (Stop-Hook) [abgeschlossen 2026-05-19]
+
+### Problem / Ziel
+Sessions endeten ohne automatischen Check. DOKUMENTATION.md-Pflege, Backup-Alter,
+uncommittete Änderungen — alles wurde manuell geprüft oder vergessen.
+
+### Warum
+Claude Code hat keinen `SessionEnd`-Event. Nächster verfügbarer Typ: `Stop` — feuert nach
+JEDEM Claude-Turn. Kein Block, nur Info-Output, damit es den Workflow nicht unterbricht.
+
+### Lösung
+`/root/.claude/hooks/sf1-session-end.py` geschrieben. In `settings.json` als `Stop`-Hook
+eingetragen. Prüft 4 Dinge nach jedem Turn: uncommittete Dateien (excl. sw.js/LIVE-PROGRESS/etc.),
+offene `[geplant]`-Einträge in DOKUMENTATION.md, Backup-Alter >26h, NEXT ACTION Anzeige.
+
+### Geänderte Dateien
+- `/root/.claude/hooks/sf1-session-end.py` — neuer Hook (nicht in SF-1-Git, liegt in ~/.claude/)
+- `/root/.claude/settings.json` — `"Stop": [{"hooks": [{"type": "command", "command": "python3 /root/.claude/hooks/sf1-session-end.py"}]}]` ergänzt
+
+### Ausgeführte Befehle
+```bash
+echo '{}' | python3 /root/.claude/hooks/sf1-session-end.py   # manuell testen
+```
+
+### Fallstricke / Was schiefging
+- Kein `SessionEnd`-Hook-Typ in Claude Code — `Stop` verwendet (feuert nach jedem Turn, nicht nur bei echter Session-Ende)
+- `settings.json` liegt in `~/.claude/`, nicht im SF-1-Repo → nicht mit `git commit` versioniert
+
+### Verifikation
+```
+── Session-End Check ──────────────────────────────
+⚠️  3 uncommittete Änderung(en) im SF-1-Repo
+⚠️  DOKUMENTATION.md hat noch [geplant]-Einträge
+➡  NEXT ACTION: ...
+───────────────────────────────────────────────────
+```
+Erscheint automatisch nach jedem Claude-Turn ✅
+
+### Abhängigkeiten / Voraussetzungen
+- `progress_lib.py` muss in `/root/.claude/hooks/` existieren
+- `ACTIVE-PROJECT`-Datei muss gesetzt sein (via `/switch`)
+
+### Commits
+- `41c2766` — docs: SessionEnd-Hook dokumentiert (Stop-Hook + settings.json)
 
 ---
 
 ## Strain-Import Cron Fix [abgeschlossen 2026-05-19]
 
+### Problem / Ziel
+Cron (`*/5 * * * *`) lief alle 5 Minuten, aber `cron.log` war seit 2026-04-29 leer.
+`batch-runner.log` zeigte: `MongoNetworkError: connect ECONNREFUSED 172.17.0.3:27017`.
+
+### Warum
+MongoDB-IP war in 2 Dateien hardcodiert als `172.17.0.3`. Nach Container-Neustarts
+bekam MongoDB eine neue IP (`172.17.0.16`). Docker-IPs sind nicht stabil.
+
+`cron.log` ist übrigens by-design leer — das Script loggt alles selbst in `batch-runner.log`
+(via `>> "$LOG"`), nichts geht an stdout.
+
+### Lösung
+IP wird jetzt dynamisch per `docker inspect sf1-mongodb` ermittelt:
+- Shell-Script: `MONGO_IP=$(docker inspect sf1-mongodb --format '{{...}}')` + `export MONGO_IP`
+- JS-Datei: `process.env.MONGO_IP || require('child_process').execSync("docker inspect ...")...`
+
+### Geänderte Dateien
+- `/root/scripts/strain-import/run-description-batches.sh` — MONGO_IP dynamisch ermitteln + exportieren, inline-node nutzt `process.env.MONGO_IP`
+- `/root/scripts/strain-import/generate-descriptions.js` — `MONGO_IP` via env oder docker inspect Fallback, `MONGO_URL` nutzt Template-String
+
+### Ausgeführte Befehle
+```bash
+bash /root/scripts/strain-import/run-description-batches.sh   # manuell testen
+tail -5 /root/scripts/strain-import/batch-runner.log
+# Ausgabe: "Noch ausstehend: ~4503" + "Batch abgeschlossen." ✅
+```
+
+### Fallstricke / Was schiefging
+- `cron.log` leer ist kein Bug — Script loggt bewusst in `batch-runner.log`
+- Nach dem Fix: Script läuft durch, aber 240 Errors wegen falschem Ollama-Port (11435 statt 11434). Das ist ein separates Problem.
+- Auch `sync-to-community.js` und `reindex-meilisearch.js` haben noch hardcodierte IPs — noch nicht gefixt!
+
+### Verifikation
+```bash
+bash /root/scripts/strain-import/run-description-batches.sh
+# → "[...] Starte Batch..." + "[...] Batch abgeschlossen." in batch-runner.log
+# → "Noch ausstehend: ~4503" (MongoDB-Verbindung klappt)
+```
+
+### Abhängigkeiten / Voraussetzungen
+- `docker` muss auf dem Host verfügbar sein (für `docker inspect`)
+- `sf1-mongodb` Container muss laufen
+
 ### Commits
 - `7721de5` — docs: Strain-Import Cron Fix dokumentiert
-
-### Ergebnis
-MongoDB-IP war hardcoded als `172.17.0.3`, nach Container-Neustarts auf `172.17.0.16` verschoben.
-Cron lief zwar alle 5min, aber `ECONNREFUSED` — silent fail weil alles in `batch-runner.log` landete.
-Fix: IP wird nun dynamisch per `docker inspect sf1-mongodb` ermittelt (Shell-Script + JS-Fallback).
-Script läuft jetzt durch: 4503 ausstehende Seeds, Ollama-Port-Problem ist separates Issue.
-
-### Betroffene Dateien
-- `/root/scripts/strain-import/run-description-batches.sh` — dynamische MONGO_IP
-- `/root/scripts/strain-import/generate-descriptions.js` — MONGO_IP via env oder docker inspect
 
 ---
 
 ## Auth-Service + Services tsx-watch Fix [abgeschlossen 2026-05-19]
 
+### Problem / Ziel
+`sf1-auth-service` seit 11h `unhealthy`. 8 weitere Services seit 9 Tagen `unhealthy`.
+Fehler: `ERR_MODULE_NOT_FOUND: Cannot find module '/app/src/index.ts'`
+
+### Warum
+Alle Services liefen mit `npx tsx watch src/index.ts` (Watch-Mode). `tsx watch` überwacht
+Dateisystemereignisse und startet bei Änderungen neu. In einem Production-Container mit
+Volume-Mount (`./apps/auth-service:/app`) löste ein `unlink`-Event (temporäres Editor-Write)
+einen Neustart aus. Beim Neustart schlug `tsx` fehlt, weil der Restart-Mechanismus intern
+`index.ts` als ES-Modul auflöst — was im Fehlerfall nicht gefunden wird.
+
+Root Cause: `tsx watch` ist ein Dev-Tool und nicht stabil für Production.
+
+### Lösung
+`watch` aus allen 9 Service-Commands in `docker-compose.yml` entfernt: `tsx watch` → `tsx`.
+Alle Container neu gestartet — dabei bekamen Services neue Docker-IPs, daher auch
+`tests/helpers/client.ts` mit den neuen IPs aktualisiert.
+
+### Geänderte Dateien
+- `docker-compose.yml` — 9× `npx tsx watch src/index.ts` → `npx tsx src/index.ts` (Zeilen ~224, 279, 334, 382, 422, 467, 503, 547, 596)
+- `tests/helpers/client.ts` — alle Service-IPs nach Container-Neustart aktualisiert (AUTH, COMM, JOURN, MEDIA, GAM, SEARCH, TOOLS, NOTIF)
+
+### Ausgeführte Befehle
+```bash
+docker-compose -f /root/SF-1-Ultimate-/docker-compose.yml up -d auth-service
+# → postgres wurde ebenfalls recreated (Dependency-Chain)
+docker-compose -f /root/SF-1-Ultimate-/docker-compose.yml up -d \
+  search-service journal-service notification-service gamification-service \
+  media-service community-service tools-service
+docker ps --format "table {{.Names}}\t{{.Status}}" | grep sf1
+npm run test:auth   # 7/7 ✅
+npm run test:search # 3/3 ✅
+```
+
+### Fallstricke / Was schiefging
+- Erster Commit-Versuch scheiterte: Pre-Commit-Hook lief Auth+Search-Tests, Search schlug fehl wegen neuer IP
+- Nach Container-Neustart bekam `sf1-search-service` IP `172.17.0.12` statt `172.17.0.4` — client.ts veraltet
+- Alle 9 Services hatten `tsx watch` — nicht nur auth-service
+
+### Verifikation
+```bash
+docker ps --format "{{.Names}}\t{{.Status}}" | grep -E "auth|search"
+# sf1-auth-service    Up 33 seconds (healthy) ✅
+# sf1-search-service  Up X seconds (healthy) ✅
+npm run test:auth   # 7/7 passed ✅
+npm run test:search # 3/3 passed ✅
+```
+
+### Abhängigkeiten / Voraussetzungen
+- Hinweis: Docker-IPs in `tests/helpers/client.ts` sind weiterhin hardcodiert.
+  Bei erneutem Container-Neustart müssen die IPs wieder aktualisiert werden.
+  Langfristige Lösung: Port-Mapping auf localhost oder DNS-Namen nutzen.
+
 ### Commits
 - `7fd0550` — fix: tsx watch → tsx in allen Services — Production-Stabilität
-
-### Ergebnis
-`tsx watch` lief in allen 9 Services im Production-Container mit Volume-Mount.
-Filesystem-Events (unlink/change) triggerten Neustarts → `ERR_MODULE_NOT_FOUND`.
-`watch` aus allen `docker-compose.yml`-Commands entfernt. Außerdem IPs in
-`tests/helpers/client.ts` nach Container-Neustart aktualisiert (alle 8 Services neu).
-Auth-Service: healthy ✅ | Search-Service: healthy ✅ | 7+3 Tests grün ✅
-
-### Betroffene Dateien
-- `docker-compose.yml` — 9× `tsx watch` → `tsx`
-- `tests/helpers/client.ts` — alle Service-IPs aktualisiert
 
 ---
 
