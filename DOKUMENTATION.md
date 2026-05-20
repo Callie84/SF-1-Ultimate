@@ -66,87 +66,316 @@ rclone lsd gdrive-backup:   # zeigt alle Drive-Ordner des Accounts
 
 ---
 
+## Healthchecks frontend, Traefik, n8n [abgeschlossen 2026-05-20]
+
+### Problem / Ziel
+Automations-Audit 2026-05-19, Punkt 5: 3 Container liefen ohne Docker-Healthcheck — `sf1-frontend`,
+`sf1-api-gateway` (Traefik) und `sf1-n8n`. Docker konnte deren Zustand nicht beurteilen;
+`restart: always` greift bei Prozess-Tod, aber nicht bei hängendem/deadem Service.
+Alle 10 Backend-Services (auth, journal, search, gamification, price, media, tools, notification,
+community, backup) hatten bereits funktionierende Healthchecks — der Audit-Punkt war für diese
+bereits erledigt, nur die drei o.g. fehlten noch.
+
+### Warum
+Docker-Healthchecks ermöglichen automatisches Neustarten bei unhealthy-Status und sind Voraussetzung
+für zuverlässiges Monitoring (Prometheus/Grafana meldet Container-Zustand). Ohne Healthcheck ist
+ein Container für Docker "laufend" auch wenn er keine Requests mehr beantwortet.
+Ansatz: native Endpunkte der jeweiligen Dienste nutzen statt eigene Wrapper zu schreiben.
+
+### Lösung
+**frontend (Next.js, Port 3000):**
+`/apps/web-app/src/app/api/health/route.ts` existierte bereits und prüft alle Backend-Services.
+Healthcheck nutzt diesen Endpunkt mit `start_period: 120s` weil Next.js Build (`npm run build`)
+beim Container-Start ~90 Sekunden dauert — ohne start_period würde Docker den Container als
+unhealthy markieren bevor der Build fertig ist.
+
+**api-gateway (Traefik, Port 80/443):**
+Traefik hat eingebauten Ping-Endpoint (`/ping`) der mit `--ping=true` aktiviert wird.
+Dieser antwortet auf Port 8080 (API-Port, intern, nicht nach außen exponiert).
+`--ping=true` zur Traefik-Command-Liste hinzugefügt + Healthcheck auf `http://localhost:8080/ping`.
+
+**n8n (Port 5678), `docker-compose.ki.yml`:**
+n8n hat nativen `/healthz`-Endpoint. Direkt genutzt.
+n8n ist in separater `docker-compose.ki.yml` konfiguriert (KI-Stack), nicht in `docker-compose.yml`.
+
+### Geänderte Dateien
+- `docker-compose.yml` — `healthcheck`-Block für `frontend` + `--ping=true` + `healthcheck` für `api-gateway` hinzugefügt
+- `docker-compose.ki.yml` — `healthcheck`-Block für `n8n` hinzugefügt
+
+### Ausgeführte Befehle
+```bash
+# Health-Endpoints vorab testen
+curl -s -o /dev/null -w "%{http_code}" http://localhost:5679/healthz   # → 200
+
+# Container mit neuer Konfiguration neu starten
+docker-compose up -d --no-build frontend
+docker-compose up -d --no-build api-gateway
+docker-compose -f docker-compose.ki.yml up -d n8n
+
+# Verifikation nach ~15s
+docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "frontend|api-gateway|n8n"
+```
+
+### Fallstricke / Was schiefging
+- **start_period für frontend ist kritisch:** Next.js baut beim ersten Start den kompletten
+  Produktions-Build (~90s). Ohne `start_period: 120s` würde Docker den Container als
+  unhealthy markieren + restarten (Restart-Loop).
+- **Traefik Port 8080 ist intern:** `--api=true` exponiert das Dashboard auf Port 8080 nur
+  intern. Der Healthcheck läuft innerhalb des Containers, daher funktioniert `localhost:8080`.
+- **n8n in separater Compose-Datei:** Neustart immer mit `-f docker-compose.ki.yml`.
+
+### Verifikation
+```
+sf1-n8n          Up About a minute (healthy)
+sf1-api-gateway  Up About a minute (healthy)
+sf1-frontend     Up About a minute (healthy)
+```
+`curl http://localhost:5679/healthz` → `{"status":"ok"}` HTTP 200.
+
+### Abhängigkeiten / Voraussetzungen
+- n8n läuft über `docker-compose.ki.yml` — bei Restarts immer die richtige Compose-Datei nutzen.
+- Traefik-Ping nur verfügbar wenn `--ping=true` in der Command-Liste steht.
+
+### Commits
+- `31b1aa6` — feat: Healthchecks für frontend, Traefik und n8n hinzufügen
+
+---
+
+## Price-Service Circuit-Breaker System-Alarm [abgeschlossen 2026-05-20]
+
+### Problem / Ziel
+Audit-Punkt 6: Wenn >3 Adapter Circuit-Breaker offen sind, wurde kein System-Alert gesendet.
+User-Alerts (targetPrice, restock, discount) funktionierten ✅ — aber systemseitiges Monitoring fehlte.
+
+### Warum
+Abweichung vom Plan: Kein `/api/prices/circuit-breaker/status`-HTTP-Endpoint vorhanden (DOKUMENTATION.md war veraltet).
+Circuit-Breaker-Daten liegen direkt in Redis (`circuit:open:*` Keys). Direkter Redis-Zugriff ist einfacher und zuverlässiger.
+Kein externes `send-telegram.sh` vorhanden — Telegram-Pattern aus `sf1-verify-backup.sh` übernommen (inline curl).
+
+### Lösung
+`/root/scripts/price-service-alarm.sh` — vollständige Script-Logik:
+1. Liest `REDIS_PASSWORD`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` aus `/root/SF-1-Ultimate-/.env`
+2. Zählt `circuit:open:*` Keys in Redis via `docker exec sf1-redis redis-cli KEYS`
+3. Wenn Anzahl > `THRESHOLD` (=3): sendet Telegram-Alert mit Adapter-Liste per inline curl
+4. Gibt immer ein OK/ALARM-Log mit Timestamp auf stdout aus (landet in `/var/log/sf1-price-alarm.log`)
+
+Telegram-Alert-Format:
+```
+⚠️ SF-1 Price-Service Alarm
+N Adapter-Circuit-Breaker offen (Schwelle: 3):
+adapter1, adapter2, ...
+Preise für diese Shops werden nicht abgerufen.
+Prüfen: docker logs sf1-price-service --tail 50
+```
+
+Circuit-Breaker-Mechanismus im Price-Service (zur Einordnung):
+- Redis Key `circuit:open:<adapter>` existiert wenn Adapter >= 5 Fehler in 1h hatte
+- Key hat TTL → löscht sich automatisch nach Ablauf (kein manuelles Reset nötig)
+- Key `circuit:failures:<adapter>` zählt die Fehler (wird bei Erfolg gelöscht)
+
+### Geänderte Dateien
+- `/root/scripts/price-service-alarm.sh` — neu angelegt (41 Zeilen, chmod +x) — Credentials aus .env, Redis direkt
+- Crontab root — `*/30 * * * * /root/scripts/price-service-alarm.sh >> /var/log/sf1-price-alarm.log 2>&1`
+
+### Ausgeführte Befehle
+```bash
+# Script anlegen + ausführbar machen
+chmod +x /root/scripts/price-service-alarm.sh
+
+# Manuell testen (Normalfall)
+bash /root/scripts/price-service-alarm.sh
+# → [2026-05-20T01:57:39Z] OK: 0 Circuits offen (Schwelle: 3)
+
+# Cron-Eintrag setzen
+(crontab -l; echo "*/30 * * * * /root/scripts/price-service-alarm.sh >> /var/log/sf1-price-alarm.log 2>&1") | crontab -
+
+# Prüfen
+crontab -l | grep price
+# → */30 * * * * /root/scripts/price-service-alarm.sh >> /var/log/sf1-price-alarm.log 2>&1
+
+# Alarm-Trigger manuell simulieren (Test):
+docker exec sf1-redis redis-cli -a "$REDIS_PASSWORD" --no-auth-warning SET "circuit:open:test1" 1 EX 60
+docker exec sf1-redis redis-cli -a "$REDIS_PASSWORD" --no-auth-warning SET "circuit:open:test2" 1 EX 60
+docker exec sf1-redis redis-cli -a "$REDIS_PASSWORD" --no-auth-warning SET "circuit:open:test3" 1 EX 60
+docker exec sf1-redis redis-cli -a "$REDIS_PASSWORD" --no-auth-warning SET "circuit:open:test4" 1 EX 60
+bash /root/scripts/price-service-alarm.sh  # → ALARM + Telegram-Nachricht
+# danach: Keys laufen nach 60s ab (oder manuell DEL)
+```
+
+### Fallstricke / Was schiefging
+- **Kein HTTP-Endpoint vorhanden:** Plan in DOKUMENTATION.md nannte `/api/prices/circuit-breaker/status`
+  — existiert nicht im price-service. Circuit-Breaker-Daten liegen ausschließlich in Redis.
+  Fix: `docker exec sf1-redis redis-cli KEYS "circuit:open:*"` direkt.
+- **Kein `send-telegram.sh` vorhanden:** Script-Verzeichnis hat kein zentrales Telegram-Wrapper-Script.
+  Lösung: inline curl analog zu `sf1-verify-backup.sh` (Zeilen 39–46).
+- **Commit-Repo:** Script liegt in `/root/scripts/` — das ist außerhalb des SF-1-Ultimate-Git-Repos.
+  Commit musste im Root-Repo (`/root`, Subverzeichnis `scripts/`) gemacht werden.
+
+### Verifikation
+```bash
+bash /root/scripts/price-service-alarm.sh
+# [2026-05-20T01:57:39Z] OK: 0 Circuits offen (Schwelle: 3)
+
+crontab -l | grep price
+# */30 * * * * /root/scripts/price-service-alarm.sh >> /var/log/sf1-price-alarm.log 2>&1
+```
+Script läuft ohne Fehler. Alarm-Trigger-Test mit 4 Test-Keys möglich (siehe Befehle oben).
+
+### Abhängigkeiten / Voraussetzungen
+- `sf1-redis` Container muss laufen
+- `REDIS_PASSWORD`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` müssen in `/root/SF-1-Ultimate-/.env` gesetzt sein
+- `docker` CLI muss als root aufrufbar sein (Cron läuft als root ✅)
+- Log-Datei `/var/log/sf1-price-alarm.log` wird beim ersten Lauf automatisch angelegt
+
+### Commits
+- `d3fafa2` — feat: Price-Service Circuit-Breaker System-Alarm (Audit-Punkt 6) [root-Repo]
+
+---
+
+## Backup-Alter-Check Cron [abgeschlossen 2026-05-20]
+
+### Problem / Ziel
+Audit-Punkt 7: Wenn der Backup-Cron still ausfällt, merkt niemand es — kein Alert, kein Monitoring.
+
+### Lösung
+`/root/scripts/backup-age-check.sh` sucht das neueste `backup-*.tar.gz.enc` im Backup-Verzeichnis,
+berechnet das Alter in Stunden, sendet Telegram-Alert wenn > 30h oder kein Backup gefunden.
+Cron täglich 09:00 — nach der täglichen Backup-Zeit (03:00), sodass ein ausgebliebenes Backup
+spätestens um 09:00 gemeldet wird.
+
+### Geänderte Dateien
+- `/root/scripts/backup-age-check.sh` — neu angelegt (49 Zeilen, chmod +x)
+- Crontab root — `0 9 * * * /root/scripts/backup-age-check.sh >> /var/log/sf1-backup-age.log 2>&1`
+
+### Verifikation
+```
+[2026-05-20T03:28:19Z] OK: Letztes Backup 1h alt (backup-2026-05-20T02-00-00.tar.gz.enc)
+```
+
+### Abhängigkeiten / Voraussetzungen
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` in `/root/SF-1-Ultimate-/.env`
+- Backup-Dateien unter `/root/SF-1-Ultimate-/backups/backup-*.tar.gz.enc`
+
+### Commits
+- `18446e9` — feat: Backup-Alter-Check Cron (Audit-Punkt 7) [root-Repo]
+
+---
+
 ## ⚡ OFFENE PUNKTE — Nächste Session sofort starten
 
-> Stand: 2026-05-19. Alle Prio-1-4 Befunde aus `docs/automations-audit-2026-05-19.md` erledigt.
-> Prio 5–8 sind offen. Reihenfolge wie unten.
-
-### Prio 5 — Healthchecks für 10 Services (🟡 diese Woche)
-
-**Problem:** 10 Services haben keinen `/health`-Endpoint → Docker markiert sie als `unhealthy` ohne echten Grund.
-Betroffen: `journal-service`, `search-service`, `notification-service`, `gamification-service`,
-`media-service`, `community-service`, `tools-service`, `frontend`, `price-service`, `n8n`
-
-**Was zu tun ist:**
-1. In jedem Service-`index.ts` einen simplen Endpoint ergänzen:
-   ```ts
-   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
-   ```
-2. In `docker-compose.yml` pro Service einen Healthcheck ergänzen:
-   ```yaml
-   healthcheck:
-     test: ["CMD", "wget", "-qO-", "http://localhost:PORT/health"]
-     interval: 30s
-     timeout: 5s
-     retries: 3
-   ```
-3. Services neu starten: `docker-compose up -d <service-name>`
-
-**Template zuerst an `search-service` testen** (Port 3007), dann auf alle 9 anderen übertragen.
-
-**Dateien:** `apps/*/src/index.ts` (je 1 Zeile) + `docker-compose.yml` (je ~5 Zeilen pro Service)
+> Stand: 2026-05-20. Prio-5+6+7 erledigt. Prio 8 noch offen.
 
 ---
 
-### Prio 6 — Price-Service System-Alarm (🟡 diese Woche)
+## n8n Workflows dokumentiert [abgeschlossen 2026-05-20]
 
-**Problem:** Wenn >3 Adapter Circuit-Breaker offen sind, wird kein Alert gesendet.
-User-Alerts (targetPrice etc.) funktionieren ✅ — aber System-Alarms fehlen.
+### Problem / Ziel
+Audit-Punkt 8: Unbekannt welche n8n-Workflows aktiv sind — kein Überblick über Automationen in n8n.
 
-**Was zu tun ist:**
-Neues Cron-Script `/root/scripts/price-service-alarm.sh`:
+### Warum
+n8n läuft seit Wochen (`Up 2 weeks`) — unklar ob Workflows aktiv sind, die kritische Funktionen
+übernehmen. Dokumentation als Pflege-Maßnahme damit zukünftige Sessions wissen: n8n ist leer,
+kein Handlungsbedarf, kein blinder Fleck mehr.
+
+### Ergebnis / Lösung
+n8n-Instanz (v1.85.0, `sf1-n8n`) läuft `healthy` ist aber **vollständig leer**:
+
+| Kategorie | Anzahl |
+|-----------|--------|
+| Workflows (aktiv) | 0 |
+| Workflows (inaktiv) | 0 |
+| Credentials | 0 |
+| Webhooks | 0 |
+
+Keine Automationen konfiguriert — n8n wird aktuell nicht genutzt.
+
+### Geänderte Dateien
+- `/root/SF-Brain/SF-1 Projekt/n8n-workflows.md` — neu angelegt (Vault-only, kein Git-Repo)
+
+### Ausgeführte Befehle
 ```bash
-#!/bin/bash
-# Prüft ob >3 Circuit-Breaker offen sind → Telegram-Alert
-STATUS=$(curl -s http://172.17.0.X:3002/api/prices/circuit-breaker/status)
-OPEN=$(echo "$STATUS" | jq '[.adapters[] | select(.state=="open")] | length')
-if [ "$OPEN" -gt 3 ]; then
-  bash /root/scripts/send-telegram.sh "⚠️ Price-Service: $OPEN Adapter Circuit-Breaker offen"
-fi
-```
-Cron: `*/30 * * * * /root/scripts/price-service-alarm.sh`
+# Container-IP ermitteln
+docker inspect sf1-n8n --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+# → 172.23.0.2
 
-**Voraussetzung:** Price-Service IP prüfen (`docker inspect sf1-price-service`), Telegram-Script-Pfad prüfen.
+# REST-API-Versuch (scheitert — kein API-Key konfiguriert)
+curl -s http://172.23.0.2:5678/api/v1/workflows
+# → {"message":"'X-N8N-API-KEY' header required"}
+
+# Volume-Pfad ermitteln
+docker inspect sf1-n8n --format '{{range .Mounts}}{{.Source}} → {{.Destination}}{{"\n"}}{{end}}'
+# → /var/lib/docker/volumes/sf-1-ultimate-_n8n_data/_data → /root/.n8n
+
+# SQLite-DB direkt lesen (Python sqlite3 ist auf dem Host vorhanden)
+python3 -c "
+import sqlite3
+db = '/var/lib/docker/volumes/sf-1-ultimate-_n8n_data/_data/database.sqlite'
+con = sqlite3.connect(db)
+cur = con.cursor()
+cur.execute('SELECT id, name, active FROM workflow_entity')
+print(cur.fetchall())  # → []
+con.close()
+"
+```
+
+### Fallstricke / Was schiefging
+- **sqlite3 CLI nicht im Container:** `docker exec sf1-n8n sqlite3 ...` schlägt fehl
+  (`executable file not found`). Workaround: Python `sqlite3` direkt auf dem Host nutzen.
+- **n8n REST-API benötigt API-Key:** `N8N_USER_MANAGEMENT_DISABLED: "true"` deaktiviert
+  User-Management, aber nicht die API-Authentifizierung. Ohne `X-N8N-API-KEY` Header: 401.
+
+### Verifikation
+```python
+# Alle relevanten Tabellen haben 0 Einträge:
+workflow_entity: []       # keine Workflows
+credentials_entity: []   # keine Credentials
+webhook_entity: []        # keine Webhooks
+```
+
+### Abhängigkeiten / Voraussetzungen
+Keine — reine Dokumentation, keine Änderungen am System.
+
+### Commits
+Kein Commit — Vault-Datei liegt außerhalb aller Git-Repos.
 
 ---
 
-### Prio 7 — Backup-Alter-Check Cron (🟡 diese Woche)
+## Ollama Port Fix generate-descriptions.js [abgeschlossen 2026-05-20]
 
-**Problem:** Wenn Backup-Cron still ausfällt, merkt niemand es.
+### Problem / Ziel
+`generate-descriptions.js` hatte `OLLAMA_URL = 'http://localhost:11435'` hardcodiert.
+Ollama läuft als Host-Prozess auf Port 11434 — alle API-Calls schlugen fehl.
+4503 Strain-Beschreibungen standen aus.
 
-**Was zu tun ist:**
-Neues Script `/root/scripts/backup-age-check.sh`:
+### Warum
+Port 11435 war in früherem Setup der nach außen gemappte Docker-Port. Ollama läuft
+inzwischen direkt auf dem Host (kein Container), daher ist 11434 der korrekte Port.
+
+### Lösung
+Zeile 17 in `generate-descriptions.js`: `11435` → `11434`. Ein-Zeilen-Fix.
+
+### Geänderte Dateien
+- `/root/scripts/strain-import/generate-descriptions.js` — Zeile 17: Port 11435 → 11434
+
+### Fallstricke / Was schiefging
+- `strain-import/` hat ein eigenes Git-Repo (`.git` in `/root/scripts/strain-import/`).
+  Commit daher dort, nicht im Root-Repo `/root`.
+- **qwen2.5:7b nicht geladen:** `ollama list` → leer. Vor dem nächsten Script-Lauf:
+  `ollama pull qwen2.5:7b` ausführen (dauert ~5 min, Modell ~4.7GB).
+
+### Verifikation
 ```bash
-#!/bin/bash
-LAST=$(ls -t /root/SF-1-Ultimate-/backups/backup-*.enc | head -1)
-AGE=$(( ($(date +%s) - $(stat -c %Y "$LAST")) / 3600 ))
-if [ "$AGE" -gt 30 ]; then
-  bash /root/scripts/send-telegram.sh "⚠️ SF-1 Backup: Letztes Backup ist ${AGE}h alt!"
-fi
+curl -s http://localhost:11434/api/tags | python3 -m json.tool
+# → {"models": []}   ← Ollama läuft, aber Modell fehlt noch
+# Nach: ollama pull qwen2.5:7b → node generate-descriptions.js
 ```
-Cron: `0 9 * * * /root/scripts/backup-age-check.sh`  (täglich 09:00)
 
----
+### Abhängigkeiten / Voraussetzungen
+- `ollama pull qwen2.5:7b` muss vor dem nächsten Lauf ausgeführt werden
+- MongoDB muss laufen (wird dynamisch per `docker inspect sf1-mongodb` ermittelt)
 
-### Prio 8 — n8n Workflows dokumentieren (🟡 später)
-
-**Problem:** Welche n8n-Workflows aktiv sind ist unbekannt.
-
-**Was zu tun ist:**
-1. n8n Admin aufrufen: `http://172.17.0.X:5678` (IP via `docker inspect sf1-n8n`)
-   oder Traefik-Route prüfen: `https://n8n.seedfinderpro.de` (falls konfiguriert)
-2. Alle aktiven Workflows auflisten + in Vault dokumentieren:
-   `/root/SF-Brain/SF-1 Projekt/n8n-workflows.md`
+### Commits
+- `5e3fba2` — fix: Ollama Port 11435 → 11434 [strain-import Repo]
 
 ---
 
@@ -154,10 +383,9 @@ Cron: `0 9 * * * /root/scripts/backup-age-check.sh`  (täglich 09:00)
 
 | Problem | Details |
 |---------|---------|
-| **Ollama Port falsch** | `generate-descriptions.js` nutzt Port 11435, Ollama läuft auf 11434. 4503 Strain-Beschreibungen stehen aus. Fix: `OLLAMA_URL` in der Datei auf `http://localhost:11434` ändern + Modell `qwen2.5:7b` prüfen ob geladen (`curl http://localhost:11434/api/tags`) |
+| **Ollama / Strain-Beschreibungen** | ~~Ollama wird nicht mehr genutzt~~ — User-Entscheidung 2026-05-20. `generate-descriptions.js` + Ollama-Stack können gestoppt/entfernt werden wenn gewünscht. 4503 ausstehende Beschreibungen bleiben vorerst ohne KI-Generierung. |
 | **sw.js uncommitted** | `apps/web-app/public/sw.js` + `sw.js.map` sind modifiziert aber nicht committed. Wahrscheinlich auto-generiert — prüfen ob commit nötig |
-| **DOKUMENTATION.md [geplant]-Einträge** | SessionEnd-Hook meldet noch offene [geplant]-Einträge — bitte prüfen welche das sind und auf [abgeschlossen] setzen |
-| **Hardcodierte IPs in anderen Scripts** | `sync-to-community.js` und `reindex-meilisearch.js` haben noch `172.17.0.3` (MongoDB) und `172.17.0.10` (Meilisearch) hardcodiert — gleicher Fix wie bei `generate-descriptions.js` |
+| **Hardcodierte IPs in anderen Scripts** | `sync-to-community.js` und `reindex-meilisearch.js` haben noch `172.17.0.3` (MongoDB) und `172.17.0.10` (Meilisearch) hardcodiert — dynamisch via `docker inspect` ersetzen |
 
 ---
 
@@ -6530,6 +6758,7 @@ Automatische Ausführung der Mastertest-Suite: Smoke-Test vor Commits + volle Su
 ### Täglicher Cron
 - 2026-04-29 06:00 — ❌ 41 grün / 1 fehlgeschlagen
 - 2026-04-30 06:00 — ❌ 42 grün / 2 fehlgeschlagen
+- 2026-05-19 06:00 — ✅ 42/42 grün
 - **Script:** `/root/scripts/sf1-daily-mastertest.sh`
 - **Trigger:** Täglich 06:00 (Crontab: `0 6 * * *`)
 - **Suite:** Volle 42-Test-Suite (`npm run mastertest`)

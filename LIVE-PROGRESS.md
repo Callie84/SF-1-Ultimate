@@ -1,16 +1,15 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-05-19T00:57:16Z
+**Last-Update:** 2026-05-20T03:59:32Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
-Alle 4 kritischen Audit-Befunde erledigt ✅. Nächste Priorität: Audit-Punkt 5 — Healthchecks für 10 Services.
-Schritt 1: `/health`-Endpoint in einem Service implementieren (z.B. search-service), dann als Template übernehmen.
-Details: `/root/SF-1-Ultimate-/docs/automations-audit-2026-05-19.md` (Punkt 5)
+Ollama wird nicht mehr genutzt (User-Entscheidung 2026-05-20). Strain-Beschreibungen via KI entfällt.
+Nächste offene Nebenprobleme: Hardcodierte IPs in `sync-to-community.js` + `reindex-meilisearch.js` fixen.
+Details: `/root/SF-1-Ultimate-/DOKUMENTATION.md` (Abschnitt "Bekannte offene Nebenprobleme").
 
 ## Aktueller Task
-Automations-Audit Nacharbeit — Prio 5–8 (Healthchecks, Price-Service Alarm, Backup-Alter-Check, n8n-Doku)
-Details: `/root/SF-1-Ultimate-/docs/automations-audit-2026-05-19.md`
+—
 
 ## Letzter abgeschlossener Task
 2026-05-19: Offsite-Backup Google Drive eingerichtet
@@ -54,6 +53,11 @@ Vorheriger: s1: Skills-Audit 2026-05-19:
 - [2026-05-19] Strain-Import Cron Fix — MongoDB-IP dynamisch, Script läuft durch (7721de5)
 - [2026-05-19] SessionEnd-Hook — Stop-Hook in settings.json, uncommitted/geplant/Backup-Check ✅
 - [2026-05-19] Offsite-Backup Google Drive — gdrive-backup Remote, sf1-backup.sh umgestellt ✅
+- [2026-05-20] Healthchecks frontend/Traefik/n8n — --ping=true + wget /api/health + /healthz (31b1aa6)
+- [2026-05-20] Price-Service Circuit-Breaker Alarm — Redis KEYS circuit:open:*, Telegram + Cron 30min (d3fafa2)
+- [2026-05-20] Backup-Alter-Check — backup-*.tar.gz.enc Alter prüfen, Telegram >30h, Cron 09:00 (18446e9)
+- [2026-05-20] n8n Workflows dokumentiert — Instanz leer (0 Workflows/Credentials), Vault: n8n-workflows.md
+- [2026-05-20] Ollama Port Fix — generate-descriptions.js 11435→11434 (5e3fba2, strain-import Repo)
 
 ## Offene Tasks (s-plan)
 (keine)
