@@ -379,13 +379,36 @@ curl -s http://localhost:11434/api/tags | python3 -m json.tool
 
 ---
 
-### Bekannte offene Nebenprobleme (kein kritischer Handlungsbedarf)
+## Hardcodierte IPs + sw.js Cleanup [abgeschlossen 2026-05-20]
+
+### Problem / Ziel
+3 offene Punkte bereinigt:
+1. `sync-to-community.js` + `reindex-meilisearch.js` — MongoDB `172.17.0.3` + Meilisearch `172.17.0.10` hardcodiert
+2. `sw.js` + `sw.js.map` — auto-generierter Workbox PWA Service Worker, uncommitted
+3. `DOKUMENTATION.md` + `LIVE-PROGRESS.md` — uncommitted
+
+### Lösung
+IPs: gleiche `docker inspect`-Pattern wie `generate-descriptions.js`.
+Meilisearch-IP hatte sich bereits geändert (172.17.0.10 → 172.17.0.19) — Fix war überfällig.
+`sw.js` war einmal committed (14c909c) — neuen Build-Stand committet.
+
+### Geänderte Dateien
+- `scripts/strain-import/sync-to-community.js` — MongoDB IP dynamisch [strain-import Repo]
+- `scripts/strain-import/reindex-meilisearch.js` — MongoDB + Meilisearch IP dynamisch [strain-import Repo]
+- `apps/web-app/public/sw.js` + `sw.js.map` — Workbox Build-Artefakt aktualisiert [SF-1 Repo]
+- `DOKUMENTATION.md` + `LIVE-PROGRESS.md` — committed [SF-1 Repo]
+
+### Commits
+- `3a524d7` — fix: Hardcodierte IPs durch docker inspect ersetzt [strain-import Repo]
+- `59d9016` — chore: DOKUMENTATION.md + LIVE-PROGRESS.md + sw.js aktualisiert [SF-1 Repo]
+
+---
+
+### Bekannte offene Nebenprobleme
 
 | Problem | Details |
 |---------|---------|
-| **Ollama / Strain-Beschreibungen** | ~~Ollama wird nicht mehr genutzt~~ — User-Entscheidung 2026-05-20. `generate-descriptions.js` + Ollama-Stack können gestoppt/entfernt werden wenn gewünscht. 4503 ausstehende Beschreibungen bleiben vorerst ohne KI-Generierung. |
-| **sw.js uncommitted** | `apps/web-app/public/sw.js` + `sw.js.map` sind modifiziert aber nicht committed. Wahrscheinlich auto-generiert — prüfen ob commit nötig |
-| **Hardcodierte IPs in anderen Scripts** | `sync-to-community.js` und `reindex-meilisearch.js` haben noch `172.17.0.3` (MongoDB) und `172.17.0.10` (Meilisearch) hardcodiert — dynamisch via `docker inspect` ersetzen |
+| **Ollama / Strain-Beschreibungen** | Ollama wird nicht mehr genutzt (User-Entscheidung 2026-05-20). Stack läuft noch als Host-Prozess, kann bei Bedarf gestoppt werden. |
 
 ---
 
@@ -6759,6 +6782,7 @@ Automatische Ausführung der Mastertest-Suite: Smoke-Test vor Commits + volle Su
 - 2026-04-29 06:00 — ❌ 41 grün / 1 fehlgeschlagen
 - 2026-04-30 06:00 — ❌ 42 grün / 2 fehlgeschlagen
 - 2026-05-19 06:00 — ✅ 42/42 grün
+- 2026-05-20 06:00 — ✅ 42/42 grün
 - **Script:** `/root/scripts/sf1-daily-mastertest.sh`
 - **Trigger:** Täglich 06:00 (Crontab: `0 6 * * *`)
 - **Suite:** Volle 42-Test-Suite (`npm run mastertest`)

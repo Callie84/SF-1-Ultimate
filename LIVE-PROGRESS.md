@@ -1,12 +1,11 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-05-20T03:59:32Z
+**Last-Update:** 2026-05-20T04:00:32Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
-Ollama wird nicht mehr genutzt (User-Entscheidung 2026-05-20). Strain-Beschreibungen via KI entfällt.
-Nächste offene Nebenprobleme: Hardcodierte IPs in `sync-to-community.js` + `reindex-meilisearch.js` fixen.
-Details: `/root/SF-1-Ultimate-/DOKUMENTATION.md` (Abschnitt "Bekannte offene Nebenprobleme").
+(kein aktiver Task) — System sauber ✅. Alle Audit-Punkte + offene Nebenprobleme erledigt.
+Nächste Session: neue Anforderung vom User abwarten oder BUG_TRACKER.md auf veraltete Einträge prüfen.
 
 ## Aktueller Task
 —
@@ -58,6 +57,7 @@ Vorheriger: s1: Skills-Audit 2026-05-19:
 - [2026-05-20] Backup-Alter-Check — backup-*.tar.gz.enc Alter prüfen, Telegram >30h, Cron 09:00 (18446e9)
 - [2026-05-20] n8n Workflows dokumentiert — Instanz leer (0 Workflows/Credentials), Vault: n8n-workflows.md
 - [2026-05-20] Ollama Port Fix — generate-descriptions.js 11435→11434 (5e3fba2, strain-import Repo)
+- [2026-05-20] IPs dynamisch + sw.js committed — sync/reindex docker inspect, sw.js Build (3a524d7, 59d9016)
 
 ## Offene Tasks (s-plan)
 (keine)
