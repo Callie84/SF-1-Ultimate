@@ -7061,19 +7061,91 @@ Keine Code-Commits — nur Datei in `/root/Dokumente/`.
 
 ## Bugfix: price-service Crash — fehlende Module + undeklarierten Variablen [abgeschlossen 2026-05-22]
 
+### Problem / Ziel
+`sf1-price-service` war mit Exit-Code 1 abgestürzt und lief nicht. Die 4 Preisvergleich-Endpoints (`/api/prices/compare`, `/api/prices/strains/top-deals`, `/api/prices/alerts`, `/api/prices/history/*`) gaben alle 404 zurück, weil Traefik keinen laufenden Service dahinter fand. Der Container hatte sich ~37 Minuten vor Entdeckung beendet.
+
+Symptome aus `docker logs sf1-price-service`:
+```
+Error: connect ECONNREFUSED 127.0.0.1:6379   (BullMQ Worker)
+[Server] Unhandled Rejection: NOAUTH Authentication required.
+connect ECONNREFUSED 127.0.0.1:27017          (MongoDB)
+```
+
+### Warum (Root Cause)
+Nicht ein einzelner Fehler, sondern **4 undeklarierten Variablen + 1 fehlende Datei**, die beim vorherigen Feature-Aufbau (Playwright, Redis Caching, Grafana, Telegram Alerts, Preisvergleiche) in den Code geschrieben wurden, aber nie importiert/angelegt wurden:
+
+1. **`import { metricsService }` mitten im Funktions-Body** (`index.ts` Zeile 238) — `tsx`/esbuild hoistet den Import an den Modulanfang, versucht `./services/metrics.service` zu laden, findet sie nicht → `MODULE_NOT_FOUND` → `process.exit(1)`.
+2. **`cache.middleware.ts` fehlte** — `prices.routes.ts` importierte `withCache` daraus, Datei existierte nie.
+3. **`metricsService`, `getScraper`, `telegramService`, `cacheService`** in `feed.worker.ts` — alle 4 ohne Import referenziert, alle 4 Service-Dateien existieren nicht.
+4. **Duplizierten `/metrics`-Endpoint** der ebenfalls `metricsService` nutzte.
+
+Der scheinbare Redis-ECONNREFUSED-auf-localhost-Fehler war ein Folgefehler: Nachdem das Modul durch MODULE_NOT_FOUND nicht komplett lud, initialisierte BullMQ mit Fallback-Verbindung (`127.0.0.1:6379`).
+
+### Lösung
+Alle nicht-existenten Referenzen entfernt + fehlende Datei erstellt. Kein neues Feature, nur kaputten Stand repariert.
+
+- `metricsService`-Calls entfernt (Prometheus-Metriken liefen bereits via `prom-client` im ersten `/metrics`-Endpoint)
+- `getScraper`/`telegramService`/`cacheService`-Calls aus Worker entfernt (0-Produkte-Fall loggt jetzt nur noch + returned früh)
+- `cache.middleware.ts` minimal implementiert: `withCache(keyPrefix, ttl)` → Redis GET → HIT: sofort antworten / MISS: `res.json` patchen + nach Response in Redis schreiben
+
+Außerdem: Test-Client-IPs aktualisiert, da nach dem Container-Neustart alle Docker-IPs rotiert waren → Auth-Tests schlugen mit ECONNREFUSED fehl.
+
+### Geänderte Dateien
+- `apps/price-service/src/index.ts` — Stray-`import { metricsService }` aus Mitte von `app.get('/api/prices/admin/seedbanks', ...)` Handler entfernt; duplizierten zweiten `/metrics`-Endpoint entfernt der `metricsService.getMetrics()` aufrief — weil `metricsService` nicht existiert und `promClient` den ersten Endpoint bereits korrekt bediente
+- `apps/price-service/src/middleware/cache.middleware.ts` — **neu erstellt** — Export `withCache(keyPrefix: string, ttl: number)` — Redis GET/SET mit `res.json`-Patching; Fehler werden still geloggt damit ein Cache-Ausfall den Endpoint nicht lahmlegt
+- `apps/price-service/src/workers/feed.worker.ts` — `metricsService.record*`-Calls (Zeilen 61–62) entfernt; 0-Produkte-Block neu geschrieben: `getScraper`-Fallback, `telegramService.sendAlert`, `cacheService.invalidate` entfernt; `cacheService.invalidate('*')` nach erfolgreichem Import entfernt — alle 4 Services existieren nicht und crashten jeden Feed-Import-Job mit `ReferenceError`
+- `tests/helpers/client.ts` — Alle 10 hardcodierten Docker-IPs auf aktuelle Werte gesetzt (Container-Neustarts ändern IPs): AUTH `172.17.0.25→.12`, COMM `.4→.5`, JOURN `.17→.18`, MEDIA `.27→.7`, PRICE `.5→.28`, GAM `.22→.11`, SEARCH `.12→.4`, BACKUP `.18→.19`, TOOLS `.2→.22`, NOTIF `.11→.6`
+
+### Ausgeführte Befehle
+```bash
+# Health-Check
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+docker logs sf1-price-service --tail 30
+
+# Container-IPs abfragen (für alle 10 Services)
+docker inspect sf1-auth-service --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'
+
+# Service neu starten (3× nötig — nach jedem Fix-Schritt)
+docker-compose -f /root/SF-1-Ultimate-/docker-compose.yml up -d --force-recreate price-service
+
+# Auth-Test verifizieren
+cd /root/SF-1-Ultimate-/tests && npm run test:auth
+
+# Register-Endpoint direkt testen (Auth-Fehler lokalisieren)
+curl -sk -X POST https://seedfinderpro.de/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"debug@test.invalid","password":"TestPass!123","username":"dbgtest","ageVerified":true}'
+
+# Mastertest + Vault-Report
+cd /root/SF-1-Ultimate-/tests && bash mastertest-report.sh
+python3 /root/SF-1-Ultimate-/tests/generate-vault-report.py
+```
+
+### Fallstricke / Was schiefging
+1. **Erster Neustart schlug fehl** — `prices.routes.ts` importierte `cache.middleware.ts` die noch nicht existierte → zweiter `MODULE_NOT_FOUND`. Erst nach Erstellen der Datei startete der Service weiter.
+2. **Zweiter Neustart: `metricsService is not defined`** — Worker lief jetzt durch (Module geladen), aber `metricsService`-Calls crashten jeden Feed-Import-Job mit `ReferenceError`. Erst nach Entfernen aller 4 undeklarierten Variablen liefen Jobs durch.
+3. **Auth-Test-Fehler irreführend** — Tests schlugen fehl mit `token = ''`, obwohl der Auth-Service selbst korrekt lief. Ursache: veraltete IPs im Test-Client (`172.17.0.25:3001` statt `172.17.0.12:3001`). Diagnose via direktem `curl` an `https://seedfinderpro.de/api/auth/register` → sofort erfolgreich.
+4. **IPs sind nicht stabil** — Docker-Container-IPs ändern sich bei jedem Neustart. Test-Client nutzt hardcodierte IPs statt Container-Namen, weil er vom Host (nicht aus dem Docker-Netz) zugreift. Container-Namen lösen nur innerhalb des Docker-Netzes auf.
+5. **`docker compose` (v2) vs `docker-compose` (v1)** — `docker compose up -d` schlug fehl (`unknown shorthand flag: 'd'`), weil auf dem Server Docker Compose v1 läuft.
+
+### Verifikation
+```bash
+docker ps | grep price-service
+# → sf1-price-service   Up X minutes
+
+docker logs sf1-price-service --tail 10
+# → [FeedWorker] pyramid-seeds: 96 Produkte in 7.5s
+# → [FeedWorker] Job 3642 abgeschlossen  (kein ReferenceError mehr)
+
+cd /root/SF-1-Ultimate-/tests && bash mastertest-report.sh
+# → Tests: 42 passed | 2 skipped (ai-service, erwartet) | 0 failed | 11/11 Services
+```
+
+### Abhängigkeiten / Voraussetzungen
+- `sf1-redis` läuft und ist mit `REDIS_PASSWORD` aus `.env` erreichbar
+- `sf1-mongodb` läuft (Feeds schreiben Preise in MongoDB)
+- `.env` hat `REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379` korrekt gesetzt
+
 ### Commits
 - `70d96e6` — fix: price-service crash + test client IPs aktualisiert
-
-### Problem
-price-service war abgestürzt (Exit 1). Ursache: 4 undeklarierten Referenzen + 1 fehlende Datei.
-
-### Änderungen
-- `apps/price-service/src/index.ts` — Stray `import { metricsService }` mitten in Funktion entfernt; duplizierten `/metrics`-Endpoint entfernt (nutzte nicht-existente `metricsService`)
-- `apps/price-service/src/middleware/cache.middleware.ts` — **neu erstellt** (war importiert aber fehlte)
-- `apps/price-service/src/workers/feed.worker.ts` — `metricsService`, `getScraper`, `telegramService`, `cacheService` Calls entfernt (alle nicht importiert, Services existieren nicht)
-- `tests/helpers/client.ts` — Docker-IPs aller Services auf aktuelle Werte aktualisiert (IPs hatten sich nach Container-Neustart verschoben)
-
-### Ergebnis
-- price-service läuft stabil, 28 Feed-Adapter importieren erfolgreich
-- Auth-Tests: 7/7 grün
-- Alle 4 Preisvergleich-Endpoints wieder erreichbar
+- `f7b33be` — docs: DOKUMENTATION.md + LIVE-PROGRESS.md nach price-service Quickfix aktualisiert
