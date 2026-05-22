@@ -364,6 +364,7 @@ app.post('/api/prices/admin/fix-decimals', requireAdmin, async (req, res) => {
 // API ROUTES
 // ==========================================
 app.use('/api/prices/affiliate', affiliateRoutes);
+
 app.use('/api/prices', pricesRoutes);
 app.use('/api/alerts', alertsRoutes);
 

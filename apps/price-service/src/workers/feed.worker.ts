@@ -114,8 +114,8 @@ const feedWorker = new Worker(
       logger.info(`[FeedWorker] ${seedbank} fertig: ${result.seeds} neue Seeds, ${result.prices} neue Preise, ${result.pricesUpdated} Preise aktualisiert (${importTime}s)`);
 
       return {
-        seedbank,
-        productsImported: products.length,
+      seedbank,
+      productsImported: products.length,
         seedsCreated: result.seeds,
         pricesCreated: result.prices,
         pricesUpdated: result.pricesUpdated,
