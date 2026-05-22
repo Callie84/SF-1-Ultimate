@@ -1,6 +1,6 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-05-20T04:00:32Z
+**Last-Update:** 2026-05-22T01:14:46Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
@@ -58,6 +58,8 @@ Vorheriger: s1: Skills-Audit 2026-05-19:
 - [2026-05-20] n8n Workflows dokumentiert — Instanz leer (0 Workflows/Credentials), Vault: n8n-workflows.md
 - [2026-05-20] Ollama Port Fix — generate-descriptions.js 11435→11434 (5e3fba2, strain-import Repo)
 - [2026-05-20] IPs dynamisch + sw.js committed — sync/reindex docker inspect, sw.js Build (3a524d7, 59d9016)
+
+- [2026-05-22] Quickfix: price-service Crash — fehlende Module + undeklarierten Variablen behoben, Test-IPs aktualisiert (70d96e6)
 
 ## Offene Tasks (s-plan)
 (keine)

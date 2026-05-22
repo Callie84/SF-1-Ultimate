@@ -6783,6 +6783,7 @@ Automatische Ausführung der Mastertest-Suite: Smoke-Test vor Commits + volle Su
 - 2026-04-30 06:00 — ❌ 42 grün / 2 fehlgeschlagen
 - 2026-05-19 06:00 — ✅ 42/42 grün
 - 2026-05-20 06:00 — ✅ 42/42 grün
+- 2026-05-21 06:00 — ❌ 36 grün / 1 fehlgeschlagen
 - **Script:** `/root/scripts/sf1-daily-mastertest.sh`
 - **Trigger:** Täglich 06:00 (Crontab: `0 6 * * *`)
 - **Suite:** Volle 42-Test-Suite (`npm run mastertest`)
@@ -7035,3 +7036,44 @@ grep "SUPERSEDED" /root/.claude/projects/-root/memory/feedback_lernphase.md
 ### Commits
 Keine Code-Commits in SF-1-Repo — alle Änderungen sind in `/root/.claude/` (Skills-System, nicht versioniert).
 
+---
+
+## SF-1 Projekt-Datenpaket erstellt [abgeschlossen 2026-05-21]
+
+### Ergebnis
+Vollständiges Datenpaket als einzelne Markdown-Datei erstellt — enthält alle nützlichen Informationen
+über das SF-1-Projekt für Upload in neue Projektsessions oder KI-Assistenten.
+
+Inhalte: Tech-Stack, Microservices, Container-IPs, Auth, Backup, DB-Topologie, Verzeichnisse,
+Code-Patterns (Redis v4, Mongoose, Express, Toast, TypeScript, docker-compose), Cron-Jobs, Scripts,
+Circuit-Breaker, Pflicht-Regeln, Session-Protokoll, 16 Frontend Design Rules, Docker Healthchecks,
+Offsite-Backup (Google Drive), bekannte Limitierungen, Feature-Übersicht, offene Punkte.
+
+### Commits
+Keine Code-Commits — nur Datei in `/root/Dokumente/`.
+
+### Ausgabe
+- `/root/Dokumente/SF-1-Projekt-Datenpaket-2026-05-21.md` (516 Zeilen, ~19 KB) — vollständiges Datenpaket
+- `/root/Dokumente/SF-1-Projekt-Anweisungen-2026-05-21.md` (236 Zeilen, ~7.5 KB) — Projekt-Anweisungen für KI-Projekte
+
+
+---
+
+## Bugfix: price-service Crash — fehlende Module + undeklarierten Variablen [abgeschlossen 2026-05-22]
+
+### Commits
+- `70d96e6` — fix: price-service crash + test client IPs aktualisiert
+
+### Problem
+price-service war abgestürzt (Exit 1). Ursache: 4 undeklarierten Referenzen + 1 fehlende Datei.
+
+### Änderungen
+- `apps/price-service/src/index.ts` — Stray `import { metricsService }` mitten in Funktion entfernt; duplizierten `/metrics`-Endpoint entfernt (nutzte nicht-existente `metricsService`)
+- `apps/price-service/src/middleware/cache.middleware.ts` — **neu erstellt** (war importiert aber fehlte)
+- `apps/price-service/src/workers/feed.worker.ts` — `metricsService`, `getScraper`, `telegramService`, `cacheService` Calls entfernt (alle nicht importiert, Services existieren nicht)
+- `tests/helpers/client.ts` — Docker-IPs aller Services auf aktuelle Werte aktualisiert (IPs hatten sich nach Container-Neustart verschoben)
+
+### Ergebnis
+- price-service läuft stabil, 28 Feed-Adapter importieren erfolgreich
+- Auth-Tests: 7/7 grün
+- Alle 4 Preisvergleich-Endpoints wieder erreichbar
