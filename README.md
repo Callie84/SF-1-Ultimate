@@ -397,7 +397,7 @@ Dieses Projekt ist aktuell **privat**. Contributions sind nach Absprache möglic
 
 ## 👨‍💻 Entwickler
 
-**Callie84** - Cannabis Growing Platform Developer
+**Callie84** - Developer of a price comparison site for cannabis seeds
 
 ---
 
