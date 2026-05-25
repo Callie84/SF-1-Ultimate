@@ -79,10 +79,10 @@ export const feeds: Record<string, BaseFeed> = {
   'sweet-seeds':           new SweetSeedsFeed(),          // PrestaShop
   'world-of-seeds':        new WorldOfSeedsFeed(),        // PrestaShop
   'spliff-seeds':          new SpliffSeedsFeed(),         // PrestaShop
-  'female-seeds':          new FemaleSeedsFeed(),         // WooCommerce
-  'samenwahl':             new SamenwahlFeed(),            // DE WooCommerce
-  'sumo-seeds':            new SumoSeedsFeed(),           // WooCommerce
-  'heavyweight-seeds':     new HeavyweightSeedsFeed(),    // WooCommerce + Firecrawl
+  // 'female-seeds': DISABLED — Seite im Umbau (self-signed cert + 'Please stand by') seit 2026-05
+  // 'samenwahl': DISABLED — Aktiv geblockt: TLS-Fingerprinting (direkt) + Firecrawl-Timeout 408 (headless)
+  // 'sumo-seeds': DISABLED — Domain tot (ENOTFOUND www.sumo-seeds.com) seit 2026-05
+  // 'heavyweight-seeds': DISABLED — Kein Shop mehr, nur Infoseite (404 auf allen Kategorie-URLs) seit 2026-05
   'hanf-im-glueck':        new HanfImGlueckFeed(),        // Cloudflare + Firecrawl
   'cbd-seeds':             new CbdSeedsFeed(),            // PrestaShop
 };

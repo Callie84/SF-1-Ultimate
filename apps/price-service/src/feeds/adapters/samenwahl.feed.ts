@@ -1,5 +1,5 @@
 // Feed Importer - Samenwahl (samenwahl.de) — Deutscher Growshop
-// Platform: Shopware oder WooCommerce DE
+// Platform: Shopware — TLS-Fingerprinting blockiert direktes Scraping → Firecrawl
 // Kategorien: Cannabis-Samen Kategorien auf samenwahl.de
 // Preise: EUR
 import { BaseFeed, FeedProduct, FeedSource } from '../base.feed';
@@ -13,6 +13,7 @@ export class SamenwahlFeed extends BaseFeed {
   protected rateLimitMs = 2500;
 
   protected affiliateId = process.env.SAMENWAHL_AFFILIATE_ID || '';
+  private readonly firecrawlApiKey = process.env.FIRECRAWL_API_KEY || '';
 
   private readonly categories = [
     { path: '/cannabis-samen/feminisierte-samen', type: 'feminized' as const },
@@ -25,6 +26,24 @@ export class SamenwahlFeed extends BaseFeed {
     if (!this.affiliateId) return undefined;
     const separator = productUrl.includes('?') ? '&' : '?';
     return `${productUrl}${separator}ref=${this.affiliateId}`;
+  }
+
+  private async fetchViaFirecrawl(url: string): Promise<cheerio.CheerioAPI> {
+    await this.respectRateLimit();
+    const response = await this.client.post(
+      'https://api.firecrawl.dev/v1/scrape',
+      { url, formats: ['html'], waitFor: 2000 },
+      {
+        headers: {
+          Authorization: `Bearer ${this.firecrawlApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 45000,
+      }
+    );
+    const html = response.data?.data?.html || '';
+    if (!html) throw new Error('Firecrawl: leere Antwort');
+    return cheerio.load(html);
   }
 
   async importAll(): Promise<FeedProduct[]> {
@@ -67,7 +86,7 @@ export class SamenwahlFeed extends BaseFeed {
           ? `${this.baseUrl}${categoryPath}`
           : `${this.baseUrl}${categoryPath}?p=${page}`;
 
-        const $ = await this.fetchHtml(url);
+        const $ = await this.fetchViaFirecrawl(url);
 
         // Shopware: .product--box, .box--product, article.product-box
         // WooCommerce: ul.products li.product
