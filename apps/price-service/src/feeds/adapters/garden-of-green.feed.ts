@@ -17,7 +17,9 @@ export class GardenOfGreenFeed extends BaseFeed {
   private readonly categories = [
     { path: '/feminized-seeds', type: 'feminized' as const },
     { path: '/autoflowering-seeds', type: 'autoflower' as const },
-    { path: '/regular-seeds', type: 'regular' as const },
+    { path: '/cbd-seeds', type: 'feminized' as const },
+    { path: '/mix-of-seeds', type: 'feminized' as const },
+    // '/regular-seeds' entfernt — URL gibt 404 seit 2026-05
   ];
 
   generateAffiliateUrl(productUrl: string): string | undefined {
