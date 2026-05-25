@@ -447,6 +447,8 @@ services:
       SENTRY_DSN: ${SENTRY_DSN_BACKEND}
       CORS_ORIGIN: ${CORS_ORIGIN}
       FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY}
+    env_file:
+      - .env.feeds
     networks:
       - sf1-network
     labels:
