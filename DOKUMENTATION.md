@@ -1,12 +1,35 @@
 # SF-1 Ultimate — Vollständige Entwicklungsdokumentation
 
 **Projekt:** seedfinderpro.de — Cannabis Growing Community Platform
-**Stand:** 2026-05-19 — Automations-Audit Prio 1–4 abgearbeitet (tsx-watch, Strain-Import, SessionEnd-Hook, Google Drive Backup)  
+**Stand:** 2026-05-26 — Professionalisierung Ansatz B abgeschlossen (BUG_TRACKER entfernt, Smoke-Tests, Pre-Commit Hook, CLAUDE.md Regeln 12–14)  
 **Status:** ✅ Production-Ready (RAG validated, Chat tested, ready for user testing)
 **Stack:** Next.js 14, Express Microservices, MongoDB, PostgreSQL, Redis, Meilisearch, Docker Compose, Traefik, Ollama (KI)
 
 > **⚠️ Hinweis:** Sessions 30–92 sind hauptsächlich in `/root/SF-Brain/SF-1 Projekt/Status & Roadmap.md` dokumentiert (Vault).
 > Diese Datei wird systematisch aktualisiert ab Session 94.
+
+---
+
+## SF-1 Professionalisierung Ansatz B [abgeschlossen 2026-05-26]
+
+### Was
+Solide Arbeitsbasis für professionellere SF-1-Entwicklung geschaffen:
+- BUG_TRACKER.md entfernt (war 6 Monate veraltet) — Bugs leben jetzt in LIVE-PROGRESS.md
+- ARBEITSPLAN.md archiviert → `/root/SF-Brain/Archiv/ARBEITSPLAN-archiv-2026-05-26.md`
+- 4 kaputte docker-compose Backup-Dateien aus dem Projekt-Root entfernt
+- `scripts/smoke-test.sh` erstellt — Auth + Search Tests in ~30 Sekunden
+- Pre-Commit Hook aktualisiert → ruft smoke-test.sh auf (lief vorher inline)
+- CLAUDE.md: Regeln 12 (Wahrheitsquelle), 13 (Docker-Backup-Konvention), 14 (Smoke-Test vor "fertig")
+
+### Commits
+- `5321959` chore: remove BUG_TRACKER.md — bugs now tracked in LIVE-PROGRESS
+- `5b1a86c` chore: archive ARBEITSPLAN.md — single source of truth is LIVE-PROGRESS, rules 12+13 added
+- `6322610` chore: remove stale docker-compose backup files from project root
+- `fd95fe5` feat: add smoke-test.sh — standalone script for pre-commit hook
+
+### Nächster Schritt
+Ansatz C (Professional Gates) — separate Brainstorming-Session wenn bereit.
+Reminder aktiv in `/root/REMINDERS.md`.
 
 ---
 
