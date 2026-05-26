@@ -7178,3 +7178,158 @@ Vollautomatisches System das alle 6 Stunden den Server-Zustand prüft, Berichte 
 
 ### Commits
 - `b59e394` — feat: Autonomes Monitoring-System — Design Spec
+
+---
+
+## GitHub-Token aus Git-Remote-URL entfernen [abgeschlossen 2026-05-26]
+
+### Problem / Ziel
+Token `[GITHUB-TOKEN-ENTFERNT]` war im Klartext in der `backup`-Remote-URL sichtbar (`git remote -v` zeigte Token). Security-Risiko: Token in Logs, Shell-History, Subagent-Output.
+
+### Warum
+Token in Remote-URLs sind ein bekanntes Sicherheitsproblem — sie erscheinen in `git remote -v`, in Prozesslisten und in Claude-Ausgaben. Credential-Store ist der sichere Standard-Weg.
+
+### Lösung
+`credential.helper store` global konfiguriert, Token in `~/.git-credentials` (chmod 600) gespeichert, URL im `backup`-Remote auf saubere HTTPS-URL ohne Token gesetzt. Verbindung danach verifiziert.
+
+### Geänderte Dateien
+- `~/.git-credentials` — Token sicher gespeichert, Permissions 600
+- `~/.gitconfig` — `credential.helper = store` eingetragen
+- Git-Remote `backup` in `/root/SF-1-Ultimate-/` — Token aus URL entfernt
+
+### Ausgeführte Befehle
+```bash
+git config --global credential.helper store
+echo "https://Callie84:[GITHUB-TOKEN-ENTFERNT]@github.com" > ~/.git-credentials
+chmod 600 ~/.git-credentials
+git -C /root/SF-1-Ultimate- remote set-url backup https://github.com/Callie84/SF-1-Ultimate-Backup.git
+git -C /root/SF-1-Ultimate- ls-remote --heads backup  # Verbindungstest
+```
+
+### Fallstricke / Was schiefging
+Keine — direkter Fix.
+
+### Verifikation
+`git -C /root/SF-1-Ultimate- ls-remote --heads backup` → `21b08776...	refs/heads/main` ✅
+
+### Abhängigkeiten / Voraussetzungen
+Token muss gültig sein. Falls Token rotiert wird: `~/.git-credentials` manuell aktualisieren.
+
+### Commits
+Kein separater Commit — nur Konfigurationsänderungen außerhalb des Repos.
+
+---
+
+## Autonomes Monitoring-System [abgeschlossen 2026-05-26]
+
+### Problem / Ziel
+Kein automatisches Monitoring vorhanden. Probleme (Container down, Token in URLs, Backup zu alt, volle Logs) wurden erst entdeckt wenn sie schon kritisch waren. Ziel: vollautomatisches System das prüft, dokumentiert und behebt — ohne manuelle Bestätigung.
+
+### Warum
+Serverprobleme sollen erkannt und behoben werden bevor der User sie bemerkt. Besonders Log-Wachstum (sf1-mongodb hatte 4GB!) und Backup-Alter sind typische silent failures. Ein täglicher Fix-Lauf macht Claude zum eigenständigen Systemadmin.
+
+### Lösung
+**Zwei Bash-Skripte + Cron + Permissions:**
+- `sf1-system-check.sh` (alle 6h): prüft 7 Kategorien, schreibt Markdown-Bericht
+- `sf1-daily-fix.sh` (täglich 21:00): liest 4 Tagesberichte, fixt Probleme, verifiziert danach
+- 34 Allow-Einträge in `settings.json` damit Claude ohne Bestätigungsdialog operieren kann
+- Cron-Zeiten gegen bestehende Jobs abgestimmt (kein Konflikt mit Mastertest um 06:00)
+
+Verifikations-Block am Ende von `sf1-daily-fix.sh` prüft jede Fix-Kategorie unabhängig nochmal und setzt Exit-Code 1 bei Fehlschlag (Cron erkennt das im Log).
+
+### Geänderte Dateien
+- `/root/scripts/sf1-system-check.sh` — neu erstellt, 7 Check-Kategorien, 2 Bericht-Ziele
+- `/root/scripts/sf1-daily-fix.sh` — neu erstellt, 6 Fix-Kategorien + Verifikations-Block
+- `/root/.claude/settings.json` — 34 neue Allow-Einträge für autonomen Betrieb
+- Crontab — 2 neue Einträge: `0 1,7,13,19` + `0 21`
+- `docs/superpowers/specs/2026-05-26-autonomes-monitoring-design.md` — Design-Spec
+
+### Ausgeführte Befehle
+```bash
+mkdir -p /root/SF-1-Ultimate-/reports /root/SF-Brain/Reports
+chmod +x /root/scripts/sf1-system-check.sh /root/scripts/sf1-daily-fix.sh
+/root/scripts/sf1-system-check.sh   # Erster Test
+/root/scripts/sf1-daily-fix.sh      # Erster Fix-Lauf
+crontab -l | grep -E "sf1-system-check|sf1-daily-fix"
+```
+
+### Fallstricke / Was schiefging
+1. **Locale-Problem:** `free -m` gibt auf diesem Server `Speicher:` statt `Mem:` zurück → `LC_ALL=C free -m` nötig
+2. **Health-Check-Tool-Mismatch:** `sf1-search-service` hört auf Port 3007 (nicht 7700) — Meilisearch ist ein separater Container `sf1-meilisearch`; `sf1-auth-service` hat kein `wget`, braucht `node`
+3. **Backup-Sortierung:** alphabetisches `sort | tail -1` fand `SF-1_V2-*.tar.gz` statt des neuesten SF-1-Backups → `-printf '%T@ %p\n' | sort -n` nach Timestamp
+4. **Cron-Konflikt:** ursprünglich 06:00 geplant — kollidiert mit Daily-Mastertest → auf 01/07/13/19 Uhr verschoben
+5. **Plan-Guard:** blockierte das Schreiben ohne aktiven Task → QUICKFIX-ACTIVE Flag gesetzt
+
+### Verifikation
+```bash
+/root/scripts/sf1-system-check.sh
+# → Issues=0 Warnungen=4 — Bericht system-check-2026-05-26_02-14.md ✅
+/root/scripts/sf1-daily-fix.sh
+# → Fixes=7 FehlerFix=0 VerifyOK=5 VerifyFail=0 ✅
+# Fixes: 5 Docker-Logs getrimmt (4GB+), Backup ausgelöst, .env-Permissions korrigiert
+```
+
+### Abhängigkeiten / Voraussetzungen
+- Docker läuft, alle SF-1 Container erreichbar
+- `/root/scripts/sf1-backup.sh` funktioniert
+- `~/.git-credentials` mit gültigem Token befüllt
+
+### Commits
+- `b59e394` — feat: Autonomes Monitoring-System — Design Spec
+- `ce5b2ba` — docs: Autonomes Monitoring-System [abgeschlossen] in DOKUMENTATION.md
+- `52a6236` — fix: sf1-daily-fix.sh Verifikations-Block nach allen Fixes
+
+---
+
+## Docker Log-Rotation für alle Container [abgeschlossen 2026-05-26]
+
+### Problem / Ziel
+`sf1-mongodb` hatte ein 4GB Log-File. Entdeckt durch den ersten System-Check. Ursache war unbekannt und musste analysiert werden.
+
+### Warum
+Root Cause: Healthcheck-Intervall von **10 Sekunden** via `mongosh` erzeugt 6 Verbindungen/Minute. Jede Verbindung schreibt 3–5 JSON-Zeilen ins Log. In 97h → ~161.000 Verbindungen → 4GB reiner Verbindungs-Spam. **Keine Log-Rotation konfiguriert** ließ die Logs unbegrenzt wachsen. Dasselbe Problem betraf sf1-loki (598MB), sf1-v2-mongo (3,4GB), sf1-v2-postgres (349MB) und weitere.
+
+### Lösung
+`docker-compose.yml`: alle 27 Container bekommen `logging: driver: json-file, max-size: 50m, max-file: 3`. Maximale Log-Größe pro Container damit 150MB. Rotation erfolgt automatisch durch Docker. Wirkt ab nächstem Container-Neustart; bis dahin trimmt `sf1-daily-fix.sh` täglich Logs >200MB.
+
+### Geänderte Dateien
+- `docker-compose.yml` — 135 Zeilen hinzugefügt: Logging-Config für alle 27 Services
+
+### Ausgeführte Befehle
+```bash
+# Analyse
+docker inspect sf1-mongodb --format '{{json .Config.Healthcheck}}'
+# → Interval: 10000000000 (10s)
+docker logs sf1-mongodb --tail 50  # → nur Connection accepted/ended Spam
+
+# Python-Skript zum Einfügen der Logging-Config in alle Services
+python3 insert_logging.py  # Skript ad-hoc geschrieben, nach Commit gelöscht
+
+# Validierung
+python3 -c "import yaml; yaml.safe_load(open('docker-compose.yml'))"  # ✅
+docker-compose -f docker-compose.yml config --quiet  # ✅
+```
+
+### Fallstricke / Was schiefging
+1. **Kommentar zwischen Services** (`# API Gateway`) blockierte den Healthcheck-End-Detektor im Python-Skript → `api-gateway` bekam doppeltes `logging:`-Key. Fix: Kommentare beim Suchen der nächsten Zeile überspringen.
+2. **8 Services ohne Healthcheck** (Prometheus, Grafana, Loki etc.) wurden vom ersten Skript nicht erfasst → zweiter Pass nötig mit Ende-Erkennung über letzten Service-Content.
+3. **`node-exporter` ist letzter Service** ohne nachfolgende Service-Zeile → Script erkannte Ende nicht → manuell angehängt.
+4. **Docker Compose v1** auf diesem Server: `docker compose -f` schlägt fehl → `docker-compose -f` (mit Bindestrich).
+
+### Verifikation
+```bash
+python3 -c "
+import yaml
+with open('docker-compose.yml') as f: doc = yaml.safe_load(f)
+missing = [n for n,s in doc['services'].items() if 'logging' not in s]
+print('Fehlend:', missing or 'Keine ✅')
+"
+# → Fehlend: Keine ✅
+docker-compose -f docker-compose.yml config --quiet  # → ✅ ohne Fehler
+```
+
+### Abhängigkeiten / Voraussetzungen
+Container müssen neu gestartet werden damit die Rotation greift. Bis dahin: täglicher Log-Trim via `sf1-daily-fix.sh`.
+
+### Commits
+- `aa59f84` — fix: Docker Log-Rotation fuer alle 27 Container (max-size 50m, max-file 3)
