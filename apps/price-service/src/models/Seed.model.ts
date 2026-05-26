@@ -88,4 +88,10 @@ SeedSchema.index({ lowestPrice: 1 });
 SeedSchema.index({ viewCount: -1 });
 SeedSchema.index({ priceCount: 1 }); // für browseSeeds({ priceCount: { $gt: 0 } })
 
+SeedSchema.pre('save', function (next) {
+  if (this.thc != null) this.thc = Math.round(this.thc * 10) / 10;
+  if (this.cbd != null) this.cbd = Math.round(this.cbd * 10) / 10;
+  next();
+});
+
 export const Seed = mongoose.model<ISeed>('Seed', SeedSchema);
