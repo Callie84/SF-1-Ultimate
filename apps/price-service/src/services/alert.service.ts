@@ -131,7 +131,11 @@ export class AlertService {
     }
     
     logger.info(`[AlertService] Checked ${activeAlerts.length} alerts, ${triggeredCount} triggered`);
-    
+
+    // Stale-Check: Preise >36h nicht aktualisiert
+    const staleCount = await this.checkStaleAlerts();
+    logger.info(`[AlertService] Stale-Alerts gesendet: ${staleCount}`);
+
     return triggeredCount;
   }
   
@@ -240,6 +244,65 @@ export class AlertService {
     logger.info(`[AlertService] Cleaned ${result.deletedCount} old alerts`);
     
     return result.deletedCount;
+  }
+  /**
+   * Check active alerts for seeds with no recent prices (>36h)
+   */
+  async checkStaleAlerts(): Promise<number> {
+    const STALE_THRESHOLD_MS = 36 * 60 * 60 * 1000;
+    const staleFrom = new Date(Date.now() - STALE_THRESHOLD_MS);
+
+    const activeAlerts = await PriceAlert.find({ isActive: true });
+    let notifiedCount = 0;
+
+    for (const alert of activeAlerts) {
+      try {
+        // Skip if notified recently (24h cooldown)
+        if (alert.lastNotified) {
+          const hoursSince = (Date.now() - alert.lastNotified.getTime()) / (1000 * 60 * 60);
+          if (hoursSince < 24) continue;
+        }
+
+        // Check if any price exists that is fresh enough
+        const freshPrice = await Price.findOne({
+          seedId: alert.seedId,
+          scrapedAt: { $gt: staleFrom },
+        });
+
+        if (!freshPrice) {
+          await this.triggerStaleAlert(alert);
+          notifiedCount++;
+        }
+      } catch (error) {
+        logger.error(`[AlertService] Stale-Check Fehler für Alert ${alert._id}:`, error);
+      }
+    }
+
+    logger.info(`[AlertService] Stale-Check: ${activeAlerts.length} Alerts geprüft, ${notifiedCount} benachrichtigt`);
+    return notifiedCount;
+  }
+
+  /**
+   * Trigger stale notification for a user alert
+   */
+  private async triggerStaleAlert(alert: IPriceAlert): Promise<void> {
+    alert.lastNotified = new Date();
+    alert.notificationCount += 1;
+    await alert.save();
+
+    const notificationData = {
+      type: 'price_alert',
+      userId: alert.userId,
+      data: {
+        seedSlug: alert.seedSlug,
+        targetPrice: alert.targetPrice,
+        reason: 'stale',
+      },
+    };
+
+    await redis.lPush('queue:notifications', JSON.stringify(notificationData));
+
+    logger.info(`[AlertService] Stale-Alert für User ${alert.userId}, Seed ${alert.seedSlug} gesendet`);
   }
 }
 
