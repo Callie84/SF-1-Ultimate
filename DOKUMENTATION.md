@@ -7388,3 +7388,43 @@ Price-Service muss neu gestartet werden damit der Hook aktiv ist.
 
 ### Commits
 - `d0f8621` — fix: THC/CBD-Werte auf 1 Dezimalstelle runden (pre-save Hook)
+
+## Meilisearch Reindex Desync-Fix [abgeschlossen 2026-05-26]
+
+### Problem / Ziel
+Meilisearch-Suchindex war desynchronisiert mit MongoDB: 9.455 Strains im Index vs. 11.647 in MongoDB. 2.192 Strains fehlten in der Suche. Zusätzlich konnten verwaiste Einträge (gelöschte Seeds die noch im Index stehen) nicht bereinigt werden.
+
+### Warum
+Root Cause: Die `reindexStrains()`-Funktion (und alle anderen reindex-Funktionen) nutzten `addDocuments()` ohne vorher den Index zu leeren. Dadurch wurden existierende Dokumente aktualisiert, aber: (a) verwaiste Einträge blieben bestehen, (b) wenn ein Reindex abbrach, fehlten die restlichen Dokumente permanent.
+
+### Lösung
+In allen 4 Reindex-Funktionen (`reindexStrains`, `reindexThreads`, `reindexGrows`, `reindexUsers`) wird jetzt vor dem `indexDocuments()`-Aufruf der gesamte Index via `meiliIndex.deleteAllDocuments()` geleert. Damit ist jeder Reindex ein vollständiger Neuaufbau — keine verwaisten Einträge, keine fehlenden Dokumente.
+
+### Geänderte Dateien
+- `apps/search-service/src/services/indexing.service.ts` — `deleteAllDocuments()` vor `indexDocuments()` in allen 4 Reindex-Funktionen — weil der Reindex sonst nur addiert aber nie aufräumt
+
+### Ausgeführte Befehle
+```bash
+docker restart sf1-search-service
+# JWT generieren + Reindex auslösen:
+curl -X POST http://172.17.0.4:3007/api/search/reindex/strains -H "Authorization: Bearer $JWT"
+# Verifikation:
+curl -s http://172.17.0.20:7700/indexes/strains/stats -H "Authorization: Bearer $MEILI_KEY"
+```
+
+### Fallstricke / Was schiefging
+1. **Falsche IP nach Restart:** Search-Service IP war nach Restart `172.17.0.4` statt der vorherigen `172.28.0.12`. Erster Reindex-Request ging ins Leere (leere Antwort). IP muss nach Container-Restart per `docker inspect` geprüft werden.
+2. **MongoDB Auth:** `sf1-prices` DB existiert nicht — die richtige DB heißt `sf1_price` (Underscore statt Bindestrich). Die Container-Env-Var `MONGODB_URL_PRICES` hat den korrekten Wert.
+
+### Verifikation
+- Meilisearch Stats nach Reindex: `numberOfDocuments: 11647, isIndexing: false`
+- Logs: `[Indexing] Cleared strains index before reindex` + `[Indexing] Reindexed 11647 strains`
+- Smoke-Test (Auth, Search, Backup) grün via Pre-Commit Hook
+
+### Abhängigkeiten / Voraussetzungen
+- Search-Service muss nach Code-Änderung neu gestartet werden
+- Admin-JWT für Reindex-Endpoint erforderlich
+- Meilisearch-Container muss laufen und erreichbar sein
+
+### Commits
+- `5420b9c` — fix: Meilisearch Reindex löscht Index vor Neuaufbau (Desync-Fix)

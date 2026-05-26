@@ -95,7 +95,9 @@ function requireAdmin(req: any, res: any, next: any) {
   if (auth?.startsWith('Bearer ')) {
     try {
       const jwt = require('jsonwebtoken');
-      const payload: any = jwt.verify(auth.slice(7), process.env.JWT_SECRET || '');
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) throw new Error('JWT_SECRET not configured');
+      const payload: any = jwt.verify(auth.slice(7), jwtSecret);
       if (payload?.role?.toUpperCase() === 'ADMIN') return next();
     } catch {}
   }
