@@ -1,6 +1,6 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-05-26T20:34:15Z
+**Last-Update:** 2026-05-26T20:50:01Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
@@ -10,9 +10,14 @@
 —
 
 ## Letzter abgeschlossener Task
-2026-05-26: Meilisearch Reindex Desync-Fix (5420b9c)
-- indexing.service.ts: deleteAllDocuments() vor indexDocuments() in allen 4 Reindex-Funktionen
-- Desync behoben: 9.455 → 11.647 Strains im Index
+2026-05-26: Flavor-Coverage Pipeline (9890c55, 332da6b + 10 weitere Commits)
+- Phase 1: Lokaler Crawl-Import — 40 DE Flavor-Tags, 28 Seeds sofort angereichert
+- Phase 2: Seedfinder.eu Scraper neu (neue URL + Firecrawl), täglich 200 Seeds ab 02:00
+- flavorSource-Tracking (crawl/seedfinder/manual), Pre-Commit-Hook für Worktrees gefixt
+- Phase 1 manuell getriggert ✅, Phase 2 läuft morgen 02:00 Uhr zum ersten Mal
+
+Vorheriger: Security-Fix JWT_SECRET Fallback (d1fee00)
+- price-service requireAdmin: leeres || '' Fallback entfernt, harter Fehler wenn JWT_SECRET fehlt
 
 Vorheriger: THC/CBD-Dezimalstellen runden — pre-save Hook (d0f8621)
 - Seed.model.ts: Math.round(x*10)/10 für thc/cbd vor jedem save()
@@ -47,6 +52,8 @@ Vorheriger: s1: Skills-Audit 2026-05-19:
 - MEMORY.md mit 5 neuen Skill-Links aktualisiert
 
 ## Diese Session erledigt
+- [2026-05-26] Flavor-Coverage Pipeline — Phase 1 Crawl-Import + Phase 2 Seedfinder-Rebuild (9890c55, 332da6b)
+- [2026-05-26] Security-Fix JWT_SECRET Fallback in requireAdmin (d1fee00)
 - [2026-05-26] Meilisearch Reindex Desync-Fix — deleteAllDocuments() vor Neuaufbau (5420b9c)
 - [2026-05-26] THC/CBD-Dezimalstellen runden — pre-save Hook im Seed.model.ts (d0f8621)
 - [2026-04-30] s2: Preisvergleich Klick-Bug — AnnouncementModal Backdrop-Fix (65f4382)
@@ -73,6 +80,7 @@ Vorheriger: s1: Skills-Audit 2026-05-19:
 - [2026-05-20] Ollama Port Fix — generate-descriptions.js 11435→11434 (5e3fba2, strain-import Repo)
 - [2026-05-20] IPs dynamisch + sw.js committed — sync/reindex docker inspect, sw.js Build (3a524d7, 59d9016)
 
+- [2026-05-26] Security-Fix: JWT_SECRET leeres Fallback entfernt — requireAdmin wirft jetzt Fehler wenn JWT_SECRET nicht gesetzt (d1fee00)
 - [2026-05-22] Quickfix: price-service Crash — fehlende Module + undeklarierten Variablen behoben, Test-IPs aktualisiert (70d96e6)
 
 ## Offene Tasks (s-plan)

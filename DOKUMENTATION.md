@@ -7428,3 +7428,156 @@ curl -s http://172.17.0.20:7700/indexes/strains/stats -H "Authorization: Bearer 
 
 ### Commits
 - `5420b9c` — fix: Meilisearch Reindex löscht Index vor Neuaufbau (Desync-Fix)
+
+## Security-Fix: leeres JWT_SECRET Fallback entfernt [abgeschlossen 2026-05-26]
+
+### Problem / Ziel
+In `requireAdmin` (price-service) stand `jwt.verify(token, process.env.JWT_SECRET || '')`. Wenn `JWT_SECRET` in der Umgebung nicht gesetzt ist, übergibt der `||`-Fallback einen leeren String als Secret an `jsonwebtoken`. `jsonwebtoken.verify()` akzeptiert leere Strings als gültiges Secret — jeder kann dann ein beliebiges Admin-JWT mit `HS256` + leerem Secret selbst signieren und hat uneingeschränkten Admin-Zugriff.
+
+### Warum
+Root Cause: defensiver `|| ''`-Pattern der eigentlich "sicherer Default" sein sollte, ist bei `jwt.verify()` das Gegenteil — er deaktiviert effektiv die gesamte Token-Validierung. Ein fehlender `JWT_SECRET` ist ein Konfigurationsfehler, kein Normalfall — der Service muss in diesem Fall hart abbrechen, nicht mit schwächerer Sicherheit weiterlaufen.
+
+### Lösung
+Fallback entfernt. `JWT_SECRET` wird explizit aus `process.env` gelesen; fehlt er, wird ein `Error` geworfen, der im `try/catch`-Block von `requireAdmin` gefangen wird und den Request mit 403 abbricht. Damit ist ein Fehlkonfigurationszustand sofort sichtbar (im Log: `Error: JWT_SECRET not configured`) statt stille Sicherheitslücke.
+
+```ts
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) throw new Error('JWT_SECRET not configured');
+const payload: any = jwt.verify(auth.slice(7), jwtSecret);
+```
+
+### Geänderte Dateien
+- `apps/price-service/src/index.ts` — `requireAdmin` Funktion Zeile 97–100 — `|| ''` durch explizite `undefined`-Prüfung ersetzt, weil leerer String bei `jwt.verify()` kein sicherer Fallback ist
+
+### Ausgeführte Befehle
+```bash
+# Commit (Pre-Commit-Hook läuft Smoke-Test automatisch)
+git add apps/price-service/src/index.ts
+git commit -m "fix: remove empty JWT_SECRET fallback in requireAdmin"
+# → Smoke-Test: Auth ✅ Search ✅ Backup ✅ → Commit d1fee00
+```
+
+### Fallstricke / Was schiefging
+Erster `git commit`-Aufruf meldete "nichts zum Commit vorgemerkt" obwohl die Datei geändert war — der Pre-Commit-Hook hatte die Änderung als staged erkannt, der Commit-Befehl selbst lieferte aber Exit-Code 1 wegen unversionierter Nicht-SF1-Dateien in der Working Copy (reports/, docs/). Lösung: zweiter `git commit`-Aufruf ohne erneutes `git add` — Datei war bereits korrekt staged.
+
+### Verifikation
+- Pre-Commit Smoke-Test grün: Auth-Service login/register/verify ✅, Search-Service ✅, Backup-Service ✅
+- Commit `d1fee00` vorhanden: `git show d1fee00 --stat` zeigt `apps/price-service/src/index.ts | 4 +++-`
+- Code-Review: Zeile 98–100 in `index.ts` zeigt `if (!jwtSecret) throw new Error(...)` statt `|| ''`
+
+### Abhängigkeiten / Voraussetzungen
+- `JWT_SECRET` muss in der `.env` des price-service gesetzt sein (war es bereits auf dem Server)
+- price-service muss nach Code-Änderung neu gebaut/gestartet werden (lief bereits ohne Rebuild da TypeScript im Container zur Laufzeit transpiliert wird)
+
+### Commits
+- `d1fee00` — fix: remove empty JWT_SECRET fallback in requireAdmin
+
+---
+
+## Flavor-Coverage Pipeline [abgeschlossen 2026-05-26]
+
+### Problem / Ziel
+Nur 7% (831 von 11.647) Seeds hatten Flavor-Daten. Das Flavor-Vokabular umfasste nur 10 englische Tags. Ziel: Coverage durch zweiphasige Pipeline auf 95%+ erhöhen, ausschließlich mit akkuraten Daten (keine Heuristiken ohne Quelle).
+
+### Warum
+Seedfinder.eu hatte URL-Struktur geändert (`en.seedfinder.eu` → `seedfinder.eu/de/strain-info/`) und Cloudflare-Schutz aktiviert — der bisherige Scraper lieferte 0 Treffer. Außerdem war der Cron auf 50 Seeds/Lauf begrenzt (bei 10.816 fehlenden = 216 Tage). Phase 1 nutzt den lokalen de.seedfinder.eu Crawl (4.503 Strains) für sofortigen Fortschritt ohne externen Traffic. Phase 2 baut den Scraper mit neuer URL + Firecrawl (Cloudflare-Bypass) neu auf, Batch 200/Tag.
+
+Ansatz "flavorSource"-Tracking gewählt damit Phase 2 gezielt nur crawl-Daten überschreiben kann und manuelle Einträge nie verloren gehen.
+
+### Lösung
+
+**Phase 1 (Einmalig, sofort):** Matcht gecrawlte Strains per Name-Normalisierung gegen DB-Seeds, extrahiert DE-Flavor-Tags per 40-Tag-Vokabular aus Freitext. Ergebnis: `flavorSource: 'crawl'`.
+
+**Phase 2 (Täglich 02:00):** Seedfinder.eu via Firecrawl scrapen, DE-Tags extrahieren, setze `flavorSource: 'seedfinder'`. Priorität: Seeds ohne Flavors zuerst, dann crawl-Upgrade.
+
+**Vokabular:** 40 deutsche Tags (erdig, fruchtig, Zitrus, Diesel, Skunk, Beere, tropisch, …) mit je 4–8 Keyword-Patterns für case-insensitives Matching.
+
+**Update-Logik:** `manual` → nie überschreiben. `seedfinder` → nie überschreiben. `crawl` → überschreibbar durch seedfinder. leer → alle Quellen.
+
+### Geänderte Dateien
+- `apps/price-service/src/models/Seed.model.ts` — `flavorSource?: 'crawl' | 'seedfinder' | 'manual'` in ISeed Interface + SeedSchema hinzugefügt — Qualitäts-Tracking-Feld für Update-Logik
+- `apps/price-service/src/config/flavor-vocabulary.de.ts` — NEU: 40 DE Flavor-Tags + `extractFlavorsFromText(text)` Funktion — DE Vokabular weil Zielgruppe deutsch, zentral für beide Phasen
+- `apps/price-service/src/services/crawl-flavor-import.service.ts` — NEU: Phase-1-Service — `loadCrawlData()` async, `normalizeName()` mit Sonderzeichen-Stripping (`#`, `()`, `'`), `importAll()` mit Skip-Logik für seedfinder/manual
+- `apps/price-service/src/services/seedfinder-enrichment.service.ts` — KOMPLETT ERSETZT: neue URL `https://seedfinder.eu/de/strain-info/{name-slug}/{breeder-slug}/`, Firecrawl-Adapter statt axios, DE-Vocabulary, Prioritäts-Queue, Dedup-Set, flavorSource-Guard (nur setzen wenn Flavors gefunden), Batch 200
+- `apps/price-service/src/index.ts` — Import crawlFlavorImport, Admin-Endpoint `POST /api/prices/admin/flavors/import-crawl`, Cron-Aufruf `enrichAllMissingFlavors(200)`, JWT_SECRET Sicherheitslücke gefixt (`|| ''` entfernt)
+- `docker-compose.yml` — Volume-Mount `/root/SF-Brain/strain_output:/strain-data:ro` für price-service — Crawl-Datei war im Container nicht erreichbar
+- `.gitignore` — `.worktrees/` hinzugefügt — für isolierte Git-Worktrees beim Entwickeln
+- `.git/hooks/pre-commit` — `git rev-parse --git-common-dir` statt `--show-toplevel` — Hook funktionierte nicht aus Worktrees (falscher Pfad)
+
+### Ausgeführte Befehle
+```bash
+# Worktree einrichten
+cd /root/SF-1-Ultimate-
+echo ".worktrees/" >> .gitignore
+git add .gitignore && git commit -m "chore: add .worktrees/ to .gitignore"
+git worktree add .worktrees/flavor-pipeline -b feature/flavor-coverage-pipeline
+
+# Implementierung (via Subagenten im Worktree)
+cd .worktrees/flavor-pipeline
+
+# TypeScript-Check nach jeder Änderung
+cd apps/price-service && npx tsc --noEmit
+
+# URL-Builder testen
+npx tsx -e "import { SeedfinderEnrichmentService } from './src/services/seedfinder-enrichment.service.ts'; ..."
+
+# Merge + Cleanup
+cd /root/SF-1-Ultimate-
+git merge feature/flavor-coverage-pipeline --no-ff -m "feat: flavor coverage pipeline..."
+git worktree remove --force .worktrees/flavor-pipeline
+
+# Volume-Mount nachträglich hinzugefügt nach Container-Neustart
+docker-compose up -d price-service
+
+# Phase-1-Import triggern
+curl -X POST http://172.17.0.28:3002/api/prices/admin/flavors/import-crawl \
+  -H "Authorization: Bearer $JWT"
+```
+
+### Fallstricke / Was schiefging
+1. **Pre-Commit-Hook in Worktrees:** `git rev-parse --show-toplevel` liefert im Worktree den Worktree-Pfad statt das Haupt-Repo — smoke-test.sh nicht gefunden, alle Commits blockiert. Fix: Hook auf `git rev-parse --git-common-dir` umgestellt.
+2. **Volume-Mount fehlte:** `/root/SF-Brain/strain_output/strains_database.json` nicht im Container erreichbar. `CRAWL_PATH` auf `/strain-data/strains_database.json` + Volume-Mount in docker-compose.yml.
+3. **Seedfinder.eu URL geändert:** `en.seedfinder.eu/search/extended/` existiert nicht mehr. Neue URL: `seedfinder.eu/de/strain-info/{slug}/{breeder-slug}/`. Cloudflare blockiert direkten axios-Zugriff → Firecrawl nötig.
+4. **Crawl-Taste-Feld kein strukturiertes Format:** `strains_database.json` enthält im `taste`-Feld deutschen Fließtext ("und Geruch von..."), keine Tags. Lösung: Text mit Keyword-Patterns durchsuchen statt Tags parsen.
+5. **flavorSource ohne Flavor:** Code-Review fand Bug: `flavorSource: 'seedfinder'` wurde gesetzt auch wenn nur THC/CBD gefunden (keine Flavors) → Seed permanent aus Re-Enrichment ausgeschlossen. Fix: flavorSource nur setzen wenn `flavors.length > 0`.
+6. **Doppelte Seeds in Batch:** Ein Seed mit `flavors: []` + `flavorSource: 'crawl'` hätte in beiden Priority-Queues erscheinen können. Fix: Set-basierte Deduplication nach Merge der Listen.
+7. **docker-compose v1 vs v2:** `docker compose` (v2) ist nicht installiert — immer `docker-compose` (mit Bindestrich) verwenden.
+
+### Verifikation
+```bash
+# Phase-1-Import-Log (nach Trigger):
+# → [CrawlImport] 4503 Crawl-Einträge geladen, 4170 eindeutige Namen
+# → [CrawlImport] 1762 Seeds für Import gefunden
+# → [CrawlImport] Abgeschlossen — matched: 96, updated: 28, skipped: 1734
+
+# Volume-Mount im Container:
+docker exec sf1-price-service ls /strain-data/
+# → strains_database.json vorhanden ✅
+
+# Admin-Endpoint erreichbar:
+curl -X POST http://172.17.0.28:3002/api/prices/admin/flavors/import-crawl -H "Authorization: Bearer $JWT"
+# → {"success":true,"message":"Import gestartet (läuft im Hintergrund)"}
+
+# Cron läuft täglich 02:00:
+docker logs sf1-price-service | grep Scheduler
+# → [Scheduler] Täglicher Import geplant: 2026-05-27T02:00:00.000Z
+```
+
+### Abhängigkeiten / Voraussetzungen
+- `FIRECRAWL_API_KEY` muss in `.env` gesetzt sein (war bereits gesetzt: `fc-aa5...`)
+- `/root/SF-Brain/strain_output/strains_database.json` muss existieren (4.503 Strains)
+- price-service muss mit neuem docker-compose (Volume-Mount) neu gestartet sein
+- Phase-1-Import ist einmalig manuell zu triggern via Admin-Endpoint
+
+### Commits
+- `da92124` — chore: add .worktrees/ to .gitignore
+- `6ec962b` — feat: add flavorSource field to Seed model
+- `b7fd10c` — feat: add German flavor vocabulary with 40 tags
+- `56c8399` — feat: add CrawlFlavorImportService for Phase 1 import
+- `5a8afe2` — feat: add admin endpoint for Phase 1 crawl flavor import
+- `d8795b6` — feat: rebuild seedfinder enrichment with new URL + Firecrawl + DE vocabulary
+- `fa49d5c` — feat: set enrichment cron batch size to 200
+- `a606462` — fix: dedup seeds, flavorSource guard, normalizeName, async file read
+- `9890c55` — feat: flavor coverage pipeline — Phase 1 crawl import + Phase 2 seedfinder rebuild (Merge)
+- `d1fee00` — fix: remove empty JWT_SECRET fallback in requireAdmin
+- `332da6b` — fix: mount strain-data volume + update CRAWL_PATH for container access
