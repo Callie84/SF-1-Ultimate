@@ -15,6 +15,7 @@ import { priceService } from './services/price.service';
 import { seedfinderEnrichment } from './services/seedfinder-enrichment.service';
 import { crawlFlavorImport } from './services/crawl-flavor-import.service';
 import { circuitBreaker } from './services/circuit-breaker.service';
+import { stalenessService } from './services/staleness.service';
 import { scheduleAllFeeds, scheduleFeedJob, getFeedQueueStats, runFeedImportNow } from './workers/feed.worker';
 import { getFeedInfos, getFeedSlugs } from './feeds';
 import pricesRoutes from './routes/prices.routes';
@@ -373,6 +374,18 @@ app.post('/api/prices/admin/flavors/import-crawl', requireAdmin, async (req, res
 
     res.json({ success: true, message: 'Import gestartet (läuft im Hintergrund)' });
   } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Staleness-Check: welche Seedbanken haben veraltete Preise?
+app.get('/api/prices/admin/staleness', requireAdmin, async (req, res) => {
+  try {
+    const threshold = parseInt(req.query.threshold as string) || 24;
+    const result = await stalenessService.getStaleSeedbanks(threshold);
+    res.json(result);
+  } catch (error: any) {
+    logger.error('[Admin] Staleness-Check Fehler:', error);
     res.status(500).json({ error: error.message });
   }
 });
