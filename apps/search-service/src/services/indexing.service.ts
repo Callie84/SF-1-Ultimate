@@ -173,7 +173,11 @@ export class IndexingService {
         flavors: strain.flavors,
         popularity: strain.viewCount || 0
       }));
-      
+
+      const meiliIndex = meiliClient.index(INDEXES.STRAINS);
+      await meiliIndex.deleteAllDocuments();
+      logger.info('[Indexing] Cleared strains index before reindex');
+
       await this.indexDocuments('STRAINS', documents);
       
       logger.info(`[Indexing] Reindexed ${documents.length} strains`);
@@ -215,8 +219,12 @@ export class IndexingService {
         createdAt: thread.createdAt.getTime()
       }));
       
+      const meiliIndex = meiliClient.index(INDEXES.THREADS);
+      await meiliIndex.deleteAllDocuments();
+      logger.info('[Indexing] Cleared threads index before reindex');
+
       await this.indexDocuments('THREADS', documents);
-      
+
       logger.info(`[Indexing] Reindexed ${documents.length} threads`);
       
       await mongoose.disconnect();
@@ -262,8 +270,12 @@ export class IndexingService {
         createdAt: grow.createdAt.getTime()
       }));
       
+      const meiliIndex = meiliClient.index(INDEXES.GROWS);
+      await meiliIndex.deleteAllDocuments();
+      logger.info('[Indexing] Cleared grows index before reindex');
+
       await this.indexDocuments('GROWS', documents);
-      
+
       logger.info(`[Indexing] Reindexed ${documents.length} grows`);
       
       await mongoose.disconnect();
@@ -296,6 +308,10 @@ export class IndexingService {
         isVerified: u.isVerified,
         createdAt: new Date(u.createdAt).getTime(),
       }));
+
+      const meiliIndex = meiliClient.index(INDEXES.USERS);
+      await meiliIndex.deleteAllDocuments();
+      logger.info('[Indexing] Cleared users index before reindex');
 
       await this.indexDocuments('USERS', documents);
 

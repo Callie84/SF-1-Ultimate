@@ -1,17 +1,20 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-05-26T02:11:57Z
+**Last-Update:** 2026-05-26T11:39:04Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
-(kein aktiver Task) — System sauber ✅. Alle Audit-Punkte + offene Nebenprobleme erledigt.
-Nächste Session: neue Anforderung vom User abwarten oder BUG_TRACKER.md auf veraltete Einträge prüfen.
+(kein aktiver Task) — System sauber ✅. Nächste Session: neue Anforderung vom User abwarten.
 
 ## Aktueller Task
 —
 
 ## Letzter abgeschlossener Task
-2026-05-26: Autonomes Monitoring-System + Docker Log-Rotation (b59e394, 52a6236, aa59f84)
+2026-05-26: THC/CBD-Dezimalstellen runden — pre-save Hook (d0f8621)
+- Seed.model.ts: Math.round(x*10)/10 für thc/cbd vor jedem save()
+- Alle Schreibpfade abgedeckt (saveScrapedProducts nutzt nur save())
+
+Vorheriger: Autonomes Monitoring-System + Docker Log-Rotation (b59e394, 52a6236, aa59f84)
 - sf1-system-check.sh (01/07/13/19 Uhr) + sf1-daily-fix.sh (21 Uhr) live
 - Erster Fix-Lauf: 7 Fixes, 5/5 Verifikationen ✅ (u.a. mongodb 4GB→50MB)
 - docker-compose.yml: Log-Rotation für alle 27 Container (max 150MB)
@@ -40,6 +43,7 @@ Vorheriger: s1: Skills-Audit 2026-05-19:
 - MEMORY.md mit 5 neuen Skill-Links aktualisiert
 
 ## Diese Session erledigt
+- [2026-05-26] THC/CBD-Dezimalstellen runden — pre-save Hook im Seed.model.ts (d0f8621)
 - [2026-04-30] s2: Preisvergleich Klick-Bug — AnnouncementModal Backdrop-Fix (65f4382)
 - [2026-04-30] s3: Test-User-Cleanup — Mastertest + Cron-Pattern erweitert (0be5b74)
 - [2026-04-30] s4: Feedback-Button global — floating, Modal, Bug/Idee/Lob (f66aedc)

@@ -7356,3 +7356,35 @@ Container müssen neu gestartet werden damit die Rotation greift. Bis dahin: tä
 
 ### Commits
 - `aa59f84` — fix: Docker Log-Rotation fuer alle 27 Container (max-size 50m, max-file 3)
+
+## THC/CBD-Dezimalstellen runden (pre-save Hook) [abgeschlossen 2026-05-26]
+
+### Problem / Ziel
+THC- und CBD-Werte wurden ungerundet in der MongoDB gespeichert (z.B. 18.333 statt 18.3). Ziel: Alle Werte automatisch auf 1 Dezimalstelle runden.
+
+### Warum
+Ungenaue Dezimalstellen kommen aus den Scraper-Adaptern via `parseFloat()`. Ein bereits existierender Migration-Endpoint in `index.ts` (Zeilen 324–344) fixte das nachträglich, aber neue Daten konnten weiterhin ungerundet ankommen. Root Cause: Kein Rounding am Schreibpfad.
+
+### Lösung
+Pre-save Hook im Mongoose-Schema (`Seed.model.ts`) der `thc` und `cbd` vor jedem `save()` auf 1 Dezimalstelle rundet. `Math.round(x * 10) / 10` statt `toFixed(1)`, weil `toFixed` einen String zurückgibt. Der Hook greift auf beiden Schreibpfaden (Neu-Anlage + Update), da `saveScrapedProducts` ausschließlich `seed.save()` nutzt.
+
+### Geänderte Dateien
+- `apps/price-service/src/models/Seed.model.ts` — Pre-save Hook hinzugefügt (Zeile 91–94) — weil das Schema der zentrale Ort für Datenvalidierung ist
+
+### Ausgeführte Befehle
+```bash
+docker restart sf1-price-service
+```
+
+### Fallstricke / Was schiefging
+Keine. Wichtig zu wissen: Pre-save Hooks greifen NICHT bei `updateOne()`/`findOneAndUpdate()` — wurde geprüft, der Worker nutzt ausschließlich `save()`.
+
+### Verifikation
+- Smoke-Test (Auth, Search, Backup) grün via Pre-Commit Hook
+- Price-Service Restart erfolgreich, Status `healthy`
+
+### Abhängigkeiten / Voraussetzungen
+Price-Service muss neu gestartet werden damit der Hook aktiv ist.
+
+### Commits
+- `d0f8621` — fix: THC/CBD-Werte auf 1 Dezimalstelle runden (pre-save Hook)
