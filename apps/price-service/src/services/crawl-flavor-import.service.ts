@@ -7,7 +7,7 @@ import { Seed } from '../models/Seed.model';
 import { extractFlavorsFromText } from '../config/flavor-vocabulary.de';
 import { logger } from '../utils/logger';
 
-const CRAWL_PATH = '/root/SF-Brain/strain_output/strains_database.json';
+const CRAWL_PATH = '/strain-data/strains_database.json';
 
 interface CrawlStrain {
   name: string;

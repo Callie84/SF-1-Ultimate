@@ -485,6 +485,7 @@ services:
     command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
     volumes:
       - ./apps/price-service:/app
+      - /root/SF-Brain/strain_output:/strain-data:ro
     environment:
       NODE_ENV: production
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
