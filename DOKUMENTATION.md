@@ -6784,6 +6784,10 @@ Automatische Ausführung der Mastertest-Suite: Smoke-Test vor Commits + volle Su
 - 2026-05-19 06:00 — ✅ 42/42 grün
 - 2026-05-20 06:00 — ✅ 42/42 grün
 - 2026-05-21 06:00 — ❌ 36 grün / 1 fehlgeschlagen
+- 2026-05-22 06:00 — ✅ 42/42 grün
+- 2026-05-23 06:00 — ❌ 36 grün / 1 fehlgeschlagen
+- 2026-05-24 06:00 — ✅ 42/42 grün
+- 2026-05-25 06:00 — ✅ 42/42 grün
 - **Script:** `/root/scripts/sf1-daily-mastertest.sh`
 - **Trigger:** Täglich 06:00 (Crontab: `0 6 * * *`)
 - **Suite:** Volle 42-Test-Suite (`npm run mastertest`)
@@ -7149,3 +7153,28 @@ cd /root/SF-1-Ultimate-/tests && bash mastertest-report.sh
 ### Commits
 - `70d96e6` — fix: price-service crash + test client IPs aktualisiert
 - `f7b33be` — docs: DOKUMENTATION.md + LIVE-PROGRESS.md nach price-service Quickfix aktualisiert
+
+---
+
+## Autonomes Monitoring-System [abgeschlossen 2026-05-26]
+
+### Ziel
+Vollautomatisches System das alle 6 Stunden den Server-Zustand prüft, Berichte schreibt und täglich kritische Probleme ohne manuelle Bestätigung behebt.
+
+### Komponenten
+- **`/root/scripts/sf1-system-check.sh`** — läuft 01:00/07:00/13:00/19:00, prüft Security, Container-Health (15 SF-1 Container + HTTP-Endpoints), Backup-Alter, Disk-Space, Log-Größen, RAM/Swap, Cron-Job-Health
+- **`/root/scripts/sf1-daily-fix.sh`** — läuft täglich 21:00, liest 4 Tagesberichte, fixt automatisch: Container-Restart, Git-Token-Cleanup, Log-Rotation (>200MB), Backup-Trigger (>48h), Disk-Prune, .env-Permissions
+- **`/root/.claude/settings.json`** — 34 Allow-Einträge für Betrieb ohne Bestätigungsdialog
+- **Crontab** — 2 neue Einträge (`0 1,7,13,19` + `0 21`)
+
+### Berichte
+- `/root/SF-1-Ultimate-/reports/system-check-YYYY-MM-DD_HH-MM.md`
+- `/root/SF-Brain/Reports/system-check-YYYY-MM-DD_HH-MM.md`
+- 14-Tage-Rotation automatisch
+
+### Erster Lauf (2026-05-26 02:14)
+- 🔴 Kritisch: 0 | ⚠️ Warnungen: 4
+- Warnungen: .env-Permissions (644→wird auf 600 gefixt), große Docker-Logs (sf1-mongodb 4GB, sf1-loki 598MB), Swap 960MB
+
+### Commits
+- `b59e394` — feat: Autonomes Monitoring-System — Design Spec
