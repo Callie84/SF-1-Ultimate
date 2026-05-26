@@ -498,7 +498,7 @@ async function start() {
 
       setTimeout(async () => {
         try {
-          const enrichedCount = await seedfinderEnrichment.enrichAllMissingFlavors();
+          const enrichedCount = await seedfinderEnrichment.enrichAllMissingFlavors(200);
           logger.info(`[EnrichmentCron] ${enrichedCount} Seeds angereichert`);
         } catch (error) {
           logger.error('[EnrichmentCron] Fehler:', error);
