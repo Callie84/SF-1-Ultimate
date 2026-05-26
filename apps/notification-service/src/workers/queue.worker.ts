@@ -81,23 +81,34 @@ async function processMessage(raw: string): Promise<void> {
     if (msg.type === 'price_alert') {
       const { seedSlug, targetPrice, currentPrice, seedbank, url, reason } = msg.data;
 
-      const reasonText = reason === 'discount'
-        ? 'Preissenkung bei'
-        : `Zielpreis erreicht für`;
+      if (reason === 'stale') {
+        await notificationService.create({
+          userId: msg.userId,
+          type: 'price_alert',
+          title: `⏳ Preise veraltet: ${seedSlug}`,
+          message: `Für ${seedSlug} sind seit über 36 Stunden keine aktuellen Preise verfügbar. Wir benachrichtigen dich sobald neue Preise eingehen.`,
+          relatedUrl: `/seeds/${seedSlug}`,
+          data: msg.data,
+        });
+      } else {
+        const reasonText = reason === 'discount'
+          ? 'Preissenkung bei'
+          : `Zielpreis erreicht für`;
 
-      const title = `🌿 ${reasonText} ${seedSlug}`;
-      const message = reason === 'discount'
-        ? `${seedbank} hat den Preis gesenkt — aktuell ${currentPrice?.toFixed(2)}€`
-        : `${seedbank} bietet ${seedSlug} für ${currentPrice?.toFixed(2)}€ an (Ziel: ${targetPrice?.toFixed(2)}€)`;
+        const title = `🌿 ${reasonText} ${seedSlug}`;
+        const message = reason === 'discount'
+          ? `${seedbank} hat den Preis gesenkt — aktuell ${currentPrice?.toFixed(2)}€`
+          : `${seedbank} bietet ${seedSlug} für ${currentPrice?.toFixed(2)}€ an (Ziel: ${targetPrice?.toFixed(2)}€)`;
 
-      await notificationService.create({
-        userId: msg.userId,
-        type: 'price_alert',
-        title,
-        message,
-        relatedUrl: url,
-        data: msg.data,
-      });
+        await notificationService.create({
+          userId: msg.userId,
+          type: 'price_alert',
+          title,
+          message,
+          relatedUrl: url,
+          data: msg.data,
+        });
+      }
 
     } else if (msg.type === 'level:up') {
       const { newLevel, oldLevel } = msg.data;
