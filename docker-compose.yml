@@ -60,6 +60,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   postgres:
     image: postgres:15-alpine
@@ -78,6 +83,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   redis:
     image: redis:7-alpine
@@ -93,6 +103,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   meilisearch:
     image: getmeili/meilisearch:v1.5
@@ -109,6 +124,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   # API Gateway
   api-gateway:
@@ -159,6 +179,11 @@ services:
       - "traefik.http.middlewares.traefik-auth.basicauth.removeheader=true"
       # Gzip-Kompression für Dashboard-Assets
       - "traefik.http.middlewares.traefik-compress.compress=true"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   # Frontend
   frontend:
@@ -225,6 +250,11 @@ services:
       - "traefik.http.middlewares.rl-api.rateLimit.average=300"
       - "traefik.http.middlewares.rl-api.rateLimit.period=1m"
       - "traefik.http.middlewares.rl-api.rateLimit.burst=60"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   # Backend Services
   auth-service:
@@ -281,6 +311,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   journal-service:
     image: node:20-alpine
@@ -336,6 +371,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   search-service:
     image: node:20-alpine
@@ -384,6 +424,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   gamification-service:
     image: node:20-alpine
@@ -424,6 +469,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   price-service:
     image: node:20-alpine
@@ -471,6 +521,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   media-service:
     image: node:20-alpine
@@ -507,6 +562,11 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   tools-service:
     image: node:20-alpine
@@ -551,6 +611,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   notification-service:
     image: node:20-alpine
@@ -600,6 +665,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   community-service:
     image: node:20-alpine
@@ -647,6 +717,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   # ==========================================
   # MONITORING STACK
@@ -679,6 +754,11 @@ services:
       # Prometheus hinter BasicAuth (gleiche Credentials wie Traefik-Dashboard)
       - "traefik.http.routers.prometheus.middlewares=traefik-auth"
       - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   # Alert-Routing → Telegram
   alertmanager:
@@ -694,6 +774,11 @@ services:
       - alertmanager_data:/alertmanager
     networks:
       - sf1-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   # Dashboards
   grafana:
@@ -722,6 +807,11 @@ services:
       - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
       # Grafana hat eigene Auth → kein BasicAuth-Middleware
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   # ==========================================
   # BACKUP SERVICE
@@ -769,6 +859,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   # ==========================================
   # LOG-AGGREGATION
@@ -785,6 +880,11 @@ services:
       - loki_data:/loki
     networks:
       - sf1-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   # Promtail: Log-Collector (liest Docker-Container-Logs)
   promtail:
@@ -800,6 +900,11 @@ services:
       - sf1-network
     depends_on:
       - loki
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   # ─── Plausible Analytics (Session 77) ──────────────────────────────────────
   plausible-db:
@@ -823,6 +928,11 @@ services:
       resources:
         limits:
           memory: 256m
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   plausible-clickhouse:
     image: clickhouse/clickhouse-server:23.3-alpine
@@ -840,6 +950,11 @@ services:
       resources:
         limits:
           memory: 500m
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   plausible:
     image: plausible/analytics:v2
@@ -870,6 +985,11 @@ services:
       - "traefik.http.routers.plausible.tls=true"
       - "traefik.http.routers.plausible.tls.certresolver=letsencrypt"
       - "traefik.http.services.plausible.loadbalancer.server.port=8000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   # ─── Feature Flags — Unleash (Session 79) ───────────────────────────────────
   unleash-db:
@@ -889,6 +1009,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   unleash:
     image: unleashorg/unleash-server:6
@@ -920,6 +1045,11 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   # Host-Metriken (CPU, RAM, Disk, Netzwerk)
   node-exporter:
@@ -938,3 +1068,8 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     networks:
       - sf1-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
