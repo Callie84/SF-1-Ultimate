@@ -1,5 +1,6 @@
 // Price Service - Price Routes
 import { Router } from 'express';
+import { withCache } from '../middleware/cache.middleware';
 import { priceService } from '../services/price.service';
 import { logger } from '../utils/logger';
 import { redis } from '../config/redis';
@@ -74,7 +75,7 @@ router.get('/clicks/stats', async (req, res, next) => {
  * GET /api/prices/today
  * Get today's prices (cached)
  */
-router.get('/today', async (req, res, next) => {
+router.get('/today', withCache('today', 6*3600), async (req, res, next) => {
   try {
     const limit = parseInt(req.query.limit as string) || 100;
     const skip = parseInt(req.query.skip as string) || 0;
@@ -91,7 +92,7 @@ router.get('/today', async (req, res, next) => {
  * GET /api/prices/search
  * Search seeds with prices
  */
-router.get('/search', async (req, res, next) => {
+router.get('/search', withCache('search:${req.query.q}', 4*3600), async (req, res, next) => {
   try {
     const query = req.query.q as string;
 

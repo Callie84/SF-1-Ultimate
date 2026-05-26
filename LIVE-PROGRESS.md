@@ -1,6 +1,6 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-05-26T00:54:35Z
+**Last-Update:** 2026-05-26T01:53:51Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
@@ -11,7 +11,12 @@ Nächste Session: neue Anforderung vom User abwarten oder BUG_TRACKER.md auf ver
 —
 
 ## Letzter abgeschlossener Task
-2026-05-19: Offsite-Backup Google Drive eingerichtet
+2026-05-26: Autonomes Monitoring-System + Docker Log-Rotation (b59e394, 52a6236, aa59f84)
+- sf1-system-check.sh (01/07/13/19 Uhr) + sf1-daily-fix.sh (21 Uhr) live
+- Erster Fix-Lauf: 7 Fixes, 5/5 Verifikationen ✅ (u.a. mongodb 4GB→50MB)
+- docker-compose.yml: Log-Rotation für alle 27 Container (max 150MB)
+
+Vorheriger: Offsite-Backup Google Drive eingerichtet (2026-05-19)
 - gdrive-backup Remote konfiguriert, Test-Upload ✅ (430 KB/s)
 - sf1-backup.sh: hetzner-backup → gdrive-backup
 

@@ -1,0 +1,44 @@
+<h2>Toast + Undo — Welcher Ansatz?</h2>
+<p class="subtitle">Drei Varianten wie das Undo technisch umgesetzt wird</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Optimistic Delete + Server-Undo</h3>
+      <p>Delete passiert sofort im UI (optimistic). Toast erscheint mit Countdown. Bei "Rückgängig": <code>PATCH /restore</code>. Nach 10 Sek ohne Undo: Delete war schon echt, nichts weiter nötig.</p>
+      <div class="pros-cons" style="margin-top:0.75rem">
+        <div class="pros"><h4>Pro</h4><ul><li>Schnellstes UI-Feeling</li><li>Einfachste UX</li></ul></div>
+        <div class="cons"><h4>Con</h4><ul><li>Delete ist sofort permanent</li><li>Undo braucht echten Restore-Call</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Delayed Delete (Timer im Frontend)</h3>
+      <p>Delete-API wird erst nach 10 Sek aufgerufen. Toast läuft als Countdown. Klick auf "Rückgängig" cancelt den Timer — kein API-Call nötig. Erst nach Ablauf: echter Delete.</p>
+      <div class="pros-cons" style="margin-top:0.75rem">
+        <div class="pros"><h4>Pro</h4><ul><li>Kein Restore-Endpoint nötig</li><li>Einfacher Backend-seitig</li></ul></div>
+        <div class="cons"><h4>Con</h4><ul><li>Item verschwindet sofort aus UI, ist aber noch in DB</li><li>Tab-Wechsel/Reload verliert den Timer</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Optimistic Delete + Restore (empfohlen)</h3>
+      <p>Wie A, aber mit sauberem <code>PATCH /restore</code> Endpoint. Gleicher Flow — aber der Restore-Endpoint wird auch vom Admin-Papierkorb genutzt. Code-Reuse, ein konsistenter Ansatz überall.</p>
+      <div class="pros-cons" style="margin-top:0.75rem">
+        <div class="pros"><h4>Pro</h4><ul><li>Ein Restore-Endpoint für Toast + Admin</li><li>Konsistent, wartbar</li><li>Sofortiges UI-Feedback</li></ul></div>
+        <div class="cons"><h4>Con</h4><ul><li>Minimal mehr Backend-Arbeit als B</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p style="margin-top:1.5rem; font-size:0.85rem; opacity:0.6;">Empfehlung: C — ein Restore-Endpoint für beide Features (Toast + Admin-Papierkorb)</p>

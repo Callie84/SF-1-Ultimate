@@ -1,0 +1,44 @@
+<h2>Wie soll die Seedbank/Seed-Suche strukturiert sein?</h2>
+<p class="subtitle">Es gibt bereits eine /preise-Seite mit Seed-Suche. Wo soll was leben?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Zwei separate Reiter</h3>
+      <p><strong>„Seedbanken"</strong> — Liste aller Shops, durchsuchbar/filterbar. Klick auf Bank → zeigt ihre Seeds + Preise.<br>
+      <strong>„Preise"</strong> — bestehende Seite, verbessert: Seed suchen → alle Shops + Preise im Vergleich.</p>
+      <div style="margin-top:10px; padding:8px; background:rgba(0,180,0,0.1); border-radius:6px; font-size:13px;">
+        ✅ Klare Trennung: Ich kenne die Bank → ich suche einen Seed<br>
+        ✅ Beide Seiten schlanker und fokussierter
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Ein kombinierter „Marktplatz"-Reiter</h3>
+      <p>Eine neue Seite mit <strong>zwei Tabs</strong>: [🏪 Seedbanken] [🌿 Seed-Suche]<br>
+      Seedbanken-Tab: suchen, filtern, klicken → Seeds der Bank.<br>
+      Seed-Suche-Tab: Strain suchen → Preisvergleich über alle Shops.</p>
+      <div style="margin-top:10px; padding:8px; background:rgba(0,100,255,0.1); border-radius:6px; font-size:13px;">
+        ✅ Alles an einem Ort<br>
+        ⚠️ Bestehende /preise-Seite wird ersetzt oder bleibt parallel
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Seedbank-Reiter + Preisvergleich auf Strain-Detail</h3>
+      <p><strong>„Seedbanken"</strong> — Seite mit Suche/Filter, klicken → alle Seeds dieser Bank.<br>
+      <strong>Strain-Detail-Seite</strong> (AK47 etc.) — Preisvergleich-Sektion direkt unten (da ist der OAuth-Fehler jetzt).</p>
+      <div style="margin-top:10px; padding:8px; background:rgba(255,160,0,0.1); border-radius:6px; font-size:13px;">
+        ✅ Natürlicher Flow: Strain anklicken → sofort Preise sehen<br>
+        ⚠️ Kein eigenständiger "Preisvergleich"-Reiter mehr
+      </div>
+    </div>
+  </div>
+</div>

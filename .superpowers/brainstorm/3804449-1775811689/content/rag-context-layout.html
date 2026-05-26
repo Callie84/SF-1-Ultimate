@@ -1,0 +1,40 @@
+<h2>Wie wird der RAG-Context in der Chat-UI angezeigt?</h2>
+<p class="subtitle">Der RAG-Service gibt Quellen-Seeds zurück. Wo zeigen wir diese dem Nutzer?</p>
+
+<div class="options">
+  <div class="option" data-choice="inline" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Inline mit Nachricht</h3>
+      <p style="margin: 8px 0 0 0; font-size: 0.85em; line-height: 1.4;">AI antwortet, dahinter klappbar: "3 Quellen-Seeds" (Flavor-Profile, Grow-Tips, etc.)</p>
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros"><h4 style="margin: 0 0 4px 0;">Pros</h4><ul style="margin: 4px 0; padding-left: 20px;"><li style="font-size: 0.8em;">Im Kontext</li><li style="font-size: 0.8em;">Nicht ablenkend</li></ul></div>
+        <div class="cons"><h4 style="margin: 0 0 4px 0;">Cons</h4><ul style="margin: 4px 0; padding-left: 20px;"><li style="font-size: 0.8em;">Könnte lang werden</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="sidebar" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Sidebar rechts (Desktop)</h3>
+      <p style="margin: 8px 0 0 0; font-size: 0.85em; line-height: 1.4;">Chat normal links, rechts 20% Sidebar mit "Sources" — zeigt Seeds die gerade verwendet wurden</p>
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros"><h4 style="margin: 0 0 4px 0;">Pros</h4><ul style="margin: 4px 0; padding-left: 20px;"><li style="font-size: 0.8em;">Saubere Trennung</li><li style="font-size: 0.8em;">Skaliert auf Mobile</li></ul></div>
+        <div class="cons"><h4 style="margin: 0 0 4px 0;">Cons</h4><ul style="margin: 4px 0; padding-left: 20px;"><li style="font-size: 0.8em;">Weniger Platz für Chat</li><li style="font-size: 0.8em;">PWA-Responsive schwerer</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="modal" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Modal / Drawer bei Klick</h3>
+      <p style="margin: 8px 0 0 0; font-size: 0.85em; line-height: 1.4;">"View Sources" Button unter jeder AI-Nachricht → öffnet Modal mit Seeds + Links</p>
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros"><h4 style="margin: 0 0 4px 0;">Pros</h4><ul style="margin: 4px 0; padding-left: 20px;"><li style="font-size: 0.8em;">Mobil-perfekt</li><li style="font-size: 0.8em;">Clean UI</li></ul></div>
+        <div class="cons"><h4 style="margin: 0 0 4px 0;">Cons</h4><ul style="margin: 4px 0; padding-left: 20px;"><li style="font-size: 0.8em;">Extra Klick</li><li style="font-size: 0.8em;">Kontext-Verlust</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
