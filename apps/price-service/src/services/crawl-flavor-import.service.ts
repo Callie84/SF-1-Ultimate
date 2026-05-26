@@ -23,6 +23,7 @@ interface CrawlStrain {
 function normalizeName(name: string): string {
   return name
     .toLowerCase()
+    .replace(/[#()'"+]/g, '')
     .replace(/[-_.]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -32,12 +33,12 @@ export class CrawlFlavorImportService {
   /**
    * Lädt Crawl-Daten und baut einen schnellen Lookup auf
    */
-  private loadCrawlData(): Map<string, CrawlStrain> {
+  private async loadCrawlData(): Promise<Map<string, CrawlStrain>> {
     if (!fs.existsSync(CRAWL_PATH)) {
       throw new Error(`Crawl-Datei nicht gefunden: ${CRAWL_PATH}`);
     }
 
-    const raw = fs.readFileSync(CRAWL_PATH, 'utf-8');
+    const raw = await fs.promises.readFile(CRAWL_PATH, 'utf-8');
     const strains: CrawlStrain[] = JSON.parse(raw);
 
     const map = new Map<string, CrawlStrain>();
@@ -77,7 +78,7 @@ export class CrawlFlavorImportService {
    * Überspringt Seeds mit flavorSource 'seedfinder' oder 'manual'
    */
   async importAll(): Promise<{ matched: number; updated: number; skipped: number }> {
-    const crawlMap = this.loadCrawlData();
+    const crawlMap = await this.loadCrawlData();
 
     const seeds = await Seed.find({
       flavorSource: { $nin: ['seedfinder', 'manual'] },

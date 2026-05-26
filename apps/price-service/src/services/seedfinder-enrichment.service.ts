@@ -112,8 +112,11 @@ export class SeedfinderEnrichmentService {
       return false;
     }
 
-    const updateData: any = { flavorSource: 'seedfinder' };
-    if (strainData.flavors?.length) updateData.flavors = strainData.flavors;
+    const updateData: any = {};
+    if (strainData.flavors?.length) {
+      updateData.flavors = strainData.flavors;
+      updateData.flavorSource = 'seedfinder';
+    }
     if (strainData.effects?.length) updateData.effects = strainData.effects;
     if (strainData.thc !== undefined) updateData.thc = strainData.thc;
     if (strainData.cbd !== undefined) updateData.cbd = strainData.cbd;
@@ -147,20 +150,29 @@ export class SeedfinderEnrichmentService {
 
     const seeds = [...priority1, ...priority2];
 
-    if (seeds.length === 0) {
+    // Deduplication: seed kann in beiden Priority-Listen auftauchen (leeres Array + flavorSource crawl)
+    const seenIds = new Set<string>();
+    const deduplicatedSeeds = seeds.filter(s => {
+      const id = String(s._id);
+      if (seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
+
+    if (deduplicatedSeeds.length === 0) {
       logger.info('[SeedfinderV2] Alle Seeds mit Seedfinder-Daten versorgt');
       return 0;
     }
 
-    logger.info(`[SeedfinderV2] Batch: ${priority1.length} ohne Flavors + ${priority2.length} crawl-Upgrade (${seeds.length} gesamt)`);
+    logger.info(`[SeedfinderV2] Batch: ${priority1.length} ohne Flavors + ${priority2.length} crawl-Upgrade (${deduplicatedSeeds.length} gesamt)`);
 
     let enriched = 0;
-    for (const seed of seeds) {
+    for (const seed of deduplicatedSeeds) {
       const ok = await this.enrichSeed(String(seed._id), seed.name, seed.breeder || '');
       if (ok) enriched++;
     }
 
-    logger.info(`[SeedfinderV2] Fertig — ${enriched}/${seeds.length} angereichert`);
+    logger.info(`[SeedfinderV2] Fertig — ${enriched}/${deduplicatedSeeds.length} angereichert`);
     return enriched;
   }
 
