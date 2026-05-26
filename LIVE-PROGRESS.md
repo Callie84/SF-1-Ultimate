@@ -1,16 +1,22 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-05-26T11:39:04Z
+**Last-Update:** 2026-05-26T22:15:30Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
-(kein aktiver Task) — System sauber ✅. Nächste Session: neue Anforderung vom User abwarten.
+Task 4: SeedsWithoutFlavorController angelegen + API-Test durchlaufen (Phase 1 Summary)
 
 ## Aktueller Task
-—
+Task 3 ✅ abgeschlossen — CrawlFlavorImportService (56c8399)
 
 ## Letzter abgeschlossener Task
-2026-05-26: THC/CBD-Dezimalstellen runden — pre-save Hook (d0f8621)
+2026-05-26: Task 3 — CrawlFlavorImportService (56c8399)
+- Datei: apps/price-service/src/services/crawl-flavor-import.service.ts
+- Funktionalität: Crawl-Daten aus /root/SF-Brain/strain_output/strains_database.json laden, gegen DB-Seeds matchen, Flavor-Tags extrahieren
+- normalizeName(): lowercase, Hyphens/Punkte→Spaces, Deduplizierung
+- loadCrawlData(): Map<name, crawlEntry> für schnelles Matching
+- importAll(): Seeds mit flavorSource !== 'seedfinder'/'manual' verarbeiten, Flavors via extractFlavorsFromText() setzen, Count/Log-Progress
+- TypeScript-Syntax ✅ (transpile-check)
 - Seed.model.ts: Math.round(x*10)/10 für thc/cbd vor jedem save()
 - Alle Schreibpfade abgedeckt (saveScrapedProducts nutzt nur save())
 
