@@ -25,6 +25,9 @@ export interface ISeed extends Document {
   // Flavors & Effects
   flavors?: string[];
   effects?: string[];
+
+  // Flavor-Datenquelle für Qualitäts-Tracking
+  flavorSource?: 'crawl' | 'seedfinder' | 'manual';
   
   // Stats
   viewCount: number;
@@ -70,6 +73,11 @@ const SeedSchema = new Schema<ISeed>({
   
   flavors: [String],
   effects: [String],
+
+  flavorSource: {
+    type: String,
+    enum: ['crawl', 'seedfinder', 'manual'],
+  },
   
   viewCount: { type: Number, default: 0, index: true },
   priceCount: { type: Number, default: 0 },
