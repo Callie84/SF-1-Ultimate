@@ -13,6 +13,7 @@ import { websocketService } from './services/websocket.service';
 import { alertService } from './services/alert.service';
 import { priceService } from './services/price.service';
 import { seedfinderEnrichment } from './services/seedfinder-enrichment.service';
+import { crawlFlavorImport } from './services/crawl-flavor-import.service';
 import { circuitBreaker } from './services/circuit-breaker.service';
 import { scheduleAllFeeds, scheduleFeedJob, getFeedQueueStats, runFeedImportNow } from './workers/feed.worker';
 import { getFeedInfos, getFeedSlugs } from './feeds';
@@ -356,6 +357,20 @@ app.post('/api/prices/admin/fix-decimals', requireAdmin, async (req, res) => {
     res.json({ success: true, updated, total: seeds.length });
   } catch (error: any) {
     logger.error('[Admin] Decimal-Fix Fehler:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Phase 1: Crawl-Flavor-Import (einmalig ausführbar)
+app.post('/api/prices/admin/flavors/import-crawl', requireAdmin, async (req, res) => {
+  try {
+    logger.info('[Admin] Starte Crawl-Flavor-Import...');
+    crawlFlavorImport.importAll()
+      .then(result => logger.info(`[Admin] Crawl-Import fertig: ${JSON.stringify(result)}`))
+      .catch(err => logger.error('[Admin] Crawl-Import Fehler:', err.message));
+
+    res.json({ success: true, message: 'Import gestartet (läuft im Hintergrund)' });
+  } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
