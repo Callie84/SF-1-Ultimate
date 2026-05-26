@@ -13,7 +13,7 @@ echo "🔍 SF-1 Smoke-Test — $(date '+%Y-%m-%d %H:%M')"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Voraussetzung: kritische Container laufen
-for svc in sf1-auth-service sf1-search-service; do
+for svc in sf1-auth-service sf1-search-service sf1-backup; do
   if ! docker ps --format "{{.Names}}" | grep -q "^${svc}$"; then
     echo "❌ ABORT: Container '$svc' läuft nicht."
     echo "   Prüfen: docker ps | grep sf1"
@@ -33,8 +33,9 @@ run_test() {
   fi
 }
 
-run_test "Auth-Service  (login/register/verify)" "test:auth"
+run_test "Auth-Service   (login/register/verify)" "test:auth"
 run_test "Search-Service (strain-suche)"          "test:search"
+run_test "Backup-Service (health/trigger)"        "test:backup"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 if [ "$FAILED" -eq 0 ]; then
