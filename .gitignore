@@ -154,3 +154,6 @@ docker-compose.yml.BROKEN-*
 docker-compose.yml.OLD-*
 docker-compose.yml.UNSAFE-*
 la docker-compose*
+
+# Git Worktrees
+.worktrees/
