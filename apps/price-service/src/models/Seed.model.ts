@@ -28,7 +28,13 @@ export interface ISeed extends Document {
 
   // Flavor-Datenquelle für Qualitäts-Tracking
   flavorSource?: 'crawl' | 'seedfinder' | 'manual';
-  
+
+  // Provenienz: welche Quellen haben zu diesem Seed beigetragen
+  source?: Array<'crawl' | 'seedfinder' | 'firecrawl' | 'manual'>;
+
+  // Zeitpunkt des letzten erfolgreichen Scrapes
+  lastScraped?: Date;
+
   // Stats
   viewCount: number;
   priceCount: number;
@@ -78,7 +84,16 @@ const SeedSchema = new Schema<ISeed>({
     type: String,
     enum: ['crawl', 'seedfinder', 'manual'],
   },
-  
+
+  source: {
+    type: [String],
+    enum: ['crawl', 'seedfinder', 'firecrawl', 'manual'],
+    default: [],
+    index: true,
+  },
+
+  lastScraped: { type: Date, index: true },
+
   viewCount: { type: Number, default: 0, index: true },
   priceCount: { type: Number, default: 0 },
   avgPrice: Number,
@@ -95,6 +110,7 @@ SeedSchema.index({ name: 'text', breeder: 'text' });
 SeedSchema.index({ lowestPrice: 1 });
 SeedSchema.index({ viewCount: -1 });
 SeedSchema.index({ priceCount: 1 }); // für browseSeeds({ priceCount: { $gt: 0 } })
+SeedSchema.index({ lastScraped: 1 }); // findStale({ lastScraped: { $lt: ... } })
 
 SeedSchema.pre('save', function (next) {
   if (this.thc != null) this.thc = Math.round(this.thc * 10) / 10;

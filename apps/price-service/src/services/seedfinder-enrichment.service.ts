@@ -120,8 +120,12 @@ export class SeedfinderEnrichmentService {
     if (strainData.effects?.length) updateData.effects = strainData.effects;
     if (strainData.thc !== undefined) updateData.thc = strainData.thc;
     if (strainData.cbd !== undefined) updateData.cbd = strainData.cbd;
+    updateData.lastScraped = new Date();
 
-    await Seed.updateOne({ _id: seedId }, { $set: updateData });
+    await Seed.updateOne(
+      { _id: seedId },
+      { $set: updateData, $addToSet: { source: 'seedfinder' } }
+    );
     logger.debug(`[SeedfinderV2] "${seedName}" angereichert — Flavors: ${strainData.flavors?.join(', ')}`);
     return true;
   }

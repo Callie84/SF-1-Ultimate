@@ -110,7 +110,10 @@ export class CrawlFlavorImportService {
 
       await Seed.updateOne(
         { _id: seed._id },
-        { $set: { flavors, flavorSource: 'crawl' } }
+        {
+          $set: { flavors, flavorSource: 'crawl', lastScraped: new Date() },
+          $addToSet: { source: 'crawl' }
+        }
       );
       updated++;
 

@@ -1,16 +1,23 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-05-27T01:32:54Z
+**Last-Update:** 2026-05-27T01:41:00Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
-(kein aktiver Task) — System sauber ✅. Nächste Session: neue Anforderung abwarten.
+(kein aktiver Task) — System sauber ✅. Adapter-Code-Erweiterung (source.push + lastScraped setzen) noch offen — bei Bedarf separat beauftragen.
 
 ## Aktueller Task
 —
 
 ## Letzter abgeschlossener Task
-[2026-05-27] Stale-Preis-Alarm — Admin-Alarm (24h) + User-Alarm (36h) + Endpoint + Shell-Script (4bda777, 1a93d4d, 9b188c1 + 88fa698 Root-Repo)
+[2026-05-27] Seed-Modell erweitert — `source[]` (Provenienz-Array) + `lastScraped: Date` in `apps/price-service/src/models/Seed.model.ts`
+- Interface: `source?: Array<'crawl'|'seedfinder'|'firecrawl'|'manual'>`, `lastScraped?: Date`
+- Schema: beide mit `index: true`, `source` mit `default: []`
+- Zusatz-Index `{ lastScraped: 1 }` für Stale-Detection
+- Price-Service rebuild + restart, healthy ✅, Feed-Import läuft normal weiter
+- Adapter-Code (saveScrapedProducts etc.) muss die Felder noch befüllen — bisher leer
+
+Vorheriger: [2026-05-27] Stale-Preis-Alarm — Admin-Alarm (24h) + User-Alarm (36h) + Endpoint + Shell-Script (4bda777, 1a93d4d, 9b188c1 + 88fa698 Root-Repo)
 - Git-History-Bereinigung: GitHub PAT aus alter DOKUMENTATION.md entfernt, force-push
 
 Vorheriger: Duplicate-Strains Bereinigung — sf1_price.seeds (keine Commits, reine DB-Pflege)

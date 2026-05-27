@@ -10,6 +10,49 @@
 
 ---
 
+## Seed-Modell: source[] + lastScraped [abgeschlossen 2026-05-27]
+
+### Problem / Ziel
+Das Seed-Schema (`apps/price-service/src/models/Seed.model.ts`) hatte bisher nur `flavorSource` (Single-Enum) als Hinweis auf die Datenherkunft der Flavors. Es gab keine Möglichkeit nachzuvollziehen, welche Scraping-/Daten-Quellen insgesamt zu einem Seed-Eintrag beigetragen haben, und kein dediziertes Feld für den letzten erfolgreichen Scrape-Zeitpunkt.
+
+### Warum
+- Provenienz pro Seed: ein Seed kann durch Crawl + Seedfinder + manuelle Pflege entstehen → Multi-Source als Array
+- Stale-Detection: `updatedAt` tickt auch bei reinen View-Counter-Updates → unbrauchbar für „seit X Tagen nicht gescraped". Separates `lastScraped` ist eindeutig.
+- Voraussetzung für gezielte Re-Scrape-Jobs (z.B. Seeds mit `lastScraped < now-30d` priorisiert neu importieren)
+
+### Lösung
+Erweiterung des Mongoose-Schemas:
+
+```ts
+// Interface
+source?: Array<'crawl' | 'seedfinder' | 'firecrawl' | 'manual'>;
+lastScraped?: Date;
+
+// Schema
+source: { type: [String], enum: [...], default: [], index: true }
+lastScraped: { type: Date, index: true }
+
+// Zusatz-Index
+SeedSchema.index({ lastScraped: 1 });
+```
+
+### Geänderte Dateien
+- `apps/price-service/src/models/Seed.model.ts` — Interface, Schema, Index
+
+### Verifikation
+- Price-Service rebuild via `docker compose build price-service` (Exit 0)
+- `docker restart sf1-price-service` → healthy nach ~30s
+- Feed-Import läuft normal weiter (zamnesia, sensi-seeds erfolgreich)
+
+### Offen / Folgearbeit
+- Adapter-Code (`saveScrapedProducts` und Adapter-spezifische Writer) muss `source` und `lastScraped` aktiv setzen — bisher bleiben die Felder bei Bestands- und Neudaten leer
+- Optionaler Backfill: bei vorhandenen Seeds mit `priceCount > 0` initial `source: ['crawl']` setzen
+
+### Commits
+- Bisher uncommitted in `/root/SF-1-Ultimate-` (siehe `git status`)
+
+---
+
 ## Duplicate-Strains Bereinigung (sf1_price.seeds) [abgeschlossen 2026-05-27]
 
 ### Problem / Ziel

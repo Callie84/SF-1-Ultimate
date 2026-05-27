@@ -65,9 +65,11 @@ export class PriceService {
             floweringTime: product.floweringTime,
             imageUrl: product.imageUrl,
             viewCount: 0,
-            priceCount: 0
+            priceCount: 0,
+            source: ['crawl'],
+            lastScraped: new Date()
           });
-          
+
           await seed.save();
           seedsCreated++;
         } else {
@@ -77,7 +79,12 @@ export class PriceService {
           if (!seed.floweringTime && product.floweringTime) seed.floweringTime = product.floweringTime;
           if (!seed.genetics && product.genetics) seed.genetics = product.genetics;
           if (!seed.imageUrl && product.imageUrl) seed.imageUrl = product.imageUrl;
-          
+
+          if (!seed.source?.includes('crawl')) {
+            seed.source = [...(seed.source || []), 'crawl'];
+          }
+          seed.lastScraped = new Date();
+
           await seed.save();
         }
         
