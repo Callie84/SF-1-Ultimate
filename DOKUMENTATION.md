@@ -37,23 +37,76 @@ SeedSchema.index({ lastScraped: 1 });
 ```
 
 ### Geänderte Dateien
-- `apps/price-service/src/models/Seed.model.ts` — Interface, Schema, Index
+- `apps/price-service/src/models/Seed.model.ts` — Interface (`source?: Array<...>`, `lastScraped?: Date`), Schema mit `index: true` + `default: []`, Zusatz-Index `{ lastScraped: 1 }` — zentrale Provenienz/Stale-Schema-Erweiterung, alle Adapter konsumieren dieses Modell
+- `apps/price-service/src/services/price.service.ts` — `saveScrapedProducts`: Create-Pfad setzt `source: ['crawl']` + `lastScraped: new Date()`, Update-Pfad ergänzt `source` via Array-Union und überschreibt `lastScraped` — diese Funktion ist der einzige Schreibpfad für FeedWorker-Imports
+- `apps/price-service/src/services/crawl-flavor-import.service.ts` — `Seed.updateOne` ergänzt um `$addToSet: { source: 'crawl' }` und `$set: { lastScraped }` — separater Writer für Flavor-Bulk-Import aus seedfinder.eu Crawl
+- `apps/price-service/src/services/seedfinder-enrichment.service.ts` — `Seed.updateOne` ergänzt um `$addToSet: { source: 'seedfinder' }` und `lastScraped` in `updateData` — Writer für gezielte Per-Strain-Anreicherung von seedfinder.eu
+- `DOKUMENTATION.md`, `LIVE-PROGRESS.md` — Doku-Pflicht
+
+### Ausgeführte Befehle
+```bash
+# Bestandsaufnahme (mongosh über Container)
+docker exec sf1-mongodb mongosh "mongodb://sf1_admin:***@localhost:27017/sf1_price?authSource=admin&directConnection=true" --quiet --eval '
+  print(db.seeds.countDocuments({}));
+  print(db.seeds.countDocuments({ source: { $exists: false } }));
+'
+
+# Build + Restart (1. Iteration nur Schema)
+cd /root/SF-1-Ultimate-
+docker compose build price-service
+docker restart sf1-price-service
+
+# Build + Restart (2. Iteration mit Adapter-Patches)
+docker-compose build price-service   # docker compose CLI war nicht verfügbar, docker-compose v1 stattdessen
+docker restart sf1-price-service
+
+# Backfill (5485 Seeds, alle bestehenden stammen aus Crawls)
+docker exec sf1-mongodb mongosh "mongodb://sf1_admin:***@localhost:27017/sf1_price?authSource=admin&directConnection=true" --quiet --eval '
+  const res = db.seeds.updateMany(
+    { source: { $ne: "crawl" } },
+    { $addToSet: { source: "crawl" } }
+  );
+  print("Matched:", res.matchedCount, "Modified:", res.modifiedCount);
+'
+
+# Live-Verifikation
+docker exec sf1-mongodb mongosh "..." --quiet --eval '
+  print(db.seeds.countDocuments({source: "crawl"}));
+  print(db.seeds.countDocuments({lastScraped: {$exists: true}}));
+  print(JSON.stringify(db.seeds.findOne({lastScraped: {$exists: true}}, {name:1, source:1, lastScraped:1, _id:0})));
+'
+
+# Commit (Pre-Commit-Hook Smoke-Test ✅)
+git add apps/price-service/src/models/Seed.model.ts \
+        apps/price-service/src/services/price.service.ts \
+        apps/price-service/src/services/crawl-flavor-import.service.ts \
+        apps/price-service/src/services/seedfinder-enrichment.service.ts \
+        DOKUMENTATION.md LIVE-PROGRESS.md
+git commit -m "feat(price-service): Seed.source[] + lastScraped — Provenienz & Stale-Detection"
+```
+
+### Fallstricke / Was schiefging
+- **`docker compose` (v2-CLI) ohne run_in_background lieferte Docker-Help-Output statt das Compose-Subcommand auszuführen** — vermutlich Sandbox-/Permission-Eigenheit. Workaround: `docker-compose` (v1) verwenden oder mit `run_in_background: true` triggern.
+- **Mongo-Auth-Erkenntnis:** `mongosh` ohne `authSource=admin` schlägt mit `Command aggregate requires authentication` fehl. Korrekte URI steht in `docker exec sf1-price-service printenv MONGODB_URL`, nicht in den `.env`-Files (dort steht eine veraltete `mongodb://localhost:27017/sf1-prices` ohne Auth).
+- **Mongoose Default-Verhalten:** Nach dem ersten Restart (nur Schema, ohne Adapter-Patches) wurde bei jedem `seed.save()` im bestehenden Update-Pfad automatisch `source: []` injiziert — Bestandsaufnahme zeigte 5485 total / 3392 ohne `source`, der Rest hatte bereits leere Arrays. Backfill-Filter musste deshalb `source: { $ne: 'crawl' }` sein (deckt `$exists: false` UND `[]` ab), nicht nur `{ $exists: false }`.
+- **Datenbank-Name-Konfusion:** `.env` zeigt `sf1-prices`, tatsächliche DB im Container ist `sf1_price` (Unterstrich, Singular). Immer aus dem Container-`printenv` lesen.
 
 ### Verifikation
-- Price-Service rebuild via `docker compose build price-service` (Exit 0)
-- `docker restart sf1-price-service` → healthy nach ~30s
-- Feed-Import läuft normal weiter (zamnesia, sensi-seeds erfolgreich)
+- `docker ps` zeigt `sf1-price-service` `Up X seconds (healthy)` nach beiden Restarts
+- `docker logs --tail 20 sf1-price-service` zeigt FeedWorker-Imports laufen weiter: `[Sensi Seeds] Gesamt: 294 Produkte`, `[FeedWorker] zamnesia fertig: 107 Preise aktualisiert`
+- Backfill-Ausgabe: `Matched: 5485 Modified: 5485` → `source enthaelt crawl: 5485 / 5485`
+- **End-to-End-Beweis dass Adapter-Patches greifen:** 5 Minuten nach Restart `db.seeds.countDocuments({lastScraped: {$exists: true}})` = **394** Seeds haben `lastScraped` (durch live laufenden FeedWorker neu geschrieben). Sample: `{name:"Sativa Fiesta", source:["crawl"], lastScraped:"2026-05-27T01:50:27.832Z"}`
+- Pre-Commit-Hook Smoke-Test (Auth/Search/Backup) bestanden ✅
+- Git: `bc1585c` (Feature) + `54a3f9b` (Doku-Nachtrag) auf `main`
 
-### Offen / Folgearbeit
-- Adapter-Code (`saveScrapedProducts` und Adapter-spezifische Writer) muss `source` und `lastScraped` aktiv setzen — bisher bleiben die Felder bei Bestands- und Neudaten leer
-- Optionaler Backfill: bei vorhandenen Seeds mit `priceCount > 0` initial `source: ['crawl']` setzen
+### Abhängigkeiten / Voraussetzungen
+- `sf1-price-service` muss neu gebaut + restartet sein damit das geänderte Modell + Adapter greift
+- `sf1-mongodb` muss erreichbar sein (für Backfill und Verifikation)
+- Pre-Commit-Hook (Smoke-Test) muss grün sein damit Commit durchgeht
 
 ### Commits
 - `bc1585c` — feat(price-service): Seed.source[] + lastScraped — Provenienz & Stale-Detection
-
-### Folgearbeit (in dieser Session direkt mit erledigt)
-- Adapter-Code in `price.service.ts`, `crawl-flavor-import.service.ts`, `seedfinder-enrichment.service.ts` setzen `source` (addToSet) und `lastScraped` (Date)
-- Backfill via mongosh: 5485/5485 Bestands-Seeds erhielten `source: ['crawl']`
+- `54a3f9b` — docs: Folgearbeit & Commit-Hash bc1585c in DOKUMENTATION.md ergänzt
 
 ---
 
