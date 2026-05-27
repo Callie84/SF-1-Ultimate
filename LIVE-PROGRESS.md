@@ -1,18 +1,24 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-05-26T20:50:43Z
+**Last-Update:** 2026-05-27T01:32:54Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
-(kein aktiver Task) — System sauber ✅. Nächste Session: neue Anforderung vom User abwarten.
+(kein aktiver Task) — System sauber ✅. Nächste Session: neue Anforderung abwarten.
 
 ## Aktueller Task
 —
 
 ## Letzter abgeschlossener Task
-2026-05-26: Flavor-Coverage Pipeline (9890c55, 332da6b + 10 weitere Commits)
-- Phase 1: Lokaler Crawl-Import — 40 DE Flavor-Tags, 28 Seeds sofort angereichert
-- Phase 2: Seedfinder.eu Scraper neu (neue URL + Firecrawl), täglich 200 Seeds ab 02:00
+[2026-05-27] Stale-Preis-Alarm — Admin-Alarm (24h) + User-Alarm (36h) + Endpoint + Shell-Script (4bda777, 1a93d4d, 9b188c1 + 88fa698 Root-Repo)
+- Git-History-Bereinigung: GitHub PAT aus alter DOKUMENTATION.md entfernt, force-push
+
+Vorheriger: Duplicate-Strains Bereinigung — sf1_price.seeds (keine Commits, reine DB-Pflege)
+- 145 kaputte Image-URLs (relative Pfade) → null gesetzt
+- 701 Breeder-Einträge normalisiert: 34 Mappings (Kürzel + Schreibvarianten → Vollnamen)
+- 94 echte Duplikate gemergt (Preise ummapped, keeper = höchster priceCount)
+- 83 avgPrice=null via out-of-stock Preise befüllt
+- Ergebnis: 5478 → 5384 Seeds, 247 → 220 Breeder, 0 Duplikate
 - flavorSource-Tracking (crawl/seedfinder/manual), Pre-Commit-Hook für Worktrees gefixt
 - Phase 1 manuell getriggert ✅, Phase 2 läuft morgen 02:00 Uhr zum ersten Mal
 
