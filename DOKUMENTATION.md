@@ -49,7 +49,11 @@ SeedSchema.index({ lastScraped: 1 });
 - Optionaler Backfill: bei vorhandenen Seeds mit `priceCount > 0` initial `source: ['crawl']` setzen
 
 ### Commits
-- Bisher uncommitted in `/root/SF-1-Ultimate-` (siehe `git status`)
+- `bc1585c` — feat(price-service): Seed.source[] + lastScraped — Provenienz & Stale-Detection
+
+### Folgearbeit (in dieser Session direkt mit erledigt)
+- Adapter-Code in `price.service.ts`, `crawl-flavor-import.service.ts`, `seedfinder-enrichment.service.ts` setzen `source` (addToSet) und `lastScraped` (Date)
+- Backfill via mongosh: 5485/5485 Bestands-Seeds erhielten `source: ['crawl']`
 
 ---
 
