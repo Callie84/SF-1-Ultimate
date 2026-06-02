@@ -1,12 +1,221 @@
 # SF-1 Ultimate — Vollständige Entwicklungsdokumentation
 
 **Projekt:** seedfinderpro.de — Cannabis Growing Community Platform
-**Stand:** 2026-05-26 — Professionalisierung Ansatz B abgeschlossen (BUG_TRACKER entfernt, Smoke-Tests, Pre-Commit Hook, CLAUDE.md Regeln 12–14)  
-**Status:** ✅ Production-Ready (RAG validated, Chat tested, ready for user testing)
+**Stand:** 2026-06-02 — Security Audit Fixes laufen (s1 ✅ abgeschlossen, s2 ✅ abgeschlossen, s3 read-only pending)
+**Status:** ✅ Production-Ready — Security Gaps identifiziert, Plan aktiv (s1–s3)
 **Stack:** Next.js 14, Express Microservices, MongoDB, PostgreSQL, Redis, Meilisearch, Docker Compose, Traefik, Ollama (KI)
 
 > **⚠️ Hinweis:** Sessions 30–92 sind hauptsächlich in `/root/SF-Brain/SF-1 Projekt/Status & Roadmap.md` dokumentiert (Vault).
 > Diese Datei wird systematisch aktualisiert ab Session 94.
+
+---
+
+## Security Audit Fixes — s1: 2FA Login-Gate + Traefik Rate Limits [abgeschlossen 2026-06-02]
+
+### Problem / Ziel
+Security-Audit hatte 2 kritische Lücken identifiziert (SEC-7 + SEC-8):
+
+**SEC-7 — 2FA Login-Gate fehlte:**
+Login-Route (`POST /api/auth/login`) prüfte `totpEnabled` nicht. User mit aktivierter 2FA erhielten trotzdem sofort Access- und Refresh-Token — ohne TOTP-Code. Der `/2fa/login`-Flow mit `mfa_pending:*` Redis-Key war zwar implementiert, aber die Login-Route leitete nie dorthin weiter.
+
+**SEC-8 — Rate-Limit-Middlewares ungebunden:**
+In `docker-compose.yml` waren `rl-auth` (20 Requests/min) und `rl-api` (300 Requests/min) als Traefik-Middlewares definiert (Zeilen 249–255), aber kein einziger Router hatte `.middlewares=rl-auth` oder `.middlewares=rl-api` gesetzt — die Middlewares hatten damit null Wirkung.
+
+### Warum
+- SEC-7 ist ein Authentication-Bypass: 2FA lässt sich komplett umgehen, solange ein Angreifer Email+Passwort kennt
+- SEC-8 ermöglicht unbegrenzte Brute-Force-Versuche auf alle Endpoints — besonders kritisch für `/api/auth/login`
+- Beide Gaps sind aktiv ausnutzbar auf der laufenden Production-Instanz
+
+### Lösung
+
+**SEC-7 — 2FA Gate in Login-Route (auth.routes.ts):**
+
+`randomBytes` zu bestehendem `crypto`-Import ergänzt:
+```typescript
+// vorher:
+import { createHash } from 'crypto';
+// nachher:
+import { createHash, randomBytes } from 'crypto';
+```
+
+Direkt vor `// Generiere Tokens` (Login-Route, nicht Register-Route) eingefügt:
+```typescript
+// 2FA Gate: wenn User 2FA aktiviert hat, kein Token ausstellen
+if ((user as any).totpEnabled) {
+  const mfaToken = randomBytes(32).toString('hex');
+  await redis.setEx(`mfa_pending:${mfaToken}`, 5 * 60, user.id);
+  return res.status(200).json({
+    requires2FA: true,
+    mfa_token: mfaToken,
+  });
+}
+```
+
+Der 5-Minuten-TTL entspricht dem bestehenden `/2fa/login`-Flow. Das Frontend erkennt `requires2FA: true` und leitet zur TOTP-Eingabe weiter.
+
+**SEC-8 — Rate Limits auf alle Traefik-Router (docker-compose.yml):**
+
+`rl-auth` auf auth-Router (production + local):
+```yaml
+- "traefik.http.routers.auth.middlewares=rl-auth"
+- "traefik.http.routers.auth-local.middlewares=rl-auth"
+```
+
+`rl-api` auf alle API-Router (production, community auch local):
+```yaml
+- "traefik.http.routers.journal.middlewares=rl-api"
+- "traefik.http.routers.search.middlewares=rl-api"
+- "traefik.http.routers.gamification.middlewares=rl-api"
+- "traefik.http.routers.price.middlewares=rl-api"
+- "traefik.http.routers.media.middlewares=rl-api"
+- "traefik.http.routers.tools.middlewares=rl-api"
+- "traefik.http.routers.notification.middlewares=rl-api"
+- "traefik.http.routers.community.middlewares=rl-api"
+- "traefik.http.routers.community-local.middlewares=rl-api"
+- "traefik.http.routers.backup.middlewares=rl-api"
+```
+
+**Smoke-Test Fix (scripts/smoke-test.sh):**
+Pre-existing Failure entdeckt und behoben: `tests/helpers/client.ts` hatte hardcoded Fallback-IPs (`172.17.0.4:3007` für search, `172.17.0.19:3011` für backup). Docker vergibt IPs dynamisch — nach Restart stimmen sie nicht mehr. Der pre-commit Hook schlägt dann für alle zukünftigen Commits fehl.
+
+Fix: Container-IPs vor den Tests dynamisch via `docker inspect` ermitteln und als Umgebungsvariablen setzen:
+```bash
+SEARCH_IP=$(docker inspect sf1-search-service --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null)
+BACKUP_IP=$(docker inspect sf1-backup --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null)
+export SF1_SEARCH_BASE="http://${SEARCH_IP}:3007"
+export SF1_BACKUP_BASE="http://${BACKUP_IP}:3011"
+```
+
+### Geänderte Dateien
+- `apps/auth-service/src/routes/auth.routes.ts` — Zeile 25: `randomBytes` zu crypto-Import; Zeile ~308: 2FA Gate-Block eingefügt — exakt vor `// Generiere Tokens` in der Login-Route (nicht Register-Route, die hat denselben Kommentar)
+- `docker-compose.yml` — 11 neue `.middlewares=`-Label-Zeilen für 10 Router (auth+auth-local mit rl-auth, alle anderen mit rl-api); alte `# NO middlewares`-Kommentare entfernt/angepasst
+- `scripts/smoke-test.sh` — 5 neue Zeilen vor `run_test`-Aufrufen: dynamische IP-Ermittlung via docker inspect + env-var Export
+
+### Ausgeführte Befehle
+```bash
+# Backup vor Änderungen
+bash /root/scripts/sf1-backup.sh
+
+# auth-service neu starten (kein Build-Step nötig — image: node:20-slim + Volume-Mount)
+docker-compose up -d auth-service
+sleep 8
+docker logs sf1-auth-service --tail 10
+
+# Health-Check intern (kein direkter Port-Zugriff vom Host)
+docker exec sf1-auth-service node -e "require('http').get('http://localhost:3001/health', r => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>console.log(d)); }).on('error',e=>console.error(e.message))"
+
+# api-gateway (Traefik) neu laden für Rate Limit Labels
+docker-compose up -d api-gateway
+sleep 5
+docker logs sf1-api-gateway --tail 10
+
+# Rate Limit verifizieren: 7 schnelle Login-Requests
+for i in {1..7}; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST https://seedfinderpro.de/api/auth/login \
+    -H "Content-Type: application/json" -d '{"email":"x@x.de","password":"x"}')
+  echo "Request $i: $STATUS"
+done
+
+# Smoke-Test nach Fix
+bash /root/SF-1-Ultimate-/scripts/smoke-test.sh
+
+# Commits
+git add apps/auth-service/src/routes/auth.routes.ts
+git commit -m "fix(auth): 2FA login-gate erzwingen — Token nur nach TOTP-Verify ..."
+git add docker-compose.yml
+git commit -m "fix(traefik): rate-limit middlewares auf alle API-Router anwenden ..."
+git add scripts/smoke-test.sh
+git commit -m "fix(tests): smoke-test Container-IPs dynamisch ermitteln ..."
+```
+
+### Fallstricke / Was schiefging
+
+**1. Zwei identische `// Generiere Tokens`-Kommentare:**
+`auth.routes.ts` enthält `// Generiere Tokens` sowohl in der Register-Route (Zeile 143) als auch in der Login-Route (Zeile 308). Erster Edit-Versuch mit zu wenig Kontext schlug mit "Found 2 matches" fehl. Fix: mehr umgebenden Code als Match-Kontext verwenden.
+
+**2. `docker compose build` produziert keinen Output:**
+`auth-service` hat keinen `build:`-Block in docker-compose.yml — es verwendet `image: node:20-slim` und mountet Source-Code als Volume. `docker compose build` tut nichts (Exit 0, kein Output). Service per `docker-compose up -d auth-service` neustarten reicht.
+
+**3. Pre-existing Smoke-Test Failures blockierten Commits:**
+Search- und Backup-Tests lieferten `undefined` für `res?.status`. Ursache: hardcoded IPs in `tests/helpers/client.ts` veraltet nach Docker-Restart. Per `git stash` verifiziert dass Failures pre-existing sind. Behoben in `scripts/smoke-test.sh` mit dynamischem `docker inspect`.
+
+**4. Traefik-Logs zeigen Fehler für sf1-v2-Container:**
+Nach api-gateway Neustart erschienen Fehler wie `entryPoint "monitoring" doesn't exist` für sf1-v2-Prometheus/Grafana/Alertmanager. Das sind **pre-existing** Fehler einer anderen Deployment-Gruppe (`sf1-v2-net`) — nicht durch unsere Änderungen verursacht, kein Handlungsbedarf.
+
+### Verifikation
+```bash
+# Health intern:
+docker exec sf1-auth-service node -e "..."
+# Output: {"status":"healthy","service":"auth-service","timestamp":"..."}  ✅
+
+# Rate Limit Test (7 Requests):
+# Request 1: 401  ✅ (falsches PW → 401, kein 429 zu früh)
+# Request 2: 401
+# Request 3: 401
+# Request 4: 401
+# Request 5: 401
+# Request 6: 429  ✅ (Rate Limit greift ab Request 6)
+# Request 7: 429
+
+# Smoke-Test nach fix:
+# Auth-Service   ... ✅
+# Search-Service ... ✅
+# Backup-Service ... ✅
+```
+
+### Abhängigkeiten / Voraussetzungen
+- Redis muss laufen (für `mfa_pending:*` Key im 2FA Gate)
+- Traefik (api-gateway) muss neu gestartet werden damit Label-Änderungen greifen
+- `sf1-search-service` und `sf1-backup` müssen laufen damit Smoke-Tests grün sind
+
+### Commits
+- `bfdd5a6` — fix(auth): 2FA login-gate erzwingen — Token nur nach TOTP-Verify
+- `6a3ce45` — fix(traefik): rate-limit middlewares auf alle API-Router anwenden
+- `e9faef6` — fix(tests): smoke-test Container-IPs dynamisch ermitteln
+
+---
+
+## Security Audit Fixes — s2: npm CVE-Fix + security.txt [abgeschlossen 2026-06-02]
+
+### Problem / Ziel
+SEC-3 + SEC-6 aus dem Security-Audit 2026-06-02:
+
+**SEC-3 — npm CVE-Schwachstellen:**
+- auth-service: 1 critical + 6 high
+- notification-service: 2 critical + 7 high
+- price-service: 12 high
+- journal-service: 5 high, community-service: 3 high, tools-service: 3 high, gamification-service: 3 high, search-service: 4 high, media-service: 5 high, backup-service: 1 high
+
+**SEC-6 — security.txt Encryption-Feld fehlte:**
+`apps/web-app/public/.well-known/security.txt` war ohne `Encryption:`-Feld — RFC 9116 erfordert dieses Pflichtfeld.
+
+### Lösung
+
+**npm audit fix — Schritt 1:** `npm audit fix` auf allen 10 Services. Ergebnis:
+- auth, journal, community, tools, gamification, media: alle Critical/High → 0 ✅
+- notification: 2 critical + 7 high → 0 (via `--force`)
+- backup: 1 high → 0 (via `--force`)
+
+**npm audit fix — Schritt 2:** Price-service hatte eresolve-Konflikt durch `bullmq@5` vs `redis@4`. Fix: `@typescript-eslint/eslint-plugin` + `@typescript-eslint/parser` direkt auf `latest` aktualisiert (`--save-dev --legacy-peer-deps`). Ergebnis: 0 vulnerabilities.
+
+**search-service Restrisiko:** 2 high verbleiben (bull@1.1.3 → redis-CVE). Fix würde Major-Version-Bump auf bull@4.x erfordern — Breaking API-Changes, Code-Migration nötig. Als Tech-Debt dokumentiert.
+
+**security.txt Fix:** `Encryption: none` nach `Contact:`-Zeile eingefügt.
+
+### Geänderte Dateien
+- `apps/*/package.json` + `apps/*/package-lock.json` — 9 Services (außer auth-service, das hatte schon 0 nach Schritt 1)
+- `apps/price-service/package.json` — `@typescript-eslint/eslint-plugin` + `@typescript-eslint/parser` auf latest
+- `apps/web-app/public/.well-known/security.txt` — `Encryption: none` Zeile eingefügt
+
+### Commits
+- `60d2246` — fix(sec): npm CVE-Fix alle Services — Critical/High eliminiert (SEC-3)
+- `8e71c96` — fix(sec): security.txt Encryption-Feld ergänzen (RFC 9116 SEC-6)
+
+### Bekannte Rest-Schwachstellen
+| Service | Verbleibend | Grund |
+|---------|-------------|-------|
+| search-service | 2 high (bull@1.1.3) | Major-Upgrade auf bull@4.x erfordert Code-Migration |
+| notification-service | 8 moderate | Kein kritisches Risiko, kein Fix verfügbar |
 
 ---
 
@@ -6992,6 +7201,11 @@ Automatische Ausführung der Mastertest-Suite: Smoke-Test vor Commits + volle Su
 - 2026-05-23 06:00 — ❌ 36 grün / 1 fehlgeschlagen
 - 2026-05-24 06:00 — ✅ 42/42 grün
 - 2026-05-25 06:00 — ✅ 42/42 grün
+- 2026-05-27 06:00 — ❌ 41 grün / 1 fehlgeschlagen
+- 2026-05-30 06:00 — ❌ 5 grün / 21 fehlgeschlagen
+- 2026-05-31 06:00 — ❌ 5 grün / 21 fehlgeschlagen
+- 2026-06-01 06:00 — ❌ 5 grün / 21 fehlgeschlagen
+- 2026-06-02 06:00 — ❌ 5 grün / 21 fehlgeschlagen
 - **Script:** `/root/scripts/sf1-daily-mastertest.sh`
 - **Trigger:** Täglich 06:00 (Crontab: `0 6 * * *`)
 - **Suite:** Volle 42-Test-Suite (`npm run mastertest`)
@@ -7855,3 +8069,116 @@ docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "sf1-price|sf1-noti
 
 ### Plan-Datei
 `docs/superpowers/plans/2026-05-27-stale-price-alarm.md`
+
+---
+
+## Claude Code MCP-Setup — Erkenntnis Remote-Limitation [abgeschlossen 2026-06-02]
+
+### Problem / Ziel
+Ziel: Professionelleres Arbeiten mit SF-1 durch zusätzliche MCP-Tools (Redis, MongoDB direkt aus Claude heraus erreichbar). Ausgangsfrage: Welche Plugins/MCPs sollten installiert werden?
+
+### Warum
+Redis-Cache-Debugging und MongoDB-Abfragen erfordern derzeit immer Bash-Umwege (`docker exec sf1-redis redis-cli ...`). Direkte MCP-Tools würden schnelleres Debugging ermöglichen.
+
+### Lösung & Erkenntnis
+**Wichtige Erkenntnis für alle zukünftigen Sessions:**
+In diesem Remote-Claude-Code-Setup (`/root/.claude/remote/`) funktionieren **nur Plugin-basierte MCPs** (`enabledPlugins` in settings.json). Manuelle `mcpServers`-Einträge in settings.json werden vom Remote-Server **nicht geladen** — die MCP-Prozesse starten zwar korrekt und antworten auf MCP-Protocol-Handshakes, erscheinen aber nie als Tools in Claude.
+
+**Was bereits funktioniert (Plugin-System):**
+- `github@claude-plugins-official` → PR/Issue-Management direkt
+- `playwright@claude-plugins-official` → Browser-Testing
+- `prisma@claude-plugins-official` → DB-Migrationen
+- `context7@claude-plugins-official` → Library-Docs
+- `firecrawl@claude-plugins-official` → Scraping
+
+**Was NICHT funktioniert (mcpServers in settings.json):**
+- Redis MCP (`@modelcontextprotocol/server-redis`) — MCP-Protokoll antwortet korrekt, Tool erscheint trotzdem nicht
+- MongoDB MCP (`mongodb-mcp-server`) — gleiche Situation
+- Docker, Obsidian, GitHub als mcpServer-Einträge — ebenfalls nicht ladbar
+
+**Workaround:** Bash-Permissions für redis-cli und mongosh sind bereits konfiguriert. `docker exec sf1-redis redis-cli -a PASSWORD` und `docker exec sf1-mongodb mongosh` funktionieren zuverlässig als Alternative.
+
+### Geänderte Dateien
+- `/root/.claude/settings.json` — Redis/MongoDB mcpServer-Einträge hinzugefügt und wieder entfernt; settings.json bereinigt
+
+### Ausgeführte Befehle
+```bash
+# Pakete global installiert (bleiben für eventuelle zukünftige Nutzung):
+npm install -g @modelcontextprotocol/server-redis mongodb-mcp-server
+
+# MCP-Protokoll-Tests (beide erfolgreich):
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize",...}' | timeout 5 mcp-server-redis "redis://..."
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize",...}' | MDB_MCP_CONNECTION_STRING="..." timeout 8 mongodb-mcp-server
+
+# MCP-Registry-Suche (keine Redis/MongoDB Plugins verfügbar):
+# mcp__mcp-registry__search_mcp_registry → [] (leer)
+```
+
+### Fallstricke / Was schiefging
+- `npx -y` beim MCP-Start führt zu Download-Delays → deshalb global vorinstalliert
+- Protokoll-Handshake funktioniert, Tools erscheinen trotzdem nicht → Root Cause: Remote-Setup lädt mcpServers nicht
+- `@modelcontextprotocol/server-redis` ist als deprecated markiert, funktioniert aber noch
+- ToolSearch findet nur "deferred" Plugin-Tools, nicht mcpServer-Tools — führte zu falscher Diagnose
+
+### Verifikation
+- `docker exec sf1-redis redis-cli -a ... ping` → PONG ✅
+- `docker exec sf1-mongodb mongosh --eval "db.adminCommand('ping')"` → `{ ok: 1 }` ✅
+- MCP-Protokoll-Handshake Redis: `[Redis Connected] Successfully connected` ✅
+- MCP-Protokoll-Handshake MongoDB: `"serverInfo":{"name":"MongoDB MCP Server","version":"1.11.0"}` ✅
+- Tools in Claude nach 3 Neustarts: ❌ nie erschienen → Remote-Limitation bestätigt
+
+### Abhängigkeiten / Voraussetzungen
+- sf1-redis und sf1-mongodb Container müssen laufen
+- Bash-Permissions für redis-cli und mongosh sind in settings.json konfiguriert
+
+### Commits
+- Keine (nur `/root/.claude/settings.json` geändert — nicht im SF-1-Git-Repo)
+
+---
+
+## SF-1 Security Audit Fixes [geplant 2026-06-02]
+
+### Ziel
+4 Security-Gaps aus vollständigem Code-Audit schließen. 8 von 10 ROADMAP-SECURITY.md Sessions
+waren bereits korrekt implementiert, aber die Roadmap-Datei war veraltet.
+
+### Identifizierte Gaps
+- **SEC-7 KRITISCH:** 2FA Login-Gate fehlt — `totpEnabled=true` hat keinen Effekt auf Login-Flow
+- **SEC-8 KRITISCH:** Traefik Rate-Limit-Middlewares (rl-auth, rl-api) definiert aber nicht angebunden
+- **SEC-3:** npm CVEs — auth: 1 critical + 6 high, price: 12 high, community: 3 high, journal: 5 high
+- **SEC-10:** `read_only: true` fehlt in docker-compose für alle Backend-Container
+
+### Sessions
+- `s1` — SEC-7 + SEC-8 (2FA Gate + Rate Limit Wiring)
+- `s2` — SEC-3 + SEC-6 minor (npm CVE-Fix + security.txt)
+- `s3` — SEC-10 (Container read-only)
+
+### Betroffene Dateien (geplant)
+- `apps/auth-service/src/routes/auth.routes.ts` (2FA Gate ~Zeile 308)
+- `docker-compose.yml` (Rate Limit Labels + read_only)
+- `apps/*/package.json` (npm audit fix)
+- `apps/web-app/public/.well-known/security.txt`
+
+### Plan-Datei
+`docs/superpowers/plans/2026-06-02-sf1-security-audit-fixes.md`
+
+---
+
+## Mastertest-Fix: Dynamische Container-IPs + Community-Seed [abgeschlossen 2026-06-02]
+
+### Problem
+Mastertest lief seit 2026-05-30 mit 21/26 Fehlern. Alle Services waren healthy, aber Tests schlugen fehl.
+
+### Ursache
+tests/helpers/client.ts hatte Docker-interne IPs hartkodiert. Docker vergibt IPs bei Neustart neu — alle IPs stimmten nicht mehr. Zusätzlich: sf1_community.categories war leer (kein Auto-Seed).
+
+### Fixes
+1. /root/scripts/sf1-daily-mastertest.sh — IPs werden jetzt per docker inspect vor jedem Lauf dynamisch als SF1_*_BASE Env-Vars exportiert
+2. tests/services/community.test.ts — TEST_CATEGORY_ID wird jetzt in beforeAll dynamisch per API geholt
+3. MongoDB sf1_community.categories — 5 Standard-Kategorien eingefügt + Redis-Cache invalidiert
+
+### Verifikation
+- Mastertest: 42/42 grün
+
+### Commits
+- Keine Code-Commits (Script + Test außerhalb des SF-1-Git-Repos)
