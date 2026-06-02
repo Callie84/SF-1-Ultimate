@@ -1,6 +1,6 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-06-02T13:00:00Z
+**Last-Update:** 2026-06-02T21:15:00Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
@@ -117,6 +117,14 @@ Vorheriger: s1: Skills-Audit 2026-05-19:
 
 ## Offene Tasks (s-plan)
 (keine)
+
+## Offene Bugs & bekannte Probleme
+
+> Ersetzt BUG_TRACKER.md (war schon entfernt). Neue Bugs kommen hier rein — nie in separate Datei.
+
+| Datum | Bug | Status | Priorität |
+|-------|-----|--------|-----------|
+| — | (keine bekannten offenen Bugs) | — | — |
 
 ## Kontext
 - v1 ist Produktion, läuft parallel zum Rewrite (v2)

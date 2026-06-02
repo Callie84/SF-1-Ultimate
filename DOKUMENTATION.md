@@ -1,12 +1,25 @@
 # SF-1 Ultimate — Vollständige Entwicklungsdokumentation
 
 **Projekt:** seedfinderpro.de — Cannabis Growing Community Platform
-**Stand:** 2026-06-02 — Security Audit Fixes laufen (s1 ✅ abgeschlossen, s2 ✅ abgeschlossen, s3 read-only pending)
+**Stand:** 2026-06-02 — Security Audit Fixes laufen (s1 ✅ s2 ✅ s3 pending) | Mastertest 42/42 ✅ | Regel 21 added
 **Status:** ✅ Production-Ready — Security Gaps identifiziert, Plan aktiv (s1–s3)
 **Stack:** Next.js 14, Express Microservices, MongoDB, PostgreSQL, Redis, Meilisearch, Docker Compose, Traefik, Ollama (KI)
 
 > **⚠️ Hinweis:** Sessions 30–92 sind hauptsächlich in `/root/SF-Brain/SF-1 Projekt/Status & Roadmap.md` dokumentiert (Vault).
 > Diese Datei wird systematisch aktualisiert ab Session 94.
+
+---
+
+## Mastertest-Fix + Regel 21 [abgeschlossen 2026-06-02]
+
+### Was
+- `tests/helpers/client.ts`: Alle 10 Fallback-IPs auf aktuelle Docker-IPs aktualisiert (172.17.0.x nach Container-Restart). Cron hat bereits dynamische Auflösung, Fallbacks schützen jetzt auch manuelle Runs.
+- `CLAUDE.md`: Regel 21 (Smoke-Test vor "fertig") als `## Ve.` eingefügt.
+- `LIVE-PROGRESS.md`: "Offene Bugs & bekannte Probleme"-Block hinzugefügt (ersetzt BUG_TRACKER.md vollständig).
+- Mastertest: 42/42 grün (2 skipped — AI-Service erwartet).
+
+### Commits
+_(folgen nach Git-Commit)_
 
 ---
 
@@ -8249,3 +8262,27 @@ tests/helpers/client.ts hatte Docker-interne IPs hartkodiert. Docker vergibt IPs
 
 ### Commits
 - Keine Code-Commits (Script + Test außerhalb des SF-1-Git-Repos)
+
+---
+
+## SF-1 Security Audit — Session s3: SEC-10 Container read_only [abgeschlossen 2026-06-02]
+
+### Was gemacht wurde
+`read_only: true` + tmpfs für 9 von 10 Backend-Services in `docker-compose.yml` gesetzt.
+
+**Services mit read_only=true:** journal-service, search-service, gamification-service, price-service, media-service, tools-service, notification-service, community-service, backup-service
+
+**Ausnahme auth-service:** Service verwendet `apt-get` bei Runtime → inkompatibel mit read_only. Bestehender Dockerfile hat TypeScript-Fehler (auth.routes.ts, billing.routes.ts). Separat zu fixen.
+
+### tmpfs-Konfiguration
+- Standard (7 Services): `/tmp:size=100m,noexec,nosuid` + `/root:size=200m,noexec,nosuid`
+- media-service, backup-service: `/tmp:size=500m,noexec,nosuid` + `/root:size=200m,noexec,nosuid`
+
+### Weitere Änderungen
+- `npm install -g tsx` in Startup-Commands entfernt (inkompatibel mit read_only)
+- Startup-Command aller 9 Services: `npm install --include=dev --legacy-peer-deps && ./node_modules/.bin/tsx src/index.ts`
+- `--include=dev`: tsx ist in devDependencies; NODE_ENV=production würde es sonst prunen
+- `--legacy-peer-deps`: price-service hat redis/bullmq Peer-Dep-Konflikt
+
+### Commits
+- `4108a0e` — feat(security): read_only filesystem für 9 Backend-Container (SEC-10)
