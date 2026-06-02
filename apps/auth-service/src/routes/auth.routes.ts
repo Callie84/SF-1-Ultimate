@@ -22,7 +22,7 @@ import { strictRateLimit } from '../middleware/rate-limit.middleware';
 import { createRefreshToken, rotateRefreshToken, revokeRefreshToken, revokeAllRefreshTokens, blacklistAccessToken, isAccessTokenBlacklisted } from '../services/token.service';
 import * as speakeasy from 'speakeasy';
 import * as qrcode from 'qrcode';
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 
 const avatarUpload = multer({
   storage: multer.memoryStorage(),
@@ -303,6 +303,16 @@ router.post(
         } catch (e) {
           // Redis-Fehler ignorieren – fail-open
         }
+      }
+
+      // 2FA Gate: wenn User 2FA aktiviert hat, kein Token ausstellen
+      if ((user as any).totpEnabled) {
+        const mfaToken = randomBytes(32).toString('hex');
+        await redis.setEx(`mfa_pending:${mfaToken}`, 5 * 60, user.id);
+        return res.status(200).json({
+          requires2FA: true,
+          mfa_token: mfaToken,
+        });
       }
 
       // Generiere Tokens
