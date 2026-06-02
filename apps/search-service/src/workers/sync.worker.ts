@@ -1,28 +1,23 @@
 // /apps/search-service/src/workers/sync.worker.ts
-import Bull from 'bull';
+import { Queue, Worker, Job } from 'bullmq';
 import { indexingService } from '../services/indexing.service';
 import { logger } from '../utils/logger';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const connection = {
+  host: process.env.REDIS_HOST || 'localhost',
+  port: parseInt(process.env.REDIS_PORT || '6379')
+};
 
-/**
- * Queue für Index-Updates
- */
-const syncQueue = new Bull('search-sync', REDIS_URL, {
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 2000
-    },
-    removeOnComplete: true,
-    removeOnFail: false
-  }
-});
+const defaultJobOptions = {
+  attempts: 3,
+  backoff: {
+    type: 'exponential' as const,
+    delay: 2000
+  },
+  removeOnComplete: true,
+  removeOnFail: false
+};
 
-/**
- * Job-Types
- */
 export interface SyncJob {
   type: 'index' | 'update' | 'delete';
   index: 'STRAINS' | 'THREADS' | 'GROWS' | 'USERS';
@@ -30,93 +25,69 @@ export interface SyncJob {
   document?: any;
 }
 
-/**
- * Worker-Processing
- */
-syncQueue.process(async (job) => {
-  const { type, index, documentId, document } = job.data as SyncJob;
-  
-  logger.debug(`[Sync] Processing ${type} for ${index}:${documentId || 'bulk'}`);
-  
-  try {
-    switch (type) {
-      case 'index':
-        if (document) {
-          await indexingService.indexDocument(index, document);
-        }
-        break;
-        
-      case 'update':
-        if (document) {
-          await indexingService.updateDocument(index, document);
-        }
-        break;
-        
-      case 'delete':
-        if (documentId) {
-          await indexingService.deleteDocument(index, documentId);
-        }
-        break;
-    }
-    
-    logger.info(`[Sync] Successfully processed ${type} for ${index}`);
-  } catch (error) {
-    logger.error(`[Sync] Failed to process ${type}:`, error);
-    throw error;
-  }
+const syncQueue = new Queue('search-sync', {
+  connection,
+  defaultJobOptions
 });
 
-/**
- * Event-Handler
- */
-syncQueue.on('completed', (job) => {
+const syncWorkerInstance = new Worker(
+  'search-sync',
+  async (job: Job) => {
+    const { type, index, documentId, document } = job.data as SyncJob;
+
+    logger.debug(`[Sync] Processing ${type} for ${index}:${documentId || 'bulk'}`);
+
+    try {
+      switch (type) {
+        case 'index':
+          if (document) {
+            await indexingService.indexDocument(index, document);
+          }
+          break;
+
+        case 'update':
+          if (document) {
+            await indexingService.updateDocument(index, document);
+          }
+          break;
+
+        case 'delete':
+          if (documentId) {
+            await indexingService.deleteDocument(index, documentId);
+          }
+          break;
+      }
+
+      logger.info(`[Sync] Successfully processed ${type} for ${index}`);
+    } catch (error) {
+      logger.error(`[Sync] Failed to process ${type}:`, error);
+      throw error;
+    }
+  },
+  { connection }
+);
+
+syncWorkerInstance.on('completed', (job: Job) => {
   logger.debug(`[Sync] Job ${job.id} completed`);
 });
 
-syncQueue.on('failed', (job, err) => {
+syncWorkerInstance.on('failed', (job: Job | undefined, err: Error) => {
   logger.error(`[Sync] Job ${job?.id} failed:`, err);
 });
 
-/**
- * Queue-Helper-Functions
- */
 export const syncWorker = {
-  /**
-   * Dokument indexieren (async)
-   */
   async queueIndex(index: SyncJob['index'], document: any): Promise<void> {
-    await syncQueue.add({
-      type: 'index',
-      index,
-      document
-    });
+    await syncQueue.add('sync', { type: 'index', index, document });
   },
-  
-  /**
-   * Dokument aktualisieren (async)
-   */
+
   async queueUpdate(index: SyncJob['index'], document: any): Promise<void> {
-    await syncQueue.add({
-      type: 'update',
-      index,
-      document
-    });
+    await syncQueue.add('sync', { type: 'update', index, document });
   },
-  
-  /**
-   * Dokument löschen (async)
-   */
+
   async queueDelete(index: SyncJob['index'], documentId: string): Promise<void> {
-    await syncQueue.add({
-      type: 'delete',
-      index,
-      documentId
-    });
+    await syncQueue.add('sync', { type: 'delete', index, documentId });
   },
-  
-  /**
-   * Queue-Status
-   */
+
   async getStats(): Promise<any> {
     const [waiting, active, completed, failed, delayed] = await Promise.all([
       syncQueue.getWaitingCount(),
@@ -125,7 +96,7 @@ export const syncWorker = {
       syncQueue.getFailedCount(),
       syncQueue.getDelayedCount()
     ]);
-    
+
     return {
       waiting,
       active,
@@ -136,3 +107,5 @@ export const syncWorker = {
     };
   }
 };
+
+export { syncQueue, syncWorkerInstance };
