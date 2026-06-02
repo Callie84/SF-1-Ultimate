@@ -1,8 +1,8 @@
 # SF-1 Ultimate — Vollständige Entwicklungsdokumentation
 
 **Projekt:** seedfinderpro.de — Cannabis Growing Community Platform
-**Stand:** 2026-06-02 — Security Audit Fixes laufen (s1 ✅ s2 ✅ s3 pending) | Mastertest 42/42 ✅ | Regel 21 added
-**Status:** ✅ Production-Ready — Security Gaps identifiziert, Plan aktiv (s1–s3)
+**Stand:** 2026-06-02 — Security Audit s1–s3 ✅ abgeschlossen | Mastertest 42/42 ✅ | Regel 21 in CLAUDE.md
+**Status:** ✅ Production-Ready — Security Audit abgeschlossen
 **Stack:** Next.js 14, Express Microservices, MongoDB, PostgreSQL, Redis, Meilisearch, Docker Compose, Traefik, Ollama (KI)
 
 > **⚠️ Hinweis:** Sessions 30–92 sind hauptsächlich in `/root/SF-Brain/SF-1 Projekt/Status & Roadmap.md` dokumentiert (Vault).
@@ -10,16 +10,67 @@
 
 ---
 
-## Mastertest-Fix + Regel 21 [abgeschlossen 2026-06-02]
+## Briefing-Abarbeitung + Mastertest-Fix + Regel 21 [abgeschlossen 2026-06-02]
 
-### Was
-- `tests/helpers/client.ts`: Alle 10 Fallback-IPs auf aktuelle Docker-IPs aktualisiert (172.17.0.x nach Container-Restart). Cron hat bereits dynamische Auflösung, Fallbacks schützen jetzt auch manuelle Runs.
-- `CLAUDE.md`: Regel 21 (Smoke-Test vor "fertig") als `## Ve.` eingefügt.
-- `LIVE-PROGRESS.md`: "Offene Bugs & bekannte Probleme"-Block hinzugefügt (ersetzt BUG_TRACKER.md vollständig).
-- Mastertest: 42/42 grün (2 skipped — AI-Service erwartet).
+### Problem / Ziel
+Cowork-Session hatte 4 Tasks übergeben die SSH-Zugang benötigten. Hauptproblem: Täglicher Mastertest schlug seit 2026-06-01 mit 21/26 fehlgeschlagenen Tests fehl — alle zeigten `status = undefined`, Services waren nicht erreichbar.
+
+### Warum
+Root Cause: `tests/helpers/client.ts` enthielt hardcodierte Docker-IPs als Fallback-Werte. Nach Container-Neustart vergab Docker neue IPs — die Fallbacks zeigten auf nicht mehr existierende Adressen. Das daily-mastertest.sh-Script hatte zwar bereits dynamische `docker inspect`-Auflösung (aus s1-Session), aber manuelle `npm run mastertest`-Runs und der 06:00-Cron-Lauf vor dem IP-Update nutzten die alten Werte.
+
+### Lösung
+Alle 10 Fallback-IPs in `client.ts` auf aktuelle Werte aktualisiert. Ergänzend: Regel 21 (Smoke-Test vor "fertig") in globales CLAUDE.md als Pflicht-Section `Ve.` eingefügt. Offene-Bugs-Block in LIVE-PROGRESS.md als endgültiger Ersatz für BUG_TRACKER.md.
+
+Außerdem verifiziert: s3 (read_only Container), Stale-Preis-Alarm und Professionalisierung-Tasks 1–5 waren bereits erledigt — keine Aktion nötig.
+
+### Geänderte Dateien
+- `tests/helpers/client.ts` — Alle 10 Fallback-IPs auf aktuelle Docker-IPs (z.B. AUTH: `172.17.0.12→13`, PRICE: `172.17.0.28→18`, SEARCH: `172.17.0.4→14`) — Fallbacks schützen manuelle Runs; Cron nutzt dynamische Auflösung
+- `/root/CLAUDE.md` — Neue Section `## Ve. SMOKE-TEST VOR "FERTIG" (Regel 21)` eingefügt — Pflicht: smoke-test.sh vor jedem /task-done
+- `LIVE-PROGRESS.md` — "Offene Bugs & bekannte Probleme"-Block hinzugefügt — Wahrheitsquelle für Bugs (BUG_TRACKER.md war bereits gelöscht)
+- `DOKUMENTATION.md` — Stand-Zeile + Mastertest-Eintrag ergänzt
+
+### Ausgeführte Befehle
+```bash
+# IPs aller SF-1 Services ermitteln
+docker inspect --format '{{.Name}} {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(docker ps --format '{{.Names}}' | grep sf1)
+
+# Connectivity-Test mit korrekten IPs
+curl -s --max-time 3 "http://172.17.0.13:3001/health"
+
+# Mastertest mit dynamischen IPs ausführen
+get_ip() { docker inspect "$1" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null | head -1; }
+export SF1_AUTH_BASE="http://$(get_ip sf1-auth-service):3001"
+# [alle weiteren Exports analog]
+npm run mastertest
+
+# Commits
+git add DOKUMENTATION.md LIVE-PROGRESS.md tests/helpers/client.ts
+git commit -m "fix(tests): update client.ts fallback IPs + Regel 21 + Offene-Bugs-Block"
+
+cd /root && git add CLAUDE.md
+git commit -m "chore: Regel 21 (Smoke-Test vor fertig) in CLAUDE.md"
+
+cp DOKUMENTATION.md "/root/SF-Brain/SF-1 Projekt/DOKUMENTATION.md"
+```
+
+### Fallstricke / Was schiefging
+Keine neuen Fehler in dieser Session. Bekannte Architektur-Falle bestätigt: Docker-IPs sind nach Neustart instabil — hardcodierte IPs in Tests immer als potentielle Fehlerquelle betrachten. Cron-Lösung (dynamisches docker inspect) ist die richtige Architektur; Fallbacks in client.ts sind nur Notfall-Werte für manuelle Runs.
+
+### Verifikation
+```
+Mastertest: 42/42 passed (2 skipped — ai.test.ts, AI-Service absichtlich deaktiviert)
+Test Files  11 passed (11)
+Duration    21.49s
+```
+Smoke-Test im Pre-Commit-Hook grün → Commit durchgelaufen.
+
+### Abhängigkeiten / Voraussetzungen
+- Alle SF-1 Core-Container müssen healthy sein
+- docker inspect muss die Services per Name auflösen können
 
 ### Commits
-_(folgen nach Git-Commit)_
+- `004ecb7` — fix(tests): update client.ts fallback IPs + Regel 21 + Offene-Bugs-Block
+- `ba0510a` (root-repo) — chore: Regel 21 (Smoke-Test vor fertig) in CLAUDE.md
 
 ---
 

@@ -1,16 +1,22 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-06-02T21:15:00Z
+**Last-Update:** 2026-06-02T23:30:00Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
-s3 starten: `s 3` — SEC-10: Container read_only + tmpfs für alle Backend-Services in docker-compose.yml (Plan: `/root/SF-1-Ultimate-/docs/superpowers/plans/2026-06-02-sf1-security-audit-fixes.md`)
+`start v2` schreiben — SF-1 v2 Session 7 (modules/user + Google OAuth 2.0). Alternativ: Task 4b Flavor-Coverage Pipeline besprechen (Plan: `/root/SF-Brain/SF-1 Projekt/Plans/2026-05-26-flavor-coverage-pipeline-design.md`).
 
 ## Aktueller Task
 —
 
 ## Letzter abgeschlossener Task
-[2026-06-02] **s2: SEC-3 npm CVE-Fix (alle Services) + SEC-6 security.txt + search-service bull→bullmq** (60d2246, 8e71c96, 06c4a41)
+[2026-06-02] **Briefing-Session: Mastertest-Fix + Regel 21 + Briefing-Verification** (004ecb7, ba0510a)
+- Mastertest 42/42 grün — Fallback-IPs in client.ts auf aktuelle Docker-IPs aktualisiert
+- Regel 21 (Smoke-Test vor "fertig") in /root/CLAUDE.md als Ve. eingefügt
+- Offene-Bugs-Block in LIVE-PROGRESS.md ergänzt
+- s3 (read_only), Stale-Preis-Alarm, Professionalisierung Tasks 1–5: alle bereits erledigt verifiziert
+
+Vorheriger: [2026-06-02] **s2: SEC-3 npm CVE-Fix (alle Services) + SEC-6 security.txt + search-service bull→bullmq** (60d2246, 8e71c96, 06c4a41)
 - npm audit: alle 10 Services Critical=0, High=0 ✅ (vorher: auth 1C+6H, notification 2C+7H, price 12H, ...)
 - price-service: eresolve-Konflikt gelöst via `@typescript-eslint` auf latest (--legacy-peer-deps)
 - search-service: `bull@1.1.3` CVE durch bullmq-Migration in sync.worker.ts eliminiert; `@types/bull` zog bull als transitive Dep mit — erst nach Entfernen beider Packages 0 vulns
