@@ -266,6 +266,7 @@ services:
     restart: always
     security_opt:
       - no-new-privileges:true
+    # read_only excluded: service installs packages at runtime (apt-get); requires Dockerfile TS-fix first (SEC-10 pending)
     working_dir: /app
     command: sh -c "apt-get update && apt-get install -y openssl ca-certificates && npm install && npx prisma generate && npx prisma db push && npm install -g tsx && npx tsx src/index.ts"
     volumes:
@@ -328,8 +329,12 @@ services:
     restart: always
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100m,noexec,nosuid
+      - /root:size=200m,noexec,nosuid
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
+    command: sh -c "npm install --include=dev --legacy-peer-deps && ./node_modules/.bin/tsx src/index.ts"
     volumes:
       - ./apps/journal-service:/app
     environment:
@@ -389,8 +394,12 @@ services:
     restart: always
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100m,noexec,nosuid
+      - /root:size=200m,noexec,nosuid
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
+    command: sh -c "npm install --include=dev --legacy-peer-deps && ./node_modules/.bin/tsx src/index.ts"
     volumes:
       - ./apps/search-service:/app
     environment:
@@ -443,8 +452,12 @@ services:
     restart: always
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100m,noexec,nosuid
+      - /root:size=200m,noexec,nosuid
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
+    command: sh -c "npm install --include=dev --legacy-peer-deps && ./node_modules/.bin/tsx src/index.ts"
     volumes:
       - ./apps/gamification-service:/app
     environment:
@@ -489,8 +502,12 @@ services:
     restart: always
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100m,noexec,nosuid
+      - /root:size=200m,noexec,nosuid
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
+    command: sh -c "npm install --include=dev --legacy-peer-deps && ./node_modules/.bin/tsx src/index.ts"
     volumes:
       - ./apps/price-service:/app
       - /root/SF-Brain/strain_output:/strain-data:ro
@@ -543,8 +560,12 @@ services:
     restart: always
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=500m,noexec,nosuid
+      - /root:size=200m,noexec,nosuid
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
+    command: sh -c "npm install --include=dev --legacy-peer-deps && ./node_modules/.bin/tsx src/index.ts"
     volumes:
       - ./apps/media-service:/app
     environment:
@@ -585,8 +606,12 @@ services:
     restart: always
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100m,noexec,nosuid
+      - /root:size=200m,noexec,nosuid
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
+    command: sh -c "npm install --include=dev --legacy-peer-deps && ./node_modules/.bin/tsx src/index.ts"
     volumes:
       - ./apps/tools-service:/app
     environment:
@@ -635,8 +660,12 @@ services:
     restart: always
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100m,noexec,nosuid
+      - /root:size=200m,noexec,nosuid
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
+    command: sh -c "npm install --include=dev --legacy-peer-deps && ./node_modules/.bin/tsx src/index.ts"
     volumes:
       - ./apps/notification-service:/app
     environment:
@@ -690,8 +719,12 @@ services:
     restart: always
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100m,noexec,nosuid
+      - /root:size=200m,noexec,nosuid
     working_dir: /app
-    command: sh -c "npm install && npm install -g tsx && npx tsx src/index.ts"
+    command: sh -c "npm install --include=dev --legacy-peer-deps && ./node_modules/.bin/tsx src/index.ts"
     volumes:
       - ./apps/community-service:/app
     environment:
@@ -837,6 +870,10 @@ services:
     restart: always
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=500m,noexec,nosuid
+      - /root:size=200m,noexec,nosuid
     environment:
       - PORT=3011
       - JWT_SECRET=${JWT_SECRET}
