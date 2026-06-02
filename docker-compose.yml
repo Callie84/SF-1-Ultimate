@@ -9,7 +9,10 @@ volumes:
     name: sf1-mongodb-data-v1
     driver: local
   postgres_data:
-    name: sf1-postgres-data-v1
+    # 2026-06-02: zurückgesetzt auf altes Default-Volume — am 19.05. wurde versehentlich
+    # auf ein frisches Volume (sf1-postgres-data-v1) umgestellt, wodurch 77 User inkl.
+    # Admin-Account "verloren" gingen. Daten lagen unangetastet im alten Volume.
+    name: sf-1-ultimate-_postgres_data
     driver: local
   redis_data:
     name: sf1-redis-data-v1
@@ -292,10 +295,12 @@ services:
       - "traefik.http.routers.auth.entrypoints=websecure"
       - "traefik.http.routers.auth.tls=true"
       - "traefik.http.routers.auth.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.auth.middlewares=rl-auth"
       # Local HTTP route (for development)
       - "traefik.http.routers.auth-local.rule=Host(`localhost`) && PathPrefix(`/api/auth`)"
       - "traefik.http.routers.auth-local.priority=10"
       - "traefik.http.routers.auth-local.entrypoints=web"
+      - "traefik.http.routers.auth-local.middlewares=rl-auth"
       # Service
       - "traefik.http.services.auth.loadbalancer.server.port=3001"
     healthcheck:
@@ -352,7 +357,8 @@ services:
       - "traefik.http.routers.journal.entrypoints=websecure"
       - "traefik.http.routers.journal.tls=true"
       - "traefik.http.routers.journal.tls.certresolver=letsencrypt"
-      # NO middlewares - service expects full path /api/journal/...
+      - "traefik.http.routers.journal.middlewares=rl-api"
+      # service expects full path /api/journal/...
       # Local HTTP route - NO strip prefix
       - "traefik.http.routers.journal-local.rule=Host(`localhost`) && (PathPrefix(`/api/journal`) || PathPrefix(`/api/grows`) || PathPrefix(`/api/plants`))"
       - "traefik.http.routers.journal-local.priority=10"
@@ -409,7 +415,8 @@ services:
       - "traefik.http.routers.search.entrypoints=websecure"
       - "traefik.http.routers.search.tls=true"
       - "traefik.http.routers.search.tls.certresolver=letsencrypt"
-      # NO middlewares - service expects full path /api/search/...
+      - "traefik.http.routers.search.middlewares=rl-api"
+      # service expects full path /api/search/...
       - "traefik.http.services.search.loadbalancer.server.port=3007"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3007/health"]
@@ -456,7 +463,8 @@ services:
       - "traefik.http.routers.gamification.entrypoints=websecure"
       - "traefik.http.routers.gamification.tls=true"
       - "traefik.http.routers.gamification.tls.certresolver=letsencrypt"
-      # NO middlewares - service expects full path /api/gamification/...
+      - "traefik.http.routers.gamification.middlewares=rl-api"
+      # service expects full path /api/gamification/...
       - "traefik.http.services.gamification.loadbalancer.server.port=3009"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3009/health"]
@@ -509,7 +517,8 @@ services:
       - "traefik.http.routers.price.entrypoints=websecure"
       - "traefik.http.routers.price.tls=true"
       - "traefik.http.routers.price.tls.certresolver=letsencrypt"
-      # NO middlewares - service expects full path /api/prices/...
+      - "traefik.http.routers.price.middlewares=rl-api"
+      # service expects full path /api/prices/...
       - "traefik.http.services.price.loadbalancer.server.port=3002"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3002/health"]
@@ -552,7 +561,8 @@ services:
       - "traefik.http.routers.media.entrypoints=websecure"
       - "traefik.http.routers.media.tls=true"
       - "traefik.http.routers.media.tls.certresolver=letsencrypt"
-      # NO middlewares - service expects full path /api/media/...
+      - "traefik.http.routers.media.middlewares=rl-api"
+      # service expects full path /api/media/...
       - "traefik.http.services.media.loadbalancer.server.port=3008"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3008/health"]
@@ -604,7 +614,8 @@ services:
       - "traefik.http.routers.tools.entrypoints=websecure"
       - "traefik.http.routers.tools.tls=true"
       - "traefik.http.routers.tools.tls.certresolver=letsencrypt"
-      # NO middlewares - service expects full path /api/tools/...
+      - "traefik.http.routers.tools.middlewares=rl-api"
+      # service expects full path /api/tools/...
       - "traefik.http.services.tools.loadbalancer.server.port=3004"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3004/health"]
@@ -653,7 +664,8 @@ services:
       - "traefik.http.routers.notification.entrypoints=websecure"
       - "traefik.http.routers.notification.tls=true"
       - "traefik.http.routers.notification.tls.certresolver=letsencrypt"
-      # NO middlewares - service expects full path /api/notifications/...
+      - "traefik.http.routers.notification.middlewares=rl-api"
+      # service expects full path /api/notifications/...
       - "traefik.http.services.notification.loadbalancer.server.port=3006"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3006/health"]
@@ -699,11 +711,12 @@ services:
       - "traefik.http.routers.community.entrypoints=websecure"
       - "traefik.http.routers.community.tls=true"
       - "traefik.http.routers.community.tls.certresolver=letsencrypt"
-      # NO middlewares - service expects full path /api/community/...
+      - "traefik.http.routers.community.middlewares=rl-api"
       # Local HTTP route - NO strip prefix
       - "traefik.http.routers.community-local.rule=Host(`localhost`) && (PathPrefix(`/api/community`) || PathPrefix(`/api/posts`) || PathPrefix(`/api/comments`))"
       - "traefik.http.routers.community-local.priority=10"
       - "traefik.http.routers.community-local.entrypoints=web"
+      - "traefik.http.routers.community-local.middlewares=rl-api"
       # Shared middleware and service
       - "traefik.http.middlewares.community-stripprefix.stripprefix.prefixes=/api/community,/api/posts,/api/comments"
       - "traefik.http.services.community.loadbalancer.server.port=3005"
@@ -852,6 +865,7 @@ services:
       - "traefik.http.routers.backup.entrypoints=websecure"
       - "traefik.http.routers.backup.tls=true"
       - "traefik.http.routers.backup.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.backup.middlewares=rl-api"
       - "traefik.http.services.backup.loadbalancer.server.port=3011"
     networks:
       - sf1-network
