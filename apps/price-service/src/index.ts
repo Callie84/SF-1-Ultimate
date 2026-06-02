@@ -382,6 +382,20 @@ app.post('/api/prices/admin/flavors/import-crawl', requireAdmin, async (_req, re
   }
 });
 
+// Seedfinder-Enrichment manuell triggern (läuft sonst täglich 02:00)
+app.post('/api/prices/admin/flavors/enrich-seedfinder', requireAdmin, async (req, res) => {
+  const batchSize = Math.min(parseInt(req.query.batch as string) || 50, 200);
+  try {
+    logger.info(`[Admin] Seedfinder-Enrichment manuell gestartet (batch=${batchSize})...`);
+    seedfinderEnrichment.enrichAllMissingFlavors(batchSize)
+      .then(n => logger.info(`[Admin] Seedfinder-Enrichment fertig: ${n} Seeds angereichert`))
+      .catch(err => logger.error('[Admin] Seedfinder-Enrichment Fehler:', err.message));
+    res.json({ success: true, message: `Enrichment gestartet (${batchSize} Seeds)` });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Staleness-Check: welche Seedbanken haben veraltete Preise?
 app.get('/api/prices/admin/staleness', requireAdmin, async (req, res) => {
   try {

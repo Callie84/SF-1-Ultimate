@@ -4,7 +4,7 @@
 
 import * as cheerio from 'cheerio';
 import { Seed } from '../models/Seed.model';
-import { firecrawlService } from './firecrawl.service';
+import { createStealthContext, closeBrowser } from '../config/playwright';
 import { extractFlavorsFromText } from '../config/flavor-vocabulary.de';
 import { logger } from '../utils/logger';
 
@@ -16,32 +16,75 @@ export interface SeedfinderStrainData {
 }
 
 export class SeedfinderEnrichmentService {
-  private readonly baseUrl = 'https://seedfinder.eu';
-  private readonly rateLimitMs = 3000;
+  private readonly baseUrl = 'https://de.seedfinder.eu';
+  private readonly rateLimitMs = 5000;
   private lastRequestTime = 0;
 
-  /**
-   * Generiert Seedfinder-URL aus Name und Breeder
-   * "Northern Lights" + "Sensi Seeds" → /de/strain-info/northern-lights/sensi-seeds/
-   */
-  buildStrainUrl(name: string, breeder: string): string {
-    const nameSlug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const breederSlug = breeder.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    return `${this.baseUrl}/de/strain-info/${nameSlug}/${breederSlug}/`;
+  // Varianten-Suffixe die Seedfinder nicht kennt
+  private static readonly STRIP_SUFFIXES = [
+    'fast version', 'feminisiert', 'feminized', 'feminised',
+    'autoflowering', 'autoflower', 'automatic', 'automatisch',
+    'regular', 'cbd', 'xxl',
+  ];
+
+  private stripVariantSuffix(name: string): string {
+    let s = name.toLowerCase().trim();
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const suffix of SeedfinderEnrichmentService.STRIP_SUFFIXES) {
+        if (s.endsWith(' ' + suffix)) {
+          s = s.slice(0, s.length - suffix.length - 1).trimEnd();
+          changed = true;
+        }
+      }
+    }
+    // Originalgroßschreibung wiederherstellen: erste Buchstaben kapitalisieren
+    return s.replace(/\b\w/g, c => c.toUpperCase());
   }
 
   /**
-   * Scrappe eine Seedfinder-Seite via Firecrawl
+   * Generiert Seedfinder-URL aus Name und Breeder.
+   * de.seedfinder.eu nutzt Unterstriche + Original-Großschreibung:
+   * "420 Punch Feminisiert" → /strain-info/420_Punch/Sensi_Seeds/
+   */
+  buildStrainUrl(name: string, breeder: string): string {
+    const base = this.stripVariantSuffix(name);
+    const toSlug = (s: string) => s.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '');
+    return `${this.baseUrl}/strain-info/${toSlug(base)}/${toSlug(breeder)}/`;
+  }
+
+  /**
+   * Scrappe eine Seedfinder-Seite via lokalem Playwright (System-Chromium)
    */
   async fetchStrainPage(url: string): Promise<string | null> {
     await this.respectRateLimit();
 
-    if (!firecrawlService.isEnabled()) {
-      logger.warn('[SeedfinderV2] Firecrawl nicht verfügbar — Enrichment übersprungen');
-      return null;
-    }
+    let context;
+    let page;
+    try {
+      context = await createStealthContext();
+      page = await context.newPage();
 
-    return firecrawlService.scrapeWithJsRendering(url);
+      const response = await page.goto(url, {
+        waitUntil: 'domcontentloaded',
+        timeout: 20000,
+      });
+
+      if (!response || response.status() >= 400) {
+        logger.debug(`[SeedfinderV2] HTTP ${response?.status()} für ${url}`);
+        return null;
+      }
+
+      const html = await page.content();
+      return html;
+    } catch (err: any) {
+      logger.debug(`[SeedfinderV2] Fetch-Fehler für ${url}: ${err.message}`);
+      return null;
+    } finally {
+      await page?.close().catch(() => {});
+      await context?.close().catch(() => {});
+    }
   }
 
   /**

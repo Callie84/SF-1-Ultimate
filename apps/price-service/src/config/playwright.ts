@@ -6,8 +6,12 @@ let browser: Browser | null = null;
 
 export async function getBrowser(): Promise<Browser> {
   if (!browser) {
+    const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+      || '/usr/bin/chromium-browser';
+
     browser = await chromium.launch({
       headless: true,
+      executablePath,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -15,11 +19,12 @@ export async function getBrowser(): Promise<Browser> {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--no-zygote',
-        '--disable-gpu'
+        '--disable-gpu',
+        '--single-process',
       ]
     });
-    
-    logger.info('[Playwright] Browser launched');
+
+    logger.info(`[Playwright] Browser launched: ${executablePath}`);
   }
   
   return browser;
