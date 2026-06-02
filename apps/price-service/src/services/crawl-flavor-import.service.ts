@@ -16,17 +16,38 @@ interface CrawlStrain {
   description?: string;
 }
 
+// Trailing suffixes stripped before matching — seedfinder crawl has base names only
+const STRIP_SUFFIXES = [
+  'fast version', 'feminisiert', 'feminized', 'feminised',
+  'autoflowering', 'autoflower', 'automatic', 'automatisch',
+  'regular', 'cbd', 'xxl', ' xl',
+];
+
 /**
  * Normalisiert einen Namen für Matching:
- * lowercase, Hyphens/Punkte zu Spaces, mehrfache Spaces bereinigen
+ * lowercase, Sonderzeichen → Spaces, bekannte Varianten-Suffixe entfernen
  */
 function normalizeName(name: string): string {
-  return name
+  let s = name
     .toLowerCase()
     .replace(/[#()'"+]/g, '')
     .replace(/[-_.]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+
+  // Strip trailing variant suffixes (repeatable — "Auto Fast Version" → base name)
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const suffix of STRIP_SUFFIXES) {
+      if (s.endsWith(' ' + suffix) || s === suffix) {
+        s = s.slice(0, s.length - suffix.length).trimEnd();
+        changed = true;
+      }
+    }
+  }
+
+  return s;
 }
 
 export class CrawlFlavorImportService {
