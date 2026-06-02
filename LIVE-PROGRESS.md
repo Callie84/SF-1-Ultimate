@@ -1,16 +1,21 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-06-02T23:30:00Z
+**Last-Update:** 2026-06-03T00:25:00Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
-`start v2` schreiben — SF-1 v2 Session 7 (modules/user + Google OAuth 2.0). Alternativ: Task 4b Flavor-Coverage Pipeline besprechen (Plan: `/root/SF-Brain/SF-1 Projekt/Plans/2026-05-26-flavor-coverage-pipeline-design.md`).
+Coverage morgen früh prüfen: `docker logs sf1-price-service --since 24h | grep SeedfinderV2`. Nächste eigene Session: `start v2` — SF-1 v2 Session 7 (modules/user + Google OAuth 2.0).
 
 ## Aktueller Task
 —
 
 ## Letzter abgeschlossener Task
-[2026-06-02] **Briefing-Session: Mastertest-Fix + Regel 21 + Briefing-Verification** (004ecb7, ba0510a)
+[2026-06-03] **Flavor-Coverage Phase 1+2** (ad4978d, 666905c)
+- Phase 1: crawl-flavor-import 188 Seeds (3.4%), Suffix-Stripping +32% Matches
+- Phase 2: Playwright-Scraper statt Firecrawl (keine Credits) — Dockerfile, de.seedfinder.eu, Underscore-Slugs, Endpoint + Cron 02:00 täglich aktiv
+- Verifiziert: 420_Punch/Sensi_Seeds → 200 OK, 5 Flavors
+
+Vorheriger: [2026-06-02] **Briefing-Session: Mastertest-Fix + Regel 21 + Briefing-Verification** (004ecb7, ba0510a)
 - Mastertest 42/42 grün — Fallback-IPs in client.ts auf aktuelle Docker-IPs aktualisiert
 - Regel 21 (Smoke-Test vor "fertig") in /root/CLAUDE.md als Ve. eingefügt
 - Offene-Bugs-Block in LIVE-PROGRESS.md ergänzt
