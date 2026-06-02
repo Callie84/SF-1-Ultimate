@@ -33,6 +33,12 @@ run_test() {
   fi
 }
 
+# Container-IPs dynamisch ermitteln (IPs ändern sich bei Docker-Restart)
+SEARCH_IP=$(docker inspect sf1-search-service --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null)
+BACKUP_IP=$(docker inspect sf1-backup --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null)
+export SF1_SEARCH_BASE="http://${SEARCH_IP}:3007"
+export SF1_BACKUP_BASE="http://${BACKUP_IP}:3011"
+
 run_test "Auth-Service   (login/register/verify)" "test:auth"
 run_test "Search-Service (strain-suche)"          "test:search"
 run_test "Backup-Service (health/trigger)"        "test:backup"
