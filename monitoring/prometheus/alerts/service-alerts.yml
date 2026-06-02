@@ -111,29 +111,37 @@ groups:
           summary: "Low disk space"
           description: "Disk space is below 10% (current: {{ $value | humanizePercentage }})"
 
+      # Swap-Alarm nur bei echter RAM-Knappheit:
+      # Linux nutzt Swap aktiv für Idle-Pages — Füllstand allein ist kein Problem.
+      # Echte Knappheit: MemAvailable < 500 MB ODER < 10% Total-RAM.
       - alert: SwapUsageHigh
         expr: |
           (node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes)
           / node_memory_SwapTotal_bytes > 0.70
-        for: 10m
+          and
+          node_memory_MemAvailable_bytes
+          / node_memory_MemTotal_bytes < 0.15
+        for: 15m
         labels:
           severity: warning
           category: resources
         annotations:
-          summary: "Swap-Nutzung hoch (>70%)"
-          description: "Swap ist zu {{ $value | humanizePercentage }} voll — Watchdog greift bei 80% ein"
+          summary: "Swap-Druck (>70%) + wenig RAM verfügbar (<15%)"
+          description: "Swap zu {{ $value | humanizePercentage }} voll UND RAM-verfügbar unter 15% — echte Memory-Knappheit"
 
       - alert: SwapUsageCritical
         expr: |
           (node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes)
           / node_memory_SwapTotal_bytes > 0.85
-        for: 5m
+          and
+          node_memory_MemAvailable_bytes < 500 * 1024 * 1024
+        for: 10m
         labels:
           severity: critical
           category: resources
         annotations:
-          summary: "Swap-Nutzung kritisch (>85%)"
-          description: "Swap ist zu {{ $value | humanizePercentage }} voll — Auto-Restart lief oder fehlgeschlagen"
+          summary: "Swap kritisch (>85%) + RAM verfügbar < 500MB"
+          description: "Swap zu {{ $value | humanizePercentage }} voll UND < 500MB RAM verfügbar — System unter Druck"
 
       # ==========================================
       # DATABASE

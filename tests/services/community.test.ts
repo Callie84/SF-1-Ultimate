@@ -7,7 +7,7 @@ const SVC = 'community';
 const sessionId = `mt_${Date.now()}`;
 const testEmail = `${sessionId}@mastertest.invalid`;
 const testUsername = `mt${Date.now().toString().slice(-12)}`;
-const TEST_CATEGORY_ID = '698110595273fae6816bc848';
+let TEST_CATEGORY_ID = ''; // wird in beforeAll dynamisch aus API geholt
 
 let token = '';
 let threadId = '';
@@ -28,6 +28,11 @@ beforeAll(async () => {
   if (reg?.status !== 201) throw new Error(`Register fehlgeschlagen: ${reg?.status}`);
   token = reg.data.accessToken;
   registerCleanup({ type: 'user', id: reg.data.user.id, token, email: testEmail, password: 'MasterTest!2026' });
+  // Erste verfügbare Kategorie-ID holen
+  const cats = await safeGet(communityClient, '/api/community/categories');
+  if (cats?.status === 200 && cats.data.categories?.length > 0) {
+    TEST_CATEGORY_ID = cats.data.categories[0]._id;
+  }
 });
 
 afterAll(async () => { await runCleanup(); });

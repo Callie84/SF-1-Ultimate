@@ -11,6 +11,7 @@ export interface JWTPayload {
   email: string;
   role: string;
   premium: boolean;
+  exp?: number;
 }
 
 export class JWTService {

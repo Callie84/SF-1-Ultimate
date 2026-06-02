@@ -155,12 +155,12 @@ router.post(
           to: email,
           subject: 'Willkommen bei SeedFinderPro!',
           template: 'welcome',
-          data: { username: user.username || user.name || email.split('@')[0] }
+          data: { username: user.username || user.displayName || email.split('@')[0] }
         })
       }).catch((err) => console.warn('[Auth] Welcome email failed:', err));
 
       // Verifizierungs-E-Mail mit 6-stelligem Code senden (fire-and-forget)
-      sendVerificationCode(user.id, email, user.username || user.name || email.split('@')[0]);
+      sendVerificationCode(user.id, email, user.username || user.displayName || email.split('@')[0]);
 
       return res.status(201).json({
         message: 'Registration erfolgreich',
@@ -170,7 +170,7 @@ router.post(
           id: user.id,
           email: user.email,
           username: user.username,
-          displayName: user.name,
+          displayName: user.displayName,
           name: user.username,
           role: user.role,
           isVerified: user.isVerified || false,
@@ -339,9 +339,9 @@ router.post(
         user: {
           id: user.id,
           email: user.email,
-          username: (user as any).username || user.name || user.email.split('@')[0],
-          displayName: user.name,
-          name: user.name,
+          username: user.username || user.displayName || user.email.split('@')[0],
+          displayName: user.displayName,
+          name: user.displayName,
           role: user.role,
           isVerified: user.isVerified || false,
           avatar: (user as any).avatar || null,
@@ -527,8 +527,8 @@ router.get('/me', async (req: Request, res: Response) => {
     return res.status(200).json({
       id: user.id,
       email: user.email,
-      username: (user as any).username || user.name || user.email.split('@')[0],
-      displayName: (user as any).displayName || user.name,
+      username: user.username || user.displayName || user.email.split('@')[0],
+      displayName: user.displayName,
       bio: (user as any).bio || null,
       avatar: (user as any).avatar || null,
       role: user.role,
@@ -568,8 +568,8 @@ router.get('/users/:username', async (req: Request, res: Response) => {
     // Return only public profile data
     return res.status(200).json({
       id: user.id,
-      username: user.name || user.email.split('@')[0],
-      displayName: user.name,
+      username: user.username || user.displayName || user.email.split('@')[0],
+      displayName: user.displayName,
       bio: user.bio || null,
       avatar: user.avatar || null,
       role: user.role,
@@ -946,7 +946,7 @@ router.post('/send-verification-email', async (req: Request, res: Response) => {
     await redis.setEx(rateLimitKey, 120, '1');
 
     // 6-stelligen Code generieren und E-Mail senden
-    await sendVerificationCode(user.id, user.email, (user as any).username || user.name || user.email.split('@')[0]);
+    await sendVerificationCode(user.id, user.email, user.username || user.displayName || user.email.split('@')[0]);
 
     return res.json({ message: 'Verifizierungscode gesendet' });
   } catch (error) {
@@ -1364,8 +1364,8 @@ router.post('/2fa/login', strictRateLimit, async (req: Request, res: Response) =
         id: user.id,
         email: user.email,
         username: (user as any).username || user.email.split('@')[0],
-        displayName: user.name,
-        name: user.name,
+        displayName: user.displayName,
+        name: user.displayName,
         role: user.role,
         isVerified: user.isVerified || false,
         avatar: (user as any).avatar || null,
@@ -1625,7 +1625,7 @@ router.put('/onboarding', async (req: Request, res: Response) => {
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) return res.status(401).json({ error: 'Nicht angemeldet' });
 
-    const payload = jwtService.verify(token) as any;
+    const payload = jwtService.verifyAccessToken(token) as any;
     if (!payload?.userId) return res.status(401).json({ error: 'Ungültiger Token' });
 
     const { step, completed } = req.body;
@@ -1655,7 +1655,7 @@ router.get('/onboarding', async (req: Request, res: Response) => {
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) return res.status(401).json({ error: 'Nicht angemeldet' });
 
-    const payload = jwtService.verify(token) as any;
+    const payload = jwtService.verifyAccessToken(token) as any;
     if (!payload?.userId) return res.status(401).json({ error: 'Ungültiger Token' });
 
     const user = await prisma.user.findUnique({

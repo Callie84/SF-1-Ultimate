@@ -660,7 +660,7 @@ export function verifyBackupIntegrity(backupName: string): boolean {
 
 ## SESSION SEC-10 — Container read-only Filesystem
 
-**Datum:** offen
+**Datum:** abgeschlossen 2026-06-02 | Commit: 4108a0e
 **Aufwand:** ~1h
 
 ### Warum wichtig
