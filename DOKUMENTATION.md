@@ -219,6 +219,73 @@ SEC-3 + SEC-6 aus dem Security-Audit 2026-06-02:
 
 ---
 
+## search-service: bull@1.x → bullmq Migration [abgeschlossen 2026-06-02]
+
+### Problem / Ziel
+Nach `npm audit fix` verblieben 2 high CVEs im search-service: `bull@1.1.3` zog eine verwundbare `redis`-Version (CVE in altem node_modules/redis) mit. Automatischer Fix nicht möglich weil `bull@4.x` ein Major-Upgrade mit Breaking API-Changes ist.
+
+### Warum
+`bull@1.1.3` nutzt das alte `redis`-npm-Paket (nicht ioredis), das eine bekannte Schwachstelle enthält. `bullmq` (das von anderen Services wie `indexer.worker.ts` bereits genutzt wurde) ist der aktuelle Nachfolger und nutzt `ioredis`, das bereits im Stack vorhanden ist. Beide Packages auf denselben Client zu vereinheitlichen eliminiert die Schwachstelle und reduziert den Dependency-Footprint.
+
+### Lösung
+`sync.worker.ts` vollständig von `bull`-API auf `bullmq`-API umgeschrieben. Wichtigste API-Unterschiede:
+
+| bull@1.x | bullmq |
+|----------|--------|
+| `new Bull(name, url, opts)` | `new Queue(name, { connection, defaultJobOptions })` |
+| `syncQueue.process(async (job) => {...})` | `new Worker(name, async (job) => {...}, { connection })` |
+| `syncQueue.on('completed', ...)` | `workerInstance.on('completed', ...)` |
+| `syncQueue.add({ ... })` | `syncQueue.add('jobName', { ... })` (Job-Name Pflicht) |
+| `connection: REDIS_URL string` | `connection: { host, port }` Objekt |
+
+`@types/bull` entfernt (zog `bull` als transitive Dep mit). `bullmq` installiert (war bereits in `indexer.worker.ts` genutzt aber nicht in package.json eingetragen).
+
+### Geänderte Dateien
+- `apps/search-service/src/workers/sync.worker.ts` — Komplett-Rewrite: Bull-Import → Queue/Worker/Job aus bullmq; Processor-Funktion als Worker-Konstruktor-Argument; Events auf workerInstance statt Queue; Queue.add mit Job-Name als erstem Argument; connection als `{ host, port }` Objekt statt URL-String
+- `apps/search-service/package.json` — `bull` + `@types/bull` entfernt, `bullmq` hinzugefügt
+- `apps/search-service/package-lock.json` — lockfile nach Dep-Änderungen aktualisiert
+
+### Ausgeführte Befehle
+```bash
+cd /root/SF-1-Ultimate-/apps/search-service
+npm audit fix --force          # hatte keine Wirkung (Major-Block)
+npm audit                      # zeigte bull + redis als 2 high
+npm uninstall bull             # entfernte bull, aber @types/bull zog bull zurück
+npm audit                      # noch 2 high
+npm uninstall @types/bull      # @types/bull entfernt → bull verschwindet komplett
+npm audit                      # 0 vulnerabilities ✅
+npm install bullmq             # bullmq explizit als Dep eintragen
+npx tsc --noEmit               # TypeScript-Check: sync.worker.ts fehlerfrei
+```
+
+### Fallstricke / Was schiefging
+**`@types/bull` zog `bull` als transitive Abhängigkeit mit:** Nach `npm uninstall bull` waren noch 2 high CVEs aktiv, weil `@types/bull` `bull` als peer dep hatte. Erst `npm uninstall @types/bull` löste das Problem vollständig.
+
+**`bullmq` war bereits verwendet aber nicht installiert:** `indexer.worker.ts` importierte bereits `bullmq`, aber die Dependency fehlte in `package.json`. Das Service lief nur weil `bullmq` irgendwo in der Dep-Chain auftauchte. Nach explizitem `npm install bullmq` war das TS-Fehler `Cannot find module 'bullmq'` behoben.
+
+**Pre-existing TS-Fehler:** `npx tsc --noEmit` zeigte ~20 Fehler in anderen Dateien (`auth.middleware.ts`, `indexer.worker.ts`, `sync.service.ts`). Diese sind pre-existing und nicht durch diese Änderung verursacht — verifiziert per `git stash` + erneuter tsc-Ausführung.
+
+### Verifikation
+```bash
+npm audit
+# → found 0 vulnerabilities ✅
+
+npx tsc --noEmit 2>&1 | grep "sync.worker"
+# → (kein Output = keine Fehler in sync.worker.ts) ✅
+
+# Smoke-Test (pre-commit Hook):
+# Search-Service (strain-suche) ... ✅
+```
+
+### Abhängigkeiten / Voraussetzungen
+- Redis muss laufen (bullmq verwendet ioredis, verbindet via `REDIS_HOST`/`REDIS_PORT` env vars)
+- `bullmq` muss in package.json explizit eingetragen sein (nicht als transitive Dep verlassen)
+
+### Commits
+- `06c4a41` — fix(sec): search-service bull@1.x → bullmq migrieren (SEC-3 CVE)
+
+---
+
 ## Seed-Modell: source[] + lastScraped [abgeschlossen 2026-05-27]
 
 ### Problem / Ziel

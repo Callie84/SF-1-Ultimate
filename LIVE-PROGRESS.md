@@ -1,16 +1,33 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-05-27T01:41:00Z
+**Last-Update:** 2026-06-02T13:00:00Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
-(kein aktiver Task) — System sauber ✅. Adapter-Code-Erweiterung (source.push + lastScraped setzen) noch offen — bei Bedarf separat beauftragen.
+s3 starten: `s 3` — SEC-10: Container read_only + tmpfs für alle Backend-Services in docker-compose.yml (Plan: `/root/SF-1-Ultimate-/docs/superpowers/plans/2026-06-02-sf1-security-audit-fixes.md`)
 
 ## Aktueller Task
 —
 
 ## Letzter abgeschlossener Task
-[2026-05-27] Seed-Modell erweitert — `source[]` (Provenienz-Array) + `lastScraped: Date` in `apps/price-service/src/models/Seed.model.ts`
+[2026-06-02] **s2: SEC-3 npm CVE-Fix (alle Services) + SEC-6 security.txt + search-service bull→bullmq** (60d2246, 8e71c96, 06c4a41)
+- npm audit: alle 10 Services Critical=0, High=0 ✅ (vorher: auth 1C+6H, notification 2C+7H, price 12H, ...)
+- price-service: eresolve-Konflikt gelöst via `@typescript-eslint` auf latest (--legacy-peer-deps)
+- search-service: `bull@1.1.3` CVE durch bullmq-Migration in sync.worker.ts eliminiert; `@types/bull` zog bull als transitive Dep mit — erst nach Entfernen beider Packages 0 vulns
+- security.txt: `Encryption: none` nach RFC 9116 ergänzt
+- overview.md: s2 ✅, s3 freigeschaltet
+
+Vorheriger: [2026-06-02] **s1: SEC-7 2FA Login-Gate + SEC-8 Traefik Rate Limits** (bfdd5a6, 6a3ce45, e9faef6)
+- 2FA Gate: `totpEnabled=true` erzwingt jetzt `mfa_pending`-Flow vor Token-Ausgabe
+- Rate Limits: `rl-auth`/`rl-api` auf alle Traefik-Router gebunden, 429 ab Request 6 verifiziert
+- Smoke-Test Fix: hardcoded IPs → dynamisches `docker inspect`
+
+Vorheriger: [2026-06-02] **Postgres-Volume-Incident behoben** — Admin-Account `klingenpascal` war "weg" (Login: Ungültige Credentials)
+- **Ursache:** Am 19.05. wurde in docker-compose.yml `postgres_data.name` vom Compose-Default `sf-1-ultimate-_postgres_data` auf `sf1-postgres-data-v1` umbenannt → Docker (compose v2.23.0) legte frisches LEERES Volume an, App lief seither mit leerer DB (nur 10 Test-User). Echte Daten (77 User inkl. ADMIN) lagen unangetastet im alten Volume.
+- **Fix:** Backup des aktiven Volumes (docker/volume-backups/sf1-postgres-data-v1_20260602-055317.tar.gz) → `name:` in docker-compose.yml zurück auf `sf-1-ultimate-_postgres_data` → `docker-compose up -d --force-recreate --no-deps postgres` → auth-service restart → Redis-Lockout geleert.
+- **Verifiziert:** 77 User, klingenpascal=ADMIN/aktiv, argon2id-Hash intakt, Login-Endpoint 401 bei falschem PW (Flow ok).
+
+Vorheriger: [2026-05-27] Seed-Modell erweitert — `source[]` (Provenienz-Array) + `lastScraped: Date` in `apps/price-service/src/models/Seed.model.ts`
 - Interface: `source?: Array<'crawl'|'seedfinder'|'firecrawl'|'manual'>`, `lastScraped?: Date`
 - Schema: beide mit `index: true`, `source` mit `default: []`
 - Zusatz-Index `{ lastScraped: 1 }` für Stale-Detection
@@ -65,6 +82,8 @@ Vorheriger: s1: Skills-Audit 2026-05-19:
 - MEMORY.md mit 5 neuen Skill-Links aktualisiert
 
 ## Diese Session erledigt
+- [2026-06-02] s1: SEC-7 2FA Login-Gate + SEC-8 Traefik Rate Limits + Smoke-Test IP-Fix (bfdd5a6, 6a3ce45, e9faef6)
+- [2026-06-02] MCP-Setup-Session — Redis/MongoDB als MCP-Tools untersucht; Erkenntnis: Remote-Setup lädt nur Plugin-MCPs. Pakete global installiert, settings.json bereinigt. (keine Commits)
 - [2026-05-26] Flavor-Coverage Pipeline — Phase 1 Crawl-Import + Phase 2 Seedfinder-Rebuild (9890c55, 332da6b)
 - [2026-05-26] Security-Fix JWT_SECRET Fallback in requireAdmin (d1fee00)
 - [2026-05-26] Meilisearch Reindex Desync-Fix — deleteAllDocuments() vor Neuaufbau (5420b9c)
