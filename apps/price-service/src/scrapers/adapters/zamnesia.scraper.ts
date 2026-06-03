@@ -1,6 +1,6 @@
 // Price Service - Zamnesia Scraper
 import { BaseScraper, ScrapedProduct } from '../base.scraper';
-import { generateSlug, normalizePrice, parsePackSize } from '../../utils/helpers';
+import { normalizePrice, parsePackSize } from '../../utils/helpers';
 import { logger } from '../../utils/logger';
 
 export class ZamnesiaScraper extends BaseScraper {
@@ -41,7 +41,7 @@ export class ZamnesiaScraper extends BaseScraper {
         // Extract product links
         const links = await page.$$eval(
           '.product-card a[href*="/cannabis-samen/"]',
-          (elements) => elements.map(el => (el as HTMLAnchorElement).href)
+          (elements) => elements.map(el => (el as any).href)
         );
         
         urls.push(...links);

@@ -36,7 +36,7 @@ export class RQSScraper extends BaseScraper {
         // RQS uses different selector structure
         const links = await page.$$eval(
           '.product-item a.product-link',
-          (elements) => elements.map(el => (el as HTMLAnchorElement).href)
+          (elements) => elements.map(el => (el as any).href)
         );
         
         urls.push(...links);

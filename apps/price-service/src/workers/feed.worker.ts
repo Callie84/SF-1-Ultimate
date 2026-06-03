@@ -227,6 +227,7 @@ export async function runFeedImportNow(seedbank: string): Promise<{
   productsImported: number;
   seedsCreated: number;
   pricesCreated: number;
+  pricesUpdated: number;
 }> {
   const feed = getFeed(seedbank);
   if (!feed) throw new Error(`Unbekannter Feed: ${seedbank}`);

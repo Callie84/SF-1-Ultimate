@@ -58,7 +58,7 @@ export class FirecrawlService {
         return null;
       }
 
-      const data: FirecrawlResponse = await response.json();
+      const data = await response.json() as FirecrawlResponse;
 
       if (!data.success) {
         logger.error(`[Firecrawl] Scraping fehlgeschlagen: ${data.error || 'Unbekannter Fehler'}`);

@@ -1,12 +1,74 @@
 # SF-1 Ultimate — Vollständige Entwicklungsdokumentation
 
 **Projekt:** seedfinderpro.de — Cannabis Growing Community Platform
-**Stand:** 2026-06-02 — Security Audit s1–s3 ✅ abgeschlossen | Mastertest 42/42 ✅ | Regel 21 in CLAUDE.md
+**Stand:** 2026-06-03 — TypeScript-Build price-service sauber (0 Fehler) | nvm/Node.js nativ in WSL2
 **Status:** ✅ Production-Ready — Security Audit abgeschlossen
 **Stack:** Next.js 14, Express Microservices, MongoDB, PostgreSQL, Redis, Meilisearch, Docker Compose, Traefik, Ollama (KI)
 
 > **⚠️ Hinweis:** Sessions 30–92 sind hauptsächlich in `/root/SF-Brain/SF-1 Projekt/Status & Roadmap.md` dokumentiert (Vault).
 > Diese Datei wird systematisch aktualisiert ab Session 94.
+
+---
+
+## price-service TypeScript-Build Fix [abgeschlossen 2026-06-03]
+
+### Problem / Ziel
+`apps/price-service` baute nicht — 65 TypeScript-Fehler. Auf dem Netcup-Server existierten drei Provisorien: `npm run build || true` im Dockerfile, `ignoreDeprecations` + `noEmitOnError:false` in tsconfig.json. Diese sind im GitHub-Stand nicht vorhanden, weshalb der Build hier schlug fehl.
+
+### Warum
+Viele Express-Handler hatten ungenutzte `req`/`res`/`next`-Parameter (TS6133), fehlende Return-Pfade (TS7030), Browser-Globals in Node-Kontext (playwright.ts), Redis v4-API-Stil, Mongoose `FlattenMaps`-Typprobleme und fehlende Imports (cheerio in samenwahl.feed.ts).
+
+### Lösung
+Alle 65 Fehler sauber behoben ohne tsconfig-Provisorien:
+- Ungenutzte Parameter mit `_`-Prefix versehen
+- Explizite `return;` Statements in allen Mixed-Return-Handlern ergänzt
+- Browser-Globals in playwright.ts via `globalThis as any`
+- Redis-API: `set(k, v, 'EX', n)` → `set(k, v, { EX: n })`
+- Mongoose: `.lean()` Ergebnis via `as unknown as IPrice[]` gecastet
+- `cheerio` Import in samenwahl.feed.ts ergänzt
+- `HTMLAnchorElement` → `any` in 3 Playwright-Scraper-Callbacks
+- `robots.isAllowed()` `boolean | undefined` → `!== false`
+- Ungenutzte Imports (circuitBreaker, 4 disabled Feed-Klassen, generateSlug etc.) entfernt
+- `pricesUpdated` zum Return-Typ von `runFeedImportNow` hinzugefügt
+- THC-Typ in mr-hanf.feed.ts von `string` auf `number` korrigiert
+
+### Setup: nvm + natives Node.js in WSL2
+Windows-Node (`/mnt/c/Program Files/nodejs/`) ist nicht WSL-tauglich — CMD.EXE kann UNC-Pfade nicht verarbeiten. Lösung: nvm v0.40.1 + Node 24.16.0 nativ installiert.
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+export NVM_DIR="$HOME/.nvm" && \. "$NVM_DIR/nvm.sh"
+nvm install 24
+cd apps/price-service && npm install --legacy-peer-deps
+```
+(`--legacy-peer-deps` nötig wegen bullmq@5.78 vs redis@4.x Peer-Dependency-Konflikt)
+
+### Geänderte Dateien
+- `apps/price-service/src/index.ts` — circuitBreaker-Import entfernt, ~15 unused params, 3× TS7030 fixes
+- `apps/price-service/src/config/playwright.ts` — globalThis-Cast für Browser-Globals
+- `apps/price-service/src/feeds/index.ts` — 4 disabled Feed-Imports entfernt
+- `apps/price-service/src/feeds/base.feed.ts` — `_productUrl` Prefix
+- `apps/price-service/src/feeds/adapters/herbies.feed.ts` — each-Callback return, extractBreeder entfernt
+- `apps/price-service/src/feeds/adapters/kannabia.feed.ts` — SEED_PATH_PREFIX entfernt
+- `apps/price-service/src/feeds/adapters/linda-seeds.feed.ts` — defaultType als Fallback genutzt
+- `apps/price-service/src/feeds/adapters/mr-hanf.feed.ts` — THC string→number
+- `apps/price-service/src/feeds/adapters/samenwahl.feed.ts` — cheerio Import + any-Typen
+- `apps/price-service/src/middleware/auth.middleware.ts` — 2× TS7030 fix
+- `apps/price-service/src/middleware/cache.middleware.ts` — _req, TS7030 fix
+- `apps/price-service/src/routes/alerts.routes.ts` — 4× TS7030 fix
+- `apps/price-service/src/routes/prices.routes.ts` — Redis-API fix, _req, 4× TS7030 fix
+- `apps/price-service/src/scrapers/adapters/rqs.scraper.ts` — any statt HTMLAnchorElement
+- `apps/price-service/src/scrapers/adapters/sensi-seeds.scraper.ts` — any statt HTMLAnchorElement
+- `apps/price-service/src/scrapers/adapters/zamnesia.scraper.ts` — generateSlug entfernt, any statt HTMLAnchorElement
+- `apps/price-service/src/services/firecrawl.service.ts` — response.json() as FirecrawlResponse
+- `apps/price-service/src/services/price.service.ts` — 3× lean() as unknown as T
+- `apps/price-service/src/services/strain-enrichment.service.ts` — BaseFeed/logger Import entfernt
+- `apps/price-service/src/utils/robots.ts` — ReturnType<typeof robotsParser>, !== false
+- `apps/price-service/src/workers/feed.worker.ts` — pricesUpdated zum Return-Typ
+
+### Verifikation
+```bash
+npm run build  # Exit 0, keine Fehler
+```
 
 ---
 

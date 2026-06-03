@@ -92,6 +92,7 @@ export class HerbiesFeed extends BaseFeed {
                 link = href;
                 return false;
               }
+              return;
             });
             if (!link) link = $el.find('a').first().attr('href') || '';
 
@@ -139,12 +140,4 @@ export class HerbiesFeed extends BaseFeed {
     return products;
   }
 
-  private extractBreeder(name: string): string {
-    // Format: "Strain by Breeder" oder "Strain (Breeder)"
-    const byMatch = name.match(/\bby\s+([A-Z][A-Za-z\s]+)/);
-    if (byMatch) return byMatch[1].trim();
-    const parenMatch = name.match(/\(([^)]+)\)/);
-    if (parenMatch) return parenMatch[1].trim();
-    return 'Herbies Seeds';
-  }
 }

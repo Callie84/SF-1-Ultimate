@@ -3,7 +3,7 @@ import { redis } from '../config/redis';
 import { logger } from '../utils/logger';
 
 export function withCache(keyPrefix: string, ttl: number) {
-  return async (req: Request, res: Response, next: NextFunction) => {
+  return async (_req: Request, res: Response, next: NextFunction) => {
     const cacheKey = `cache:${keyPrefix}`;
     try {
       const cached = await redis.get(cacheKey);
@@ -25,5 +25,6 @@ export function withCache(keyPrefix: string, ttl: number) {
     };
 
     next();
+    return;
   };
 }

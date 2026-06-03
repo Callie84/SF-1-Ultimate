@@ -1,9 +1,6 @@
 // Strain Enrichment Service
 // Extrahiert Flavors, Effects, THC%, CBD% aus Seedbank-HTML
 
-import { BaseFeed } from '../feeds/base.feed';
-import { logger } from '../utils/logger';
-
 export interface StrainProperties {
   flavors?: string[];
   effects?: string[];

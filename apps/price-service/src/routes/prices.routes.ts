@@ -53,7 +53,7 @@ router.get('/click', async (req, res) => {
  * GET /api/prices/clicks/stats
  * Get click statistics (admin)
  */
-router.get('/clicks/stats', async (req, res, next) => {
+router.get('/clicks/stats', async (_req, res, next) => {
   try {
     const keys = await redis.keys('clicks:total:*');
     const stats: Record<string, number> = {};
@@ -108,8 +108,10 @@ router.get('/search', withCache('search:${req.query.q}', 4*3600), async (req, re
     const result = await priceService.searchSeeds(query, { type, breeder, limit, skip });
 
     res.json(result);
+    return;
   } catch (error) {
     next(error);
+    return;
   }
 });
 
@@ -140,7 +142,7 @@ router.get('/browse', async (req, res, next) => {
  * GET /api/prices/seedbanks
  * Aggregiert alle Seedbanks mit Seed-Anzahl und Bestpreis
  */
-router.get('/seedbanks', async (req, res, next) => {
+router.get('/seedbanks', async (_req, res, next) => {
   try {
     const cacheKey = 'seedbanks:overview';
     const cached = await redis.get(cacheKey);
@@ -173,8 +175,10 @@ router.get('/seedbanks', async (req, res, next) => {
     const result = { seedbanks: agg };
     await redis.set(cacheKey, JSON.stringify(result), { EX: 5 * 60 });
     res.json(result);
+    return;
   } catch (error) {
     next(error);
+    return;
   }
 });
 
@@ -231,8 +235,10 @@ router.get('/seedbanks/:slug/seeds', async (req, res, next) => {
     const result = { seeds, total: seeds.length };
     await redis.set(cacheKey, JSON.stringify(result), { EX: 5 * 60 });
     res.json(result);
+    return;
   } catch (error) {
     next(error);
+    return;
   }
 });
 
@@ -268,10 +274,12 @@ router.get('/compare', async (req, res, next) => {
     }
     
     const comparisons = await priceService.comparePrices(slugs);
-    
+
     res.json({ comparisons });
+    return;
   } catch (error) {
     next(error);
+    return;
   }
 });
 
@@ -346,10 +354,12 @@ router.get('/history/:seedSlug', async (req, res, next) => {
     const packSizes = [...new Set(entries.map((e) => e.packSize))].sort();
 
     const result = { series, dates: allDates, packSizes };
-    await redis.set(cacheKey, JSON.stringify(result), 'EX', 60 * 30); // 30min cache
+    await redis.set(cacheKey, JSON.stringify(result), { EX: 60 * 30 }); // 30min cache
     res.json(result);
+    return;
   } catch (error) {
     next(error);
+    return;
   }
 });
 

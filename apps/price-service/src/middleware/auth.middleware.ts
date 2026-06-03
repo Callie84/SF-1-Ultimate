@@ -245,6 +245,7 @@ export const adminMiddleware = (trustTraefik: boolean = true) => {
     }
 
     next();
+    return;
   };
 };
 
@@ -338,6 +339,7 @@ export const rateLimitMiddleware = (maxRequests: number, windowMs: number) => {
     res.set('X-RateLimit-Reset', new Date(record.resetAt).toISOString());
 
     next();
+    return;
   };
 };
 

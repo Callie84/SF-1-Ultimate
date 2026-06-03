@@ -13,7 +13,6 @@ export class KannabiaFeed extends BaseFeed {
 
   protected affiliateId = process.env.KANNABIA_AFFILIATE_ID || '';
 
-  private readonly SEED_PATH_PREFIX = '/marijuana-seeds/';
   private readonly EXCLUDE_CATEGORIES = ['high-cbd-seeds-cannabinoids', 'fast-growing-seeds-go-fast', 'bioboost'];
 
   generateAffiliateUrl(productUrl: string): string | undefined {

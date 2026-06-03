@@ -2,6 +2,7 @@
 // Platform: Shopware — TLS-Fingerprinting blockiert direktes Scraping → Firecrawl
 // Kategorien: Cannabis-Samen Kategorien auf samenwahl.de
 // Preise: EUR
+import * as cheerio from 'cheerio';
 import { BaseFeed, FeedProduct, FeedSource } from '../base.feed';
 import { logger } from '../../utils/logger';
 
@@ -97,7 +98,7 @@ export class SamenwahlFeed extends BaseFeed {
           break;
         }
 
-        items.each((_i, el) => {
+        items.each((_i: number, el: any) => {
           try {
             const $el = $(el);
 

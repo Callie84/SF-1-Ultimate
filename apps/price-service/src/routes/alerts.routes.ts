@@ -32,11 +32,13 @@ router.post('/', authMiddleware(), async (req: any, res, next) => {
 
     const alert = await alertService.createAlert({ userId, ...validation.data });
     res.status(201).json({ alert });
+    return;
   } catch (error: any) {
     if (error.message === 'Seed not found') {
       return res.status(404).json({ error: error.message });
     }
     next(error);
+    return;
   }
 });
 
@@ -52,8 +54,10 @@ router.get('/', authMiddleware(), async (req: any, res, next) => {
     const activeOnly = req.query.active !== 'false';
     const alerts = await alertService.getUserAlerts(userId, activeOnly);
     res.json({ alerts });
+    return;
   } catch (error) {
     next(error);
+    return;
   }
 });
 
@@ -68,8 +72,10 @@ router.patch('/:id/deactivate', authMiddleware(), async (req: any, res, next) =>
 
     await alertService.deactivateAlert(req.params.id, userId);
     res.json({ success: true });
+    return;
   } catch (error) {
     next(error);
+    return;
   }
 });
 
@@ -84,8 +90,10 @@ router.delete('/:id', authMiddleware(), async (req: any, res, next) => {
 
     await alertService.deleteAlert(req.params.id, userId);
     res.json({ success: true });
+    return;
   } catch (error) {
     next(error);
+    return;
   }
 });
 

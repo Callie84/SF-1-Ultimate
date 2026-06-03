@@ -37,7 +37,7 @@ export class SensiSeedsScraper extends BaseScraper {
         // Sensi Seeds grid layout
         const links = await page.$$eval(
           '.product-item-link',
-          (elements) => elements.map(el => (el as HTMLAnchorElement).href)
+          (elements) => elements.map(el => (el as any).href)
         );
         
         urls.push(...links);

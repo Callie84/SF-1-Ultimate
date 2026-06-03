@@ -100,11 +100,12 @@ export class MrHanfFeed extends BaseFeed {
             }
 
             // Extract THC from specs table
-            let thc: string | undefined;
+            let thc: number | undefined;
             $el.find('table.tebals tr').each((_j, tr) => {
               const label = $(tr).find('td').first().text().trim().toLowerCase();
               if (label.includes('thc')) {
-                thc = $(tr).find('td').last().text().trim();
+                const thcText = $(tr).find('td').last().text().trim();
+                thc = thcText ? parseFloat(thcText.replace(/[^\d.]/g, '')) : undefined;
               }
             });
 

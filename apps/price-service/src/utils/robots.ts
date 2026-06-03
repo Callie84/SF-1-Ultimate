@@ -3,7 +3,7 @@ import robotsParser from 'robots-parser';
 import axios from 'axios';
 import { logger } from './logger';
 
-const robotsCache = new Map<string, robotsParser.Robot>();
+const robotsCache = new Map<string, ReturnType<typeof robotsParser>>();
 
 export async function canScrape(baseUrl: string, path: string): Promise<boolean> {
   try {
@@ -12,7 +12,7 @@ export async function canScrape(baseUrl: string, path: string): Promise<boolean>
     // Check cache
     if (robotsCache.has(domain)) {
       const robots = robotsCache.get(domain)!;
-      return robots.isAllowed(path, 'SF1-PriceBot');
+      return robots.isAllowed(path, 'SF1-PriceBot') !== false;
     }
     
     // Fetch robots.txt
@@ -37,7 +37,7 @@ export async function canScrape(baseUrl: string, path: string): Promise<boolean>
       logger.warn(`[Robots] Scraping not allowed: ${baseUrl}${path}`);
     }
     
-    return allowed;
+    return allowed !== false;
     
   } catch (error) {
     logger.error('[Robots] Error checking robots.txt:', error);

@@ -14,7 +14,6 @@ import { alertService } from './services/alert.service';
 import { priceService } from './services/price.service';
 import { seedfinderEnrichment } from './services/seedfinder-enrichment.service';
 import { crawlFlavorImport } from './services/crawl-flavor-import.service';
-import { circuitBreaker } from './services/circuit-breaker.service';
 import { stalenessService } from './services/staleness.service';
 import { scheduleAllFeeds, scheduleFeedJob, getFeedQueueStats, runFeedImportNow } from './workers/feed.worker';
 import { getFeedInfos, getFeedSlugs } from './feeds';
@@ -41,7 +40,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request logging
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   logger.debug(`${req.method} ${req.path}`);
   next();
 });
@@ -55,7 +54,7 @@ app.get('/metrics', async (_req, res) => {
   res.end(await promClient.register.metrics());
 });
 
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({
     status: 'healthy',
     service: 'price-service',
@@ -69,7 +68,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.get('/api/prices/health', (req, res) => {
+app.get('/api/prices/health', (_req, res) => {
   res.json({
     status: 'healthy',
     service: 'price-service',
@@ -107,7 +106,7 @@ function requireAdmin(req: any, res: any, next: any) {
 }
 
 // Übersicht aller registrierten Feeds (+ Queue Stats)
-app.get('/api/prices/admin/feeds', requireAdmin, async (req, res) => {
+app.get('/api/prices/admin/feeds', requireAdmin, async (_req, res) => {
   try {
     const [feedInfos, queueStats] = await Promise.all([
       getFeedInfos(),
@@ -133,7 +132,7 @@ app.get('/api/prices/admin/feeds', requireAdmin, async (req, res) => {
 });
 
 // Queue-Statistiken
-app.get('/api/prices/admin/queue/stats', requireAdmin, async (req, res) => {
+app.get('/api/prices/admin/queue/stats', requireAdmin, async (_req, res) => {
   try {
     const stats = await getFeedQueueStats();
     res.json(stats);
@@ -156,14 +155,16 @@ app.post('/api/prices/admin/feed/:seedbank', requireAdmin, async (req, res) => {
 
     await scheduleFeedJob(seedbank);
     res.json({ success: true, message: `Feed-Import für ${seedbank} geplant` });
+    return;
   } catch (error: any) {
     logger.error('[Admin] Feed-Import Fehler:', error);
     res.status(500).json({ error: error.message });
+    return;
   }
 });
 
 // Alle Feeds importieren (Queue)
-app.post('/api/prices/admin/feeds/run-all', requireAdmin, async (req, res) => {
+app.post('/api/prices/admin/feeds/run-all', requireAdmin, async (_req, res) => {
   try {
     await scheduleAllFeeds();
     res.json({
@@ -197,14 +198,16 @@ app.post('/api/prices/admin/feed/:seedbank/now', requireAdmin, async (req, res) 
       seedbank,
       ...result,
     });
+    return;
   } catch (error: any) {
     logger.error(`[Admin] Sofort-Import Fehler:`, error);
     res.status(500).json({ error: error.message });
+    return;
   }
 });
 
 // Seedbank-Statistiken aus MongoDB
-app.get('/api/prices/admin/seedbanks', requireAdmin, async (req, res) => {
+app.get('/api/prices/admin/seedbanks', requireAdmin, async (_req, res) => {
   try {
     const { Price } = await import('./models/Price.model');
     const { Seed } = await import('./models/Seed.model');
@@ -298,19 +301,20 @@ app.patch('/api/prices/admin/seedbanks/:slug/toggle', requireAdmin, async (req, 
 });
 
 // Legacy-Routen (intern, kein Traefik) - bleiben erhalten
-app.get('/admin/feeds', async (req, res) => {
+app.get('/admin/feeds', async (_req, res) => {
   const [feedInfos, queueStats] = await Promise.all([getFeedInfos(), getFeedQueueStats()]);
   res.json({ feeds: feedInfos, queue: queueStats });
 });
-app.get('/admin/queue/stats', async (req, res) => {
+app.get('/admin/queue/stats', async (_req, res) => {
   res.json(await getFeedQueueStats());
 });
 app.post('/admin/feed/:seedbank', async (req, res) => {
   if (!getFeedSlugs().includes(req.params.seedbank)) return res.status(404).json({ error: 'not found' });
   await scheduleFeedJob(req.params.seedbank);
   res.json({ success: true });
+  return;
 });
-app.post('/admin/feeds/run-all', async (req, res) => {
+app.post('/admin/feeds/run-all', async (_req, res) => {
   await scheduleAllFeeds();
   res.json({ success: true });
 });
@@ -320,7 +324,7 @@ app.post('/admin/feed/:seedbank/now', async (req, res) => {
 });
 
 // Fix Seed THC/CBD Decimals (Admin)
-app.post('/api/prices/admin/fix-decimals', requireAdmin, async (req, res) => {
+app.post('/api/prices/admin/fix-decimals', requireAdmin, async (_req, res) => {
   try {
     const { Seed } = require('./models/Seed.model');
 
@@ -365,7 +369,7 @@ app.post('/api/prices/admin/fix-decimals', requireAdmin, async (req, res) => {
 });
 
 // Phase 1: Crawl-Flavor-Import (einmalig ausführbar)
-app.post('/api/prices/admin/flavors/import-crawl', requireAdmin, async (req, res) => {
+app.post('/api/prices/admin/flavors/import-crawl', requireAdmin, async (_req, res) => {
   try {
     logger.info('[Admin] Starte Crawl-Flavor-Import...');
     crawlFlavorImport.importAll()
@@ -399,14 +403,14 @@ app.use('/api/prices', pricesRoutes);
 app.use('/api/alerts', alertsRoutes);
 
 // 404 handler
-app.use((req, res) => {
+app.use((_req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
 // Error handler
   // Sentry error handler (muss vor allen anderen Error-Handlern stehen)
   Sentry.setupExpressErrorHandler(app);
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error('[Server] Error:', err);
   res.status(err.statusCode || 500).json({
     error: err.message || 'Internal server error',
@@ -550,7 +554,7 @@ async function shutdown() {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason, _promise) => {
   logger.error('[Server] Unhandled Rejection:', reason);
 });
 

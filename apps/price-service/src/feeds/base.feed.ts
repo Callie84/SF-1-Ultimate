@@ -68,7 +68,7 @@ export abstract class BaseFeed {
   /**
    * Generate affiliate link for a product URL
    */
-  generateAffiliateUrl(productUrl: string): string | undefined {
+  generateAffiliateUrl(_productUrl: string): string | undefined {
     if (!this.affiliateId || !this.affiliateBaseUrl) return undefined;
     return undefined;
   }

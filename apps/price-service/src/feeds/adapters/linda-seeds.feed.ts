@@ -122,7 +122,7 @@ export class LindaSeedsFeed extends BaseFeed {
             const seedCount = this.parseSeedCount(name) || 5;
 
             // Typ detektieren
-            const type = this.detectSeedType(name);
+            const type = this.detectSeedType(name) || defaultType;
 
             const cleanName = name
               .replace(/\s*\d+\s*(seeds?|samen)\s*/gi, '')

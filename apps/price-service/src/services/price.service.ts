@@ -216,11 +216,11 @@ export class PriceService {
       })
     ]);
     
-    const result = { prices, total };
-    
+    const result = { prices: prices as unknown as IPrice[], total };
+
     // Cache
     await redis.setEx(cacheKey, this.CACHE_TTL, JSON.stringify(result));
-    
+
     return result;
   }
   
@@ -251,7 +251,7 @@ export class PriceService {
 
     await redis.setEx(cacheKey, this.CACHE_TTL, JSON.stringify(prices));
 
-    return prices;
+    return prices as unknown as IPrice[];
   }
   
   /**
@@ -300,10 +300,10 @@ export class PriceService {
       .sort({ viewCount: -1 })
       .limit(limit)
       .lean();
-    
+
     await redis.setEx(cacheKey, 600, JSON.stringify(seeds)); // 10 min cache
-    
-    return seeds;
+
+    return seeds as unknown as ISeed[];
   }
   
   /**

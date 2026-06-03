@@ -45,21 +45,15 @@ export async function createStealthContext(): Promise<BrowserContext> {
   
   // Anti-detection measures
   await context.addInitScript(() => {
-    // Override webdriver
-    Object.defineProperty(navigator, 'webdriver', {
+    const g = globalThis as any;
+    Object.defineProperty(g.navigator, 'webdriver', {
       get: () => false,
     });
-    
-    // Chrome runtime
-    (window as any).chrome = {
-      runtime: {},
-    };
-    
-    // Permissions
-    const originalQuery = window.navigator.permissions.query;
-    window.navigator.permissions.query = (parameters: any) => (
+    g.chrome = { runtime: {} };
+    const originalQuery = g.navigator.permissions.query;
+    g.navigator.permissions.query = (parameters: any) => (
       parameters.name === 'notifications' ?
-        Promise.resolve({ state: 'denied' } as PermissionStatus) :
+        Promise.resolve({ state: 'denied' } as any) :
         originalQuery(parameters)
     );
   });
