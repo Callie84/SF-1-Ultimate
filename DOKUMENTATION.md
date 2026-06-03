@@ -1,8 +1,13 @@
 # SF-1 Ultimate — Vollständige Entwicklungsdokumentation
 
 **Projekt:** seedfinderpro.de — Cannabis Growing Community Platform
+<<<<<<< HEAD
 **Stand:** 2026-06-03 — TypeScript-Build price-service sauber (0 Fehler) | nvm/Node.js nativ in WSL2
 **Status:** ✅ Production-Ready — Security Audit abgeschlossen
+=======
+**Stand:** 2026-06-03 — Flavor-Coverage Phase 1+2 deployed | Playwright-Scraper aktiv | Cron 02:00
+**Status:** ✅ Production-Ready
+>>>>>>> d298111 (docs: dk-Session-End — Flavor Phase 1+2 vollständig dokumentiert)
 **Stack:** Next.js 14, Express Microservices, MongoDB, PostgreSQL, Redis, Meilisearch, Docker Compose, Traefik, Ollama (KI)
 
 > **⚠️ Hinweis:** Sessions 30–92 sind hauptsächlich in `/root/SF-Brain/SF-1 Projekt/Status & Roadmap.md` dokumentiert (Vault).
@@ -10,6 +15,7 @@
 
 ---
 
+<<<<<<< HEAD
 ## price-service TypeScript-Build Fix [abgeschlossen 2026-06-03]
 
 ### Problem / Ziel
@@ -69,6 +75,86 @@ cd apps/price-service && npm install --legacy-peer-deps
 ```bash
 npm run build  # Exit 0, keine Fehler
 ```
+=======
+## Flavor-Coverage Pipeline Phase 1+2 [abgeschlossen 2026-06-03]
+
+### Problem / Ziel
+Nur 3% der 5.547 Seeds hatten Flavor-Daten. Phase 1: lokaler Crawl-Import aus `/root/SF-Brain/strain_output/strains_database.json`. Phase 2: Seedfinder-Scraper mit Playwright (Firecrawl hatte keine Credits mehr).
+
+### Warum
+Firecrawl API Key (`fc-aa5eeb49...`) war erschöpft — `Insufficient credits`. Seedfinder nutzt Cloudflare, direktes axios wäre geblockt worden. Lösung: System-Chromium via Alpine apk + Playwright Stealth-Context (bereits im Codebase vorbereitet).
+
+### Lösung
+
+**Phase 1 — Crawl-Import:**
+- `crawlFlavorImport.importAll()` war bereits vollständig implementiert
+- Admin-Endpoint `POST /api/prices/admin/flavors/import-crawl` war bereits vorhanden
+- Suffix-Stripping in `normalizeName()` ergänzt (Feminisiert, Auto, Fast Version etc.) → Matches +32%
+- Ergebnis: 188 Seeds mit Flavors (3.4%)
+
+**Phase 2 — Playwright-Scraper:**
+- `apps/price-service/Dockerfile` vereinfacht: `node:20-alpine` + `apk chromium` + `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`
+- `docker-compose.yml`: `image: node:20-alpine` → `build: ./apps/price-service`, `/tmp` noexec entfernt
+- `playwright.ts`: `executablePath` aus `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` env
+- `seedfinder-enrichment.service.ts`:
+  - `fetchStrainPage`: `firecrawlService` → `createStealthContext() + page.goto()`
+  - `baseUrl`: `seedfinder.eu` → `de.seedfinder.eu` (korrekte Domain!)
+  - `buildStrainUrl`: Slugs mit Unterstrichen + Variant-Suffix-Strip
+  - `rateLimitMs`: 3000 → 5000ms
+- `index.ts`: `POST /api/prices/admin/flavors/enrich-seedfinder?batch=N` Endpoint ergänzt
+
+### Geänderte Dateien
+- `apps/price-service/Dockerfile` — Vereinfacht auf Single-Stage mit System-Chromium — Multi-Stage war inkompatibel mit Volume-Mount + tsx
+- `apps/price-service/src/config/playwright.ts` — `executablePath` aus env + `--single-process` arg — `/usr/bin/chromium-browser` statt Playwright-eigener Download
+- `apps/price-service/src/services/seedfinder-enrichment.service.ts` — Firecrawl → Playwright, URL-Fix, Suffix-Strip — de.seedfinder.eu nutzt `Name_Slug/Breeder_Slug/` mit Unterstrichen
+- `apps/price-service/src/services/crawl-flavor-import.service.ts` — Suffix-Stripping in normalizeName — Feminisiert/Auto/Fast Version etc. werden vor Match entfernt
+- `apps/price-service/src/index.ts` — Neuer Admin-Endpoint für manuellen Enrichment-Trigger
+- `docker-compose.yml` — image→build, /tmp noexec entfernt — Chromium schreibt Temp-Profile nach /tmp
+
+### Ausgeführte Befehle
+```bash
+docker-compose build price-service
+docker-compose up -d --no-deps price-service
+
+# Test Playwright
+docker exec sf1-price-service node -e "... chromium.launch + page.goto('420_Punch/Sensi_Seeds/') ..."
+# → Status: 200, 5 Flavors extrahiert
+
+# Phase 1 triggern
+curl -X POST http://<ip>:3002/api/prices/admin/flavors/import-crawl -H "Authorization: Bearer $JWT"
+
+# Phase 2 Mini-Batch triggern
+curl -X POST "http://<ip>:3002/api/prices/admin/flavors/enrich-seedfinder?batch=5" -H "Authorization: Bearer $JWT"
+```
+
+### Fallstricke / Was schiefging
+1. **Firecrawl ohne Credits** — lautlos: API key gesetzt, `isEnabled()=true`, aber jeder Call gibt `Insufficient credits` → `null` → Seeds übersprungen. Keine Fehlermeldung im normalen Log.
+2. **seedfinder.eu vs de.seedfinder.eu** — `seedfinder.eu/de/strain-info/...` gibt 404. Korrekt: `de.seedfinder.eu/strain-info/...` ohne Sprachpräfix im Pfad.
+3. **Slug-Format** — Hyphens geben 404. Seedfinder nutzt Unterstriche + Original-Großschreibung: `Northern_Lights/Sensi_Seeds/`.
+4. **Varianten-Suffixe** — "420 Punch Feminisiert" → URL `420_Punch_Feminisiert/` → 404. Suffix muss vor URL-Generierung gestrippt werden.
+5. **read_only + noexec auf /tmp** — `apk add` schlägt fehl weil Filesystem read_only. System-Chromium muss ins Docker-Image gebaut werden. `/tmp noexec` entfernt weil Chromium Temp-Dateien dort ablegt.
+6. **Mini-Batch 0/5** — Erste 5 Seeds in DB sind alle Zamnesia Seeds die auf Seedfinder nicht existieren → kein Bug, erwartetes Verhalten.
+
+### Verifikation
+```
+docker exec sf1-price-service node -e "chromium.launch → 420_Punch/Sensi_Seeds/"
+→ Status: 200, Content: 46715 chars, Flavors: ['fruchtig','süß','erdig','Zitrus','würzig']
+
+Phase 1: [CrawlImport] Abgeschlossen — matched: 641, updated: 185 → 188 total (3.4%)
+Container: sf1-price-service Up (healthy) ✅
+Smoke-Test: 3/3 grün ✅
+```
+
+### Abhängigkeiten / Voraussetzungen
+- Docker-Image muss neu gebaut werden wenn Dockerfile geändert wird: `docker-compose build price-service`
+- Cron 02:00 läuft automatisch — kein manueller Trigger nötig
+- `/root/SF-Brain/strain_output/strains_database.json` muss existieren (Phase 1 Datenquelle)
+
+### Commits
+- `ad4978d` — feat(flavors): Suffix-Stripping im Crawl-Name-Matcher
+- `666905c` — feat(flavors): Playwright-Scraper Phase 2 — System-Chromium statt Firecrawl
+- `d7c71c9` — chore: LIVE-PROGRESS finalisieren
+>>>>>>> d298111 (docs: dk-Session-End — Flavor Phase 1+2 vollständig dokumentiert)
 
 ---
 
