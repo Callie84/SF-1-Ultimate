@@ -2,12 +2,12 @@ import { Grow } from '../models/Grow.model';
 import { redis } from '../config/redis';
 import http from 'http';
 
-const COMMUNITY_URL = process.env.COMMUNITY_SERVICE_URL || 'http://community-service:3005';
+const COMMUNITY_URL = process.env.COMMUNITY_SERVICE_URL || 'http://sf1-community-service:3005';
 
 async function getFollowedUserIds(userId: string): Promise<string[]> {
   return new Promise((resolve) => {
     const path = `/api/community/follows/following/${userId}?limit=500`;
-    http.get({ hostname: 'community-service', port: 3005, path },
+    http.get({ hostname: 'sf1-community-service', port: 3005, path },
       (res) => {
         let data = '';
         res.on('data', c => data += c);

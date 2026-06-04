@@ -3,7 +3,7 @@ import { ThreadDetailClient } from './thread-detail-client';
 
 const BASE_URL = 'https://seedfinderpro.de';
 const COMMUNITY_SERVICE_URL =
-  process.env.COMMUNITY_SERVICE_URL || 'http://community-service:3005';
+  process.env.COMMUNITY_SERVICE_URL || 'http://sf1-community-service:3005';
 
 async function fetchThread(id: string) {
   try {

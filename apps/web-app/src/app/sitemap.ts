@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 
 const BASE_URL = 'https://seedfinderpro.de';
-const COMMUNITY_URL = process.env.COMMUNITY_SERVICE_URL || 'http://community-service:3005';
+const COMMUNITY_URL = process.env.COMMUNITY_SERVICE_URL || 'http://sf1-community-service:3005';
 const JOURNAL_URL = process.env.JOURNAL_SERVICE_URL || 'http://journal-service:3003';
 
 async function getStrainSlugs(): Promise<string[]> {

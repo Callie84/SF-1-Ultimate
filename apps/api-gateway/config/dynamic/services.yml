@@ -39,7 +39,7 @@ http:
     community-service:
       loadBalancer:
         servers:
-          - url: "http://community-service:3005"
+          - url: "http://sf1-community-service:3005"
         healthCheck:
           path: "/health"
           interval: "10s"
