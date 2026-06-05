@@ -1,15 +1,21 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-06-03T00:25:00Z
+**Last-Update:** 2026-06-05T09:00:00Z
 **Status:** ✅ clean
 
 ## ➡ NEXT ACTION
-Coverage morgen früh prüfen: `docker logs sf1-price-service --since 24h | grep SeedfinderV2`. Nächste eigene Session: `start v2` — SF-1 v2 Session 7 (modules/user + Google OAuth 2.0).
+`/auth/2fa`-Seite implementieren — 2FA-Login-Flow ist broken (Login-Seite leitet zu `/auth/2fa` weiter, aber die Seite existiert nicht). Außerdem: Login-Fix committen (`apps/web-app/src/app/auth/login/page.tsx`).
 
 ## Aktueller Task
 —
 
 ## Letzter abgeschlossener Task
+[2026-06-05] **Login-Bug: 2FA-Flow fehlte in Login-Seite** (kein Commit)
+- Root Cause: 2FA aktiviert → `requires2FA: true` → kein `accessToken` → `undefined`-Cookie → "Invalid or expired token"
+- Fix: Login-Seite leitet jetzt zu `/auth/2fa` weiter bei `requires2FA: true`
+- 2FA für klingenpascal in DB deaktiviert (Workaround, da /auth/2fa noch nicht existiert)
+- Frontend neu gebaut + neugestartet, healthy ✅
+
 [2026-06-03] **Flavor-Coverage Phase 1+2** (ad4978d, 666905c)
 - Phase 1: crawl-flavor-import 188 Seeds (3.4%), Suffix-Stripping +32% Matches
 - Phase 2: Playwright-Scraper statt Firecrawl (keine Credits) — Dockerfile, de.seedfinder.eu, Underscore-Slugs, Endpoint + Cron 02:00 täglich aktiv

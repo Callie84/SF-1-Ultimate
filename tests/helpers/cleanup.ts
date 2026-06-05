@@ -46,8 +46,8 @@ export async function runCleanup() {
           });
         }
       }
-    } catch {
-      // Cleanup-Fehler ignorieren — besser dreckig als blockiert
+    } catch (e: any) {
+      console.warn(`[cleanup] Fehler bei ${task.type}/${task.id}: ${e?.message ?? e}`);
     }
   }
   tasks.length = 0;

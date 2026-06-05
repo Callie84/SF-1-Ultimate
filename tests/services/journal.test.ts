@@ -105,6 +105,7 @@ describe('journal-service', () => {
     }, withAuth(token));
     if (!createRes || createRes.status !== 201) { logPass(SVC, 'grow-restore-skipped'); return; }
     const tempId = createRes.data?.grow?._id ?? createRes.data?.grow?.id;
+    registerCleanup({ type: 'grow', id: tempId, token });
 
     const delRes = await safeDelete(journalClient, `/api/journal/grows/${tempId}`, withAuth(token));
     expect([200, 204]).toContain(delRes?.status);

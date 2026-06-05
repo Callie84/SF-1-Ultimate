@@ -117,6 +117,7 @@ describe('community-service', () => {
     }, withAuth(token));
     if (!createRes || createRes.status !== 201) { logPass(SVC, 'thread-restore-skipped'); return; }
     const tempId = createRes.data?.thread?._id;
+    registerCleanup({ type: 'thread', id: tempId, token });
 
     const delRes = await safeDelete(communityClient, `/api/community/threads/${tempId}`, withAuth(token));
     expect([200, 204]).toContain(delRes?.status);
