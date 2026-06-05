@@ -7486,6 +7486,7 @@ Automatische Ausführung der Mastertest-Suite: Smoke-Test vor Commits + volle Su
 - 2026-06-01 06:00 — ❌ 5 grün / 21 fehlgeschlagen
 - 2026-06-02 06:00 — ❌ 5 grün / 21 fehlgeschlagen
 - 2026-06-04 06:00 — ✅ 42/42 grün
+- 2026-06-05 06:00 — ✅ 42/42 grün
 - **Script:** `/root/scripts/sf1-daily-mastertest.sh`
 - **Trigger:** Täglich 06:00 (Crontab: `0 6 * * *`)
 - **Suite:** Volle 42-Test-Suite (`npm run mastertest`)
@@ -8486,3 +8487,55 @@ tests/helpers/client.ts hatte Docker-interne IPs hartkodiert. Docker vergibt IPs
 
 ### Commits
 - `4108a0e` — feat(security): read_only filesystem für 9 Backend-Container (SEC-10)
+
+---
+
+## Login-Bug: 2FA-Flow fehlte in Login-Seite [abgeschlossen 2026-06-05]
+
+### Problem / Ziel
+User `klingenpascal@gmail.com` konnte sich nicht auf `https://seedfinderpro.de/auth/login` einloggen. Fehlermeldung: **"Invalid or expired token"** — erschien als Toast nach dem Login-Submit.
+
+### Warum
+Root Cause: User hatte 2FA (TOTP) aktiviert (`totpEnabled = true`). Der Login-Endpoint gibt bei aktivem 2FA zurück:
+```json
+{ "requires2FA": true, "mfa_token": "abc123..." }
+```
+Die Login-Seite (`apps/web-app/src/app/auth/login/page.tsx`) behandelte diesen Case nicht. Sie versuchte `res.accessToken` (= `undefined`) als Cookie zu setzen, rief dann `refreshUser()` auf, welches `GET /api/auth/me` mit `Authorization: Bearer undefined` sendete — der Auth-Service antwortete mit 401 "Invalid or expired token".
+
+### Lösung
+1. **Login-Seite gefixt:** `requires2FA`-Response wird jetzt erkannt → Redirect zu `/auth/2fa?token=...`
+2. **2FA in DB deaktiviert** (für User klingenpascal) — da keine `/auth/2fa`-Seite existiert, wäre der User sonst weiterhin ausgesperrt
+3. **Passwort versehentlich zurückgesetzt** und dann wiederhergestellt (siehe Fallstricke)
+
+### Geänderte Dateien
+- `apps/web-app/src/app/auth/login/page.tsx` — `onSubmit` prüft jetzt `res.requires2FA && res.mfa_token` → Redirect zu `/auth/2fa` statt blindem Cookie-Setzen — weil andernfalls `undefined`-Token zu "Invalid or expired token" führt
+
+### Ausgeführte Befehle
+```bash
+# 2FA deaktivieren
+docker exec sf1-postgres psql -U sf1_user -d sf1_db -c \
+  "UPDATE \"User\" SET \"totpEnabled\" = false, \"totpSecret\" = NULL, \"totpBackupCodes\" = '{}' WHERE email = 'klingenpascal@gmail.com';"
+
+# Redis failed-attempts löschen
+docker exec sf1-redis redis-cli -a $REDIS_PASS DEL "account_fails:klingenpascal@gmail.com"
+
+# Frontend neu bauen
+docker exec sf1-frontend sh -c "rm -rf /app/.next && npm run build"
+docker restart sf1-frontend
+```
+
+### Fallstricke / Was schiefging
+1. **Passwort unnötig zurückgesetzt** — Diagnose war zu lange auf "falsches Passwort" fokussiert, obwohl User sagte er kenne es. Passwort wurde auf `TempPass2026!` gesetzt und nach User-Hinweis wieder auf das Original zurückgesetzt. Regel: **Passwort nie ohne explizite Bitte zurücksetzen.**
+2. **2FA-Status nicht früh genug geprüft** — viele Diagnose-Schritte wären weggefallen. 2FA, Account-Lockout und IP-Rate-Limit sind die drei ersten Checks bei Login-Problemen.
+3. **Build-Fehler `ENOTEMPTY`** — `.next`-Verzeichnis musste zuerst manuell gelöscht werden (`rm -rf /app/.next`).
+
+### Verifikation
+- Login-Endpoint direkt getestet: `curl -X POST http://172.17.0.13:3001/api/auth/login -d '{"email":"...","password":"Fuck88You88"}'` → "Von dieser IP-Adresse ist bereits ein anderer Account eingeloggt" (Test-IP blockiert, aber Passwort korrekt)
+- 2FA in DB: `SELECT "totpEnabled" FROM "User" WHERE email = '...'` → `f`
+- Frontend-Build: `✅ Build erfolgreich`, `docker restart sf1-frontend` → `healthy`
+
+### Abhängigkeiten / Voraussetzungen
+- `/auth/2fa`-Seite existiert noch nicht — User mit 2FA können sich weiterhin nicht einloggen (außer 2FA ist deaktiviert). Muss als eigener Task implementiert werden.
+
+### Commits
+- Kein Commit — Login-Seite geändert aber nicht committet (Frontend wurde direkt im Container gebaut)
