@@ -57,6 +57,13 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       const res = await api.post('/api/auth/login', data) as any;
+
+      if (res.requires2FA && res.mfa_token) {
+        sessionStorage.setItem('mfa_token', res.mfa_token);
+        router.push('/auth/2fa');
+        return;
+      }
+
       Cookies.set('sf1_access_token', res.accessToken, { expires: 7 });
       Cookies.set('sf1_refresh_token', res.refreshToken, { expires: 30 });
       await refreshUser();

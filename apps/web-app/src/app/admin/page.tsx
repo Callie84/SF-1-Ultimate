@@ -75,6 +75,16 @@ export default function AdminDashboardPage() {
     }
   }, [user, authLoading, router]);
 
+  // 2FA Step-up Gate: wenn Admin 2FA aktiviert hat und noch nicht in dieser Session verifiziert
+  useEffect(() => {
+    if (!authLoading && user && user.role === 'ADMIN' && (user as any).totpEnabled) {
+      const verified = sessionStorage.getItem('sf1_admin_2fa_ok');
+      if (!verified) {
+        router.replace('/auth/2fa?mode=admin&next=/admin');
+      }
+    }
+  }, [user, authLoading, router]);
+
   if (authLoading) {
     return (
       <DashboardLayout>
