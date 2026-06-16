@@ -305,8 +305,8 @@ router.post(
         }
       }
 
-      // 2FA Gate: wenn User 2FA aktiviert hat, kein Token ausstellen
-      if ((user as any).totpEnabled) {
+      // 2FA Gate bei Login: nur für reguläre User (nicht Admins — die haben ein separates Step-up Gate bei /admin)
+      if ((user as any).totpEnabled && user.role !== 'ADMIN') {
         const mfaToken = randomBytes(32).toString('hex');
         await redis.setEx(`mfa_pending:${mfaToken}`, 5 * 60, user.id);
         return res.status(200).json({

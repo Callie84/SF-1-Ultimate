@@ -242,7 +242,7 @@ services:
       - "traefik.http.middlewares.security-headers.headers.browserXssFilter=true"
       - "traefik.http.middlewares.security-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
       - "traefik.http.middlewares.security-headers.headers.permissionsPolicy=camera=(), microphone=(), geolocation=()"
-      - "traefik.http.middlewares.security-headers.headers.contentSecurityPolicy=default-src 'self'; img-src 'self' data: blob: https://fsn1.your-objectstorage.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://seedfinderpro.de https://api.seedfinderpro.de; font-src 'self' data:; frame-ancestors 'none';"
+      - "traefik.http.middlewares.security-headers.headers.contentSecurityPolicy=default-src 'self'; img-src 'self' data: blob: https://fsn1.your-objectstorage.com https://plausible.seedfinderpro.de; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://plausible.seedfinderpro.de; style-src 'self' 'unsafe-inline'; connect-src 'self' https://seedfinderpro.de https://api.seedfinderpro.de https://plausible.seedfinderpro.de wss://seedfinderpro.de; font-src 'self' data:; frame-ancestors 'none'; upgrade-insecure-requests;"
       - "traefik.http.routers.frontend.middlewares=security-headers"
       # SEC-8: Traefik Gateway-Level Rate Limiting (zweite Schutzschicht)
       # Auth-Routen: 20 req/min (Login, Register, Password-Reset)

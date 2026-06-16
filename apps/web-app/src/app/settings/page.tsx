@@ -36,7 +36,17 @@ import {
   QrCode,
   Download,
   Trash2,
+  ChevronRight,
+  Smartphone,
+  KeyRound,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useAuth } from '@/components/providers/auth-provider';
 import { toast } from 'sonner';
 import api from '@/lib/api-client';
@@ -48,7 +58,6 @@ import {
 } from '@/hooks/use-notifications';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
 import { useFeatureFlag } from '@/hooks/use-feature-flags';
-import { Smartphone } from 'lucide-react';
 import { ThemeSwitcher } from '@/components/theme-switcher';
 
 // ─── Toggle ───────────────────────────────────────────────────────────────
@@ -215,18 +224,22 @@ export default function SettingsPage() {
   const [twoFaDisableCode, setTwoFaDisableCode] = useState('');
   const [twoFaBackupCodes, setTwoFaBackupCodes] = useState<string[]>([]);
   const [twoFaLoading, setTwoFaLoading] = useState(false);
+  const [twoFaWizardStep, setTwoFaWizardStep] = useState<'idle' | 'qr' | 'backup'>('idle');
+  const [showTwoFaInfo, setShowTwoFaInfo] = useState(false);
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
 
   useEffect(() => {
-    if (activeSection === 'security' && user?.role === 'ADMIN') {
+    if (activeSection === 'security') {
       api.get('/api/auth/2fa/status').then((d: any) => setTwoFaStatus(d)).catch(() => {});
     }
-  }, [activeSection, user?.role]);
+  }, [activeSection]);
 
   const handle2FaSetup = async () => {
     setTwoFaLoading(true);
     try {
       const data: any = await api.post('/api/auth/2fa/setup');
       setTwoFaSetupData({ secret: data.secret, qrCode: data.qrCode });
+      setTwoFaWizardStep('qr');
     } catch (e: any) {
       toast.error(e?.response?.data?.error || '2FA-Setup fehlgeschlagen');
     } finally {
@@ -246,6 +259,7 @@ export default function SettingsPage() {
       setTwoFaSetupData(null);
       setTwoFaCode('');
       setTwoFaStatus({ enabled: true, backupCodesRemaining: data.backupCodes.length });
+      setTwoFaWizardStep('backup');
       toast.success('2FA erfolgreich aktiviert!');
     } catch (e: any) {
       toast.error(e?.response?.data?.error || '2FA-Aktivierung fehlgeschlagen');
@@ -264,6 +278,8 @@ export default function SettingsPage() {
       await api.post('/api/auth/2fa/disable', { code: twoFaDisableCode });
       setTwoFaStatus({ enabled: false, backupCodesRemaining: 0 });
       setTwoFaDisableCode('');
+      setShowDisableConfirm(false);
+      setTwoFaWizardStep('idle');
       toast.success('2FA deaktiviert');
     } catch (e: any) {
       toast.error(e?.response?.data?.error || '2FA-Deaktivierung fehlgeschlagen');
@@ -693,140 +709,251 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* ─── Security Section (2FA nur für Admins) ───────────────────── */}
+        {/* ─── Security Section ─────────────────────────────────────────── */}
         {activeSection === 'security' && (
           <div className="space-y-4">
-            {user?.role !== 'ADMIN' && (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-3 text-muted-foreground">
-                    <Shield className="h-5 w-5 text-green-500" />
-                    <div>
-                      <p className="font-medium text-foreground">Dein Account ist geschützt</p>
-                      <p className="text-sm">Die Zwei-Faktor-Authentifizierung steht für Admin-Accounts zur Verfügung.</p>
-                    </div>
+
+            {/* "Mehr erfahren" Dialog über 2FA */}
+            <Dialog open={showTwoFaInfo} onOpenChange={setShowTwoFaInfo}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-primary" />
+                    Zwei-Faktor-Authentifizierung — Alles Wichtige
+                  </DialogTitle>
+                  <DialogDescription>
+                    Wie 2FA funktioniert und was du beachten musst
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 text-sm">
+                  <div className="space-y-1">
+                    <p className="font-semibold">Was ist 2FA?</p>
+                    <p className="text-muted-foreground">
+                      Bei der Zwei-Faktor-Authentifizierung brauchst du neben deinem Passwort einen zweiten Beweis: einen 6-stelligen Code, der alle 30 Sekunden neu generiert wird. Selbst wenn jemand dein Passwort kennt, kann er sich ohne diesen Code nicht einloggen.
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-            {user?.role === 'ADMIN' && <Card>
+                  <div className="space-y-1">
+                    <p className="font-semibold flex items-center gap-1"><Smartphone className="h-4 w-4" /> Welche App brauchst du?</p>
+                    <p className="text-muted-foreground">
+                      Eine TOTP-kompatible Authenticator-App: <strong>Google Authenticator</strong>, <strong>Authy</strong>, <strong>Microsoft Authenticator</strong> oder <strong>1Password</strong>. Alle funktionieren gleich — einfach den QR-Code scannen.
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-semibold flex items-center gap-1"><KeyRound className="h-4 w-4" /> Backup-Codes</p>
+                    <p className="text-muted-foreground">
+                      Du erhältst 8 Backup-Codes. Jeder kann nur einmal verwendet werden — als Notfallzugang, wenn du dein Handy verlierst. Speichere sie an einem sicheren Ort (Passwort-Manager, Tresor, ausdrucken).
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-semibold flex items-center gap-1"><AlertTriangle className="h-4 w-4 text-yellow-500" /> Wichtig</p>
+                    <p className="text-muted-foreground">
+                      Wenn du keinen Zugriff mehr auf deine Authenticator-App <em>und</em> alle Backup-Codes verlierst, kann der Account nur durch direkten Admin-Support entsperrt werden. Nimm die Backup-Codes ernst.
+                    </p>
+                  </div>
+                  {user?.role === 'ADMIN' && (
+                    <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg space-y-1">
+                      <p className="font-semibold">Admin-spezifisches Verhalten</p>
+                      <p className="text-muted-foreground">
+                        Als Admin wird 2FA <strong>nicht beim Login</strong> abgefragt, sondern erst beim ersten Klick auf den Admin-Bereich in jeder Session. Danach gilt die Freigabe für die gesamte Session — du musst den Code also nur einmal pro Browser-Sitzung eingeben.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Bestätigung zum Deaktivieren */}
+            <Dialog open={showDisableConfirm} onOpenChange={setShowDisableConfirm}>
+              <DialogContent className="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-destructive">
+                    <ShieldOff className="h-5 w-5" />
+                    2FA wirklich deaktivieren?
+                  </DialogTitle>
+                  <DialogDescription>
+                    Dein Account wird deutlich unsicherer. Gib deinen aktuellen TOTP-Code zur Bestätigung ein.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <Input
+                    placeholder="6-stelliger Code"
+                    value={twoFaDisableCode}
+                    onChange={(e) => setTwoFaDisableCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    maxLength={6}
+                    className="font-mono text-center text-xl tracking-widest"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1" onClick={() => { setShowDisableConfirm(false); setTwoFaDisableCode(''); }}>
+                      Abbrechen
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={handle2FaDisable}
+                      disabled={twoFaLoading || twoFaDisableCode.length !== 6}
+                    >
+                      {twoFaLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Deaktivieren'}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* ── 2FA Card ── */}
+            <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Lock className="h-5 w-5" />
-                  Zwei-Faktor-Authentifizierung (2FA)
-                </CardTitle>
-                <CardDescription>
-                  Schütze deinen Admin-Account mit einem TOTP-Code (z.B. Google Authenticator, Authy)
-                </CardDescription>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <CardTitle className="flex items-center gap-2">
+                      <Lock className="h-5 w-5" />
+                      Zwei-Faktor-Authentifizierung (2FA)
+                    </CardTitle>
+                    <CardDescription>
+                      Zweite Sicherheitsebene per Authenticator-App — schützt deinen Account auch wenn dein Passwort bekannt wird.
+                    </CardDescription>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setShowTwoFaInfo(true)} className="shrink-0 text-muted-foreground">
+                    <Info className="h-4 w-4 mr-1" /> Mehr erfahren
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Status */}
-                {twoFaStatus && (
-                  <div className={`flex items-center gap-3 p-3 rounded-lg ${twoFaStatus.enabled ? 'bg-green-500/10 border border-green-500/30' : 'bg-muted'}`}>
-                    {twoFaStatus.enabled ? (
-                      <ShieldCheck className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <ShieldOff className="h-5 w-5 text-muted-foreground" />
+
+                {/* ─ Schritt 0: Status-Anzeige (idle) ─ */}
+                {twoFaWizardStep === 'idle' && (
+                  <>
+                    {twoFaStatus && (
+                      <div className={`flex items-center gap-3 p-3 rounded-lg ${twoFaStatus.enabled ? 'bg-green-500/10 border border-green-500/30' : 'bg-muted border'}`}>
+                        {twoFaStatus.enabled
+                          ? <ShieldCheck className="h-5 w-5 text-green-500 shrink-0" />
+                          : <ShieldOff className="h-5 w-5 text-muted-foreground shrink-0" />}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">{twoFaStatus.enabled ? '2FA ist aktiv' : '2FA ist deaktiviert'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {twoFaStatus.enabled
+                              ? `${twoFaStatus.backupCodesRemaining} Backup-Code${twoFaStatus.backupCodesRemaining === 1 ? '' : 's'} verbleibend`
+                              : 'Dein Account ist aktuell nur durch dein Passwort geschützt'}
+                          </p>
+                        </div>
+                        {twoFaStatus.enabled ? (
+                          <Button variant="outline" size="sm" className="shrink-0 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setShowDisableConfirm(true)}>
+                            Deaktivieren
+                          </Button>
+                        ) : (
+                          <Button size="sm" className="shrink-0" onClick={handle2FaSetup} disabled={twoFaLoading}>
+                            {twoFaLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
+                            Einrichten
+                          </Button>
+                        )}
+                      </div>
                     )}
-                    <div>
-                      <p className="font-medium">{twoFaStatus.enabled ? '2FA ist aktiv' : '2FA ist deaktiviert'}</p>
-                      {twoFaStatus.enabled && (
-                        <p className="text-sm text-muted-foreground">{twoFaStatus.backupCodesRemaining} Backup-Codes verbleibend</p>
-                      )}
+                    {!twoFaStatus && (
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Lade Status...
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* ─ Schritt 1 (qr): QR-Code scannen + Code bestätigen ─ */}
+                {twoFaWizardStep === 'qr' && twoFaSetupData && (
+                  <div className="space-y-4">
+                    {/* Fortschritts-Indikator */}
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
+                      <span className="text-foreground font-medium">QR-Code scannen</span>
+                      <span className="text-muted-foreground">→</span>
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full border text-xs">2</span>
+                      <span>Backup-Codes sichern</span>
                     </div>
+
+                    <div className="flex flex-col items-center gap-3 p-4 border rounded-lg bg-muted/30">
+                      <p className="text-sm text-muted-foreground text-center">
+                        Scanne diesen QR-Code mit deiner Authenticator-App (Google Authenticator, Authy, etc.)
+                      </p>
+                      <img src={twoFaSetupData.qrCode} alt="2FA QR Code" className="w-48 h-48 rounded" />
+                      <div className="w-full space-y-1">
+                        <p className="text-xs text-center text-muted-foreground">Kein Scanner? Gib diesen Code manuell ein:</p>
+                        <code className="block text-xs font-mono bg-muted px-3 py-2 rounded text-center break-all">{twoFaSetupData.secret}</code>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Code aus der App eingeben zur Bestätigung:</p>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="000000"
+                          value={twoFaCode}
+                          onChange={(e) => setTwoFaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          maxLength={6}
+                          className="font-mono text-center text-xl tracking-widest max-w-36"
+                          autoFocus
+                        />
+                        <Button onClick={handle2FaEnable} disabled={twoFaLoading || twoFaCode.length !== 6}>
+                          {twoFaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                          Bestätigen & aktivieren
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => { setTwoFaWizardStep('idle'); setTwoFaSetupData(null); setTwoFaCode(''); }}>
+                      Abbrechen
+                    </Button>
                   </div>
                 )}
 
-                {/* Backup Codes nach Aktivierung */}
-                {twoFaBackupCodes.length > 0 && (
-                  <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg space-y-2">
-                    <div className="flex items-center gap-2 text-yellow-600">
-                      <AlertTriangle className="h-4 w-4" />
-                      <p className="font-medium text-sm">Backup-Codes — nur einmal sichtbar!</p>
+                {/* ─ Schritt 2 (backup): Backup-Codes sichern ─ */}
+                {twoFaWizardStep === 'backup' && twoFaBackupCodes.length > 0 && (
+                  <div className="space-y-4">
+                    {/* Fortschritts-Indikator */}
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold">✓</span>
+                      <span className="text-muted-foreground">QR-Code scannen</span>
+                      <span className="text-muted-foreground">→</span>
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
+                      <span className="text-foreground font-medium">Backup-Codes sichern</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">Speichere diese Codes sicher. Du kannst sie zum Login verwenden, wenn du keinen Zugriff auf deine Authenticator-App hast.</p>
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      {twoFaBackupCodes.map((code, i) => (
-                        <code key={i} className="text-sm font-mono bg-muted px-2 py-1 rounded">{code}</code>
-                      ))}
+
+                    <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg space-y-3">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
+                        <div>
+                          <p className="font-semibold text-sm">Diese Codes werden nur jetzt angezeigt!</p>
+                          <p className="text-xs text-muted-foreground">Speichere sie in einem Passwort-Manager oder drucke sie aus. Ohne diese Codes verlierst du bei Handyverlust den Zugang.</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {twoFaBackupCodes.map((c, i) => (
+                          <code key={i} className="text-sm font-mono bg-background border px-3 py-1.5 rounded text-center">{c}</code>
+                        ))}
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(twoFaBackupCodes.join('\n')); toast.success('Codes kopiert'); }}>
+                          <Copy className="h-3 w-3 mr-2" />Kopieren
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => {
+                          const content = 'SeedFinderPro – 2FA Backup-Codes\n\n' + twoFaBackupCodes.join('\n') + '\n\nJeder Code kann nur einmal verwendet werden.';
+                          const blob = new Blob([content], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a'); a.href = url; a.download = 'seedfinderpro-2fa-backup-codes.txt'; a.click();
+                          URL.revokeObjectURL(url);
+                        }}>
+                          <Download className="h-3 w-3 mr-2" />Herunterladen
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => {
-                        navigator.clipboard.writeText(twoFaBackupCodes.join('\n'));
-                        toast.success('Backup-Codes kopiert');
-                      }}>
-                        <Copy className="mr-2 h-3 w-3" />Codes kopieren
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => {
-                        const content = 'SeedFinderPro – 2FA Backup-Codes\n\n' + twoFaBackupCodes.join('\n') + '\n\nJeder Code kann nur einmal verwendet werden.';
-                        const blob = new Blob([content], { type: 'text/plain' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = 'seedfinderpro-backup-codes.txt';
-                        a.click();
-                        URL.revokeObjectURL(url);
-                      }}>
-                        <Download className="mr-2 h-3 w-3" />Herunterladen
-                      </Button>
-                    </div>
+
+                    <Button className="w-full" onClick={() => { setTwoFaWizardStep('idle'); setTwoFaBackupCodes([]); }}>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Codes gesichert — Fertig
+                    </Button>
                   </div>
                 )}
 
-                {/* Setup: QR-Code-Anzeige */}
-                {twoFaSetupData && (
-                  <div className="space-y-3">
-                    <div className="flex flex-col items-center gap-3 p-4 border rounded-lg">
-                      <p className="text-sm text-muted-foreground text-center">Scanne diesen QR-Code mit deiner Authenticator-App</p>
-                      <img src={twoFaSetupData.qrCode} alt="2FA QR Code" className="w-48 h-48" />
-                      <p className="text-xs text-muted-foreground">Oder gib den Code manuell ein:</p>
-                      <code className="text-xs font-mono bg-muted px-2 py-1 rounded break-all">{twoFaSetupData.secret}</code>
-                    </div>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="6-stelligen Code eingeben"
-                        value={twoFaCode}
-                        onChange={(e) => setTwoFaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        maxLength={6}
-                        className="font-mono text-center text-lg"
-                      />
-                      <Button onClick={handle2FaEnable} disabled={twoFaLoading || twoFaCode.length !== 6}>
-                        {twoFaLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                        <span className="ml-2">Aktivieren</span>
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* 2FA aktivieren Button */}
-                {!twoFaStatus?.enabled && !twoFaSetupData && (
-                  <Button onClick={handle2FaSetup} disabled={twoFaLoading}>
-                    {twoFaLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <QrCode className="mr-2 h-4 w-4" />}
-                    2FA einrichten
-                  </Button>
-                )}
-
-                {/* 2FA deaktivieren */}
-                {twoFaStatus?.enabled && twoFaBackupCodes.length === 0 && (
-                  <div className="pt-4 border-t space-y-2">
-                    <p className="text-sm text-muted-foreground">2FA deaktivieren (TOTP-Code erforderlich):</p>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="TOTP-Code"
-                        value={twoFaDisableCode}
-                        onChange={(e) => setTwoFaDisableCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        maxLength={6}
-                        className="font-mono text-center max-w-32"
-                      />
-                      <Button variant="destructive" onClick={handle2FaDisable} disabled={twoFaLoading || twoFaDisableCode.length !== 6}>
-                        {twoFaLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
-                        <span className="ml-2">2FA deaktivieren</span>
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </CardContent>
-            </Card>}
+            </Card>
+
           </div>
         )}
 
