@@ -82,12 +82,12 @@ const SeedSchema = new Schema<ISeed>({
 
   flavorSource: {
     type: String,
-    enum: ['crawl', 'seedfinder', 'manual'],
+    enum: ['crawl', 'seedfinder', 'seedfinder-import', 'manual'],
   },
 
   source: {
     type: [String],
-    enum: ['crawl', 'seedfinder', 'firecrawl', 'manual'],
+    enum: ['crawl', 'seedfinder', 'seedfinder-import', 'firecrawl', 'manual'],
     default: [],
     index: true,
   },
