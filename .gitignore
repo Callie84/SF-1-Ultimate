@@ -157,3 +157,5 @@ la docker-compose*
 
 # Git Worktrees
 .worktrees/
+apps/price-service/core
+core
