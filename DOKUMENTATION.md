@@ -7497,6 +7497,7 @@ Automatische Ausführung der Mastertest-Suite: Smoke-Test vor Commits + volle Su
 - 2026-06-13 06:00 — ✅ 42/42 grün
 - 2026-06-14 06:00 — ✅ 42/42 grün
 - 2026-06-15 06:00 — ✅ 42/42 grün
+- 2026-06-29 06:00 — ✅ 42/42 grün
 - **Script:** `/root/scripts/sf1-daily-mastertest.sh`
 - **Trigger:** Täglich 06:00 (Crontab: `0 6 * * *`)
 - **Suite:** Volle 42-Test-Suite (`npm run mastertest`)
@@ -8549,3 +8550,75 @@ docker restart sf1-frontend
 
 ### Commits
 - Kein Commit — Login-Seite geändert aber nicht committet (Frontend wurde direkt im Container gebaut)
+
+## 2026-06-29 — price-service: Enum-Fehler `source:'seedfinder-import'` behoben (Neustart)
+
+### Problem
+`sf1-price-service`: `Seed validation failed: source.0: 'seedfinder-import' is not a valid enum value` (156x/24h) → jedes vom SeedFinder-Import geschriebene Produkt verworfen (trifft Affiliate + Preis-Sucher).
+
+### Ursache
+Korrektur war in der Quelle bereits vorhanden (`apps/price-service/src/models/Seed.model.ts`, `source.enum` enthaelt `seedfinder-import`). Container laeuft per Bind-Mount ueber `tsx src/index.ts` OHNE Watch → laufender Prozess (Start 20:37 UTC) hatte altes Schema im Speicher; Datei zuletzt 20:57 UTC geaendert.
+
+### Fix + Verifikation
+- Backup: `/root/Seed.model.ts.bak-20260629-0110`
+- `cd /root/SF-1-Ultimate- && docker-compose restart price-service` (nur dieser Service), Neustart 23:10 UTC → tsx laedt korrigiertes Schema.
+- Verifiziert: Container Up(healthy), Logs fehlerfrei (MongoDB+Redis connected, 24 Feed-Importer, 0 Enum-Fehler). Naechster Import 2026-06-29 02:00 UTC = finale Bestaetigung.
+
+### Offene Folgepunkte (nicht kritisch, nicht angefasst)
+- search-service: `ECONNREFUSED 127.0.0.1:6379` (Redis-Host = localhost statt sf1-redis).
+- Mongoose Duplicate-Index-Warnungen (`validUntil`, `lastScraped`) im Seed-Schema.
+
+## 2026-06-29 — search-service: Redis verifiziert + Strains-Index befuellt
+
+### Redis
+`ECONNREFUSED 127.0.0.1:6379` war bereits behoben: laufender Container (Start 20:50 UTC) hat korrekte Env (`REDIS_HOST=redis`), 0 Fehler/60min, `[Redis] Connected`. Compose-Env korrekt → persistent. Kein Eingriff noetig.
+
+### Strains-Suche war leer → behoben
+Meilisearch-Index `strains` hatte 0 Dokumente → Suche 0 Treffer. Daten lagen in MongoDB `sf1_price.seeds` (10.039 aktiv, davon 4.503 source=seedfinder-import). Ursache: Reindex nie erfolgreich (Redis-Queue vorher defekt). Fix: einmaliger `indexingService.reindexStrains()` (separater tsx-Prozess, Temp-Skript geloescht) → strains-Index = 10.039, Testsuche 'amnesia' liefert echte Treffer.
+
+### Offen
+- threads/users-Index = 0 (wenig Community-Content; bei Bedarf reindexThreads/Users).
+- Frischhalten: geplanter reindex-Job waere robust; sonst auf Indexer/BullMQ-Sync verlassen.
+
+## 2026-06-29 — Geplanter Search-Reindex-Job eingerichtet
+Damit neue Feed-Importe automatisch in der Suche landen:
+- Repo-Skript: `apps/search-service/scripts/reindex-strains.ts` (ruft `indexingService.reindexStrains()`).
+- Host-Wrapper: `/root/scripts/sf1-search-reindex.sh` (Telegram-Alarm bei Fehler, wartet auf isIndexing:false, loggt Doc-Count).
+- Cron: `0 4,16 * * *` (04:00/16:00 CEST = 2h nach Feed-Import 02:00/14:00) → `/var/log/sf1-search-reindex.log`.
+- Crontab-Backup: `/root/crontab.bak-*`. Testlauf grün: 10.039 Dokumente.
+
+## 2026-06-29 — UGG Strain-Finder auf echte 10k Strains + Preis im Such-Index
+### Server (search-service, live)
+- `config/meilisearch.ts`: strains-Index `filterableAttributes` + `sortableAttributes` um `lowestPrice`, `avgPrice` erweitert.
+- `services/indexing.service.ts` `reindexStrains()`: select + Mapping um `lowestPrice/avgPrice/priceCount/imageUrl` erweitert.
+- Backups: /root/sf1-bak-20260629-0355/. Restart + Reindex OK → 10.039 Docs, Preis-Filter/Sort live verifiziert.
+
+### Paket (Vault UGG-NextJS, Drop-in fürs Frontend)
+- NEU `lib/strains-api.ts`: echte Typen + Filter→Query-Helfer.
+- NEU/umgebaut `app/api/strains/route.ts`: Proxy auf Search-Service (Env UGG_SEARCH_URL, Default http://sf1-api-gateway/api/search).
+- umgebaut `components/StrainFinder.tsx`: echte Felder (Name/Breeder/Typ/Genetik/Blütezeit Tage/Effekte/Aromen/Preis), Filter (Text/Typ/Breeder/Blütezeit/Preis/nur-mit-Preis), Sort inkl. Preis, Paginierung.
+- `lib/strains-demo.ts` + `sql/strains.sql` = nur noch Legacy/Seed. README aktualisiert.
+### Offen (nicht kritisch)
+- Merch (Sticker/Keychains) im seeds-Import → Cleanup auf feed-scraper-v3-Ebene.
+- Optional: Meilisearch pagination.maxTotalHits>1000 für Zählung bei sehr breiten Queries.
+- Deploy: Paket ins seedfinderpro-Repo kopieren + UGG_SEARCH_URL setzen.
+
+## 2026-06-29 — Merch aus Strain-Such-Index ausgeschlossen (nicht-destruktiv)
+15 Nicht-Seeds (T-Shirts/Hoodies/Sticker/Keychain/Grinder/OrganiPlugs/Filter Papers/Plant Tag), alle source=crawl. Fuzzy-Delete zu riskant (False Positives) + temporär (Crawl zieht neu).
+Loesung: indexing.service.ts MERCH_RE (wortgrenzen-genau) + name:{$not:MERCH_RE} in reindexStrains(). Merch bleibt in Collection, wird nicht indexiert; Cron-Reindex haelt es sauber.
+Verifiziert: Index 10039 -> 10024 (-15). hoodie/sticker/keychain/grinder=0; t-shirt=18 echte Sorten (Token t). Backup /root/sf1-bak-20260629-0515/.
+Offen: gleichen Filter im crawl-Importer (apps/price-service), falls Merch auch aus price-Listings raus soll.
+
+## 2026-06-29 — Merch-Skip auch im crawl-Importer (Quelle)
+price.service.ts `saveScrapedProducts()`: MERCH_RE + `if (MERCH_RE.test(product.name)) { merchSkipped++; continue; }` am Loop-Anfang → Merch wird gar nicht erst als Seed/Price gespeichert. Log zeigt jetzt "... N merch skipped". Backup: /root/sf1-bak-20260629-*-price/. price-service neu gestartet, bereit, fehlerfrei. Regex per Node-Test geprüft (9 Merch erkannt, 9 echte Sorten inkl. Cap Junky/Louisiana Pine/Gift Pack korrekt NICHT erfasst). Reale Bestätigung beim nächsten Import (14:00/02:00) via merch-skipped-Zähler.
+
+## 2026-06-29 — 15 Merch-Seeds + 15 Prices gelöscht (reversibel)
+deleteMany der 15 verifizierten Merch-Docs (MERCH_RE) + zugehörige Prices. Vorher Voll-Backup: /root/sf1-bak-20260629-0550-merch/merch-backup.json (15714 B). seeds 10040→10025, merch_rest=0. Such-Index unverändert (filterte sie ohnehin). Importer skippt künftig.
+### Deploy-Befund (web-app)
+web-app (apps/web-app, src/-Layout) hat BEREITS volle Strain-Sektion: app/strains (Liste via useStrains→/api/community/strains), app/strains/[slug] (Detail+Preise via /api/prices/search+Reviews+Charts), app/search (→/api/search), components/search/*. UGG-StrainFinder würde duplizieren. Listenseite nutzt Community-Service, NICHT den Search-Service (wo die 10k+Preis liegen). → Richtung mit User klären statt Live-Frontend blind ändern.
+
+## 2026-06-29 — Entscheidung: Strains-Liste→Search-Service als SPEC (nicht ad-hoc live)
+Umstellung der app/strains-Liste auf Search-Service braucht Detail-Absicherung (~5.5k crawl-only ohne Community-Detail) + Live-Rebuild. Wegen Produktiv-Risiko + nicht voll testbarem Build → exakte build-ready SPEC im Vault: Logs/2026-06-29-SPEC-strains-liste-auf-search-service.md (5 Dateien + slug filterbar + Build/Rollback/Smoke-Test). Umsetzung in fokussierter Session. Backend (10k+Preis+Merch-frei+Cron-Reindex) ist bereits live und wirkt in Volltextsuche/Autocomplete.
+
+## 2026-06-29 — SESSION-ENDE / Handoff vorbereitet
+SPEC-Schritt 1 (slug filterbar + Reindex) vorab erledigt; Index 10.025, slug-Abruf verifiziert. Rollback-Backups der 5 Frontend-Dateien: /root/sf1-bak-20260629-0618-webapp/. System: 41 Container healthy, Site 200, 0 Restarts. Zentrales Handoff für nächste Session: Vault Logs/2026-06-29-SESSION-HANDOFF.md (+ SPEC-Datei). Nächste Aktion: SPEC Schritte 2–5 (Frontend) + Rebuild außerhalb Stoßzeiten.

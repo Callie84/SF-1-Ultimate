@@ -3,6 +3,8 @@ import { meiliClient, INDEXES } from '../config/meilisearch';
 import { logger } from '../utils/logger';
 import mongoose from 'mongoose';
 import { Pool } from 'pg';
+// Nicht-Seed-Produkte (Merch) vom Strain-Index ausschliessen (Quelle: crawl-Importer)
+const MERCH_RE = /\b(t[- ]?shirts?|stickers?|keychains?|lanyards?|hoodies?|sweatshirts?|beanies?|grinders?|organiplugs|mousepads?|posters?|filter papers?|rolling papers?|plant tags?)\b/i;
 
 export interface IndexDocument {
   id: string;
@@ -155,8 +157,8 @@ export class IndexingService {
       // Strain-Model (simplified)
       const Strain = mongoose.models['Seed'] || mongoose.model('Seed', new mongoose.Schema({}, { strict: false }));
       
-      const strains = await Strain.find({ deletedAt: { $exists: false } })
-        .select('_id name slug breeder type thc cbd floweringTime genetics effects flavors viewCount')
+      const strains = await Strain.find({ deletedAt: { $exists: false }, name: { $not: MERCH_RE } })
+        .select('_id name slug breeder type thc cbd floweringTime genetics effects flavors viewCount lowestPrice avgPrice priceCount imageUrl')
         .lean();
       
       const documents = strains.map(strain => ({
@@ -171,7 +173,11 @@ export class IndexingService {
         genetics: strain.genetics,
         effects: strain.effects,
         flavors: strain.flavors,
-        popularity: strain.viewCount || 0
+        popularity: strain.viewCount || 0,
+        lowestPrice: strain.lowestPrice ?? null,
+        avgPrice: strain.avgPrice ?? null,
+        priceCount: strain.priceCount || 0,
+        imageUrl: strain.imageUrl || null
       }));
 
       const meiliIndex = meiliClient.index(INDEXES.STRAINS);

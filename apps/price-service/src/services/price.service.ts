@@ -5,6 +5,8 @@ import { redis } from '../config/redis';
 import { generateSlug } from '../utils/helpers';
 import { logger } from '../utils/logger';
 import { ScrapedProduct } from '../scrapers/base.scraper';
+// Nicht-Seed-Produkte (Merch) erkennen und beim Import ueberspringen
+const MERCH_RE = /\b(t[- ]?shirts?|stickers?|keychains?|lanyards?|hoodies?|sweatshirts?|beanies?|grinders?|organiplugs|mousepads?|posters?|filter papers?|rolling papers?|plant tags?)\b/i;
 
 /**
  * Parst THC/CBD-Werte aus Strings wie "20%", "16-24%", "Sehr hoch (über 20%)"
@@ -45,8 +47,10 @@ export class PriceService {
     let seedsCreated = 0;
     let pricesCreated = 0;
     let pricesUpdated = 0;
+    let merchSkipped = 0;
     
     for (const product of products) {
+      if (MERCH_RE.test(product.name || '')) { merchSkipped++; continue; }
       try {
         // Find or create seed
         const seedSlug = generateSlug(`${product.name}-${product.breeder || 'unknown'}`);
@@ -149,7 +153,7 @@ export class PriceService {
       }
     }
     
-    logger.info(`[PriceService] Saved ${seedsCreated} new seeds, ${pricesCreated} new prices, ${pricesUpdated} prices updated`);
+    logger.info(`[PriceService] Saved ${seedsCreated} new seeds, ${pricesCreated} new prices, ${pricesUpdated} prices updated, ${merchSkipped} merch skipped`);
 
     return { seeds: seedsCreated, prices: pricesCreated, pricesUpdated };
   }

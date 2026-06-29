@@ -41,7 +41,10 @@ export const INDEX_CONFIGS = {
       'floweringTime',
       'difficulty',
       'indoor',
-      'outdoor'
+      'outdoor',
+      'lowestPrice',
+      'avgPrice',
+      'slug'
     ],
     sortableAttributes: [
       'name',
@@ -49,7 +52,9 @@ export const INDEX_CONFIGS = {
       'cbd',
       'floweringTime',
       'popularity',
-      'createdAt'
+      'createdAt',
+      'lowestPrice',
+      'avgPrice'
     ],
     rankingRules: [
       'words',
