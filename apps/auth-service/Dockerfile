@@ -76,8 +76,8 @@ COPY --from=prisma /app/node_modules/@prisma ./node_modules/@prisma
 # ==========================================
 FROM node:20-alpine AS production
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init (signals) + openssl (Prisma engine detection on Alpine/OpenSSL 3)
+RUN apk add --no-cache dumb-init openssl
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
