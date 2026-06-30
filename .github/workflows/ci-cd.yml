@@ -1,9 +1,15 @@
 # CI/CD Pipeline für SF-1 Ultimate
+# Test-/Build-Jobs unverändert übernommen; nur der Deploy-Job wurde ersetzt:
+#   - Production-Deploy NUR bei Tag v*.*.*  (manuelles Freigabe-Gate via Environment)
+#   - echtes Rebuild (build + up) statt 'docker-compose restart'
+#   - Health-Check + Auto-Rollback über scripts/deploy.sh
+#   - neue Secrets: DEPLOY_SSH_KEY / SERVER_HOST / SERVER_USER / SERVER_PATH
 name: CI/CD Pipeline
 
 on:
   push:
     branches: [main, develop, claude/**]
+    tags: ['v*.*.*']
   pull_request:
     branches: [main, develop]
 
@@ -17,30 +23,24 @@ jobs:
   frontend-ci:
     name: Frontend CI
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: apps/web-app/package-lock.json
-
       - name: Install Dependencies
         working-directory: apps/web-app
         run: npm ci
-
       - name: TypeScript Check
         working-directory: apps/web-app
         run: npx tsc --noEmit
-
       - name: Lint
         working-directory: apps/web-app
         run: npm run lint || echo "Lint warnings (non-blocking)"
-
       - name: Build
         working-directory: apps/web-app
         run: npm run build
@@ -54,7 +54,6 @@ jobs:
   backend-ci:
     name: Backend CI (${{ matrix.service }})
     runs-on: ubuntu-latest
-
     strategy:
       fail-fast: false
       matrix:
@@ -69,26 +68,21 @@ jobs:
           - ai-service
           - media-service
           - gamification-service
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: apps/${{ matrix.service }}/package-lock.json
-
       - name: Install Dependencies
         working-directory: apps/${{ matrix.service }}
         run: npm ci
-
       - name: TypeScript Check
         working-directory: apps/${{ matrix.service }}
         run: npx tsc --noEmit || echo "TypeScript check done"
-
       - name: Build
         working-directory: apps/${{ matrix.service }}
         run: npm run build
@@ -99,7 +93,6 @@ jobs:
   test-auth:
     name: Auth Service Tests
     runs-on: ubuntu-latest
-
     services:
       postgres:
         image: postgres:15-alpine
@@ -114,7 +107,6 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-
       redis:
         image: redis:7-alpine
         options: >-
@@ -124,34 +116,28 @@ jobs:
           --health-retries 5
         ports:
           - 6379:6379
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
           cache-dependency-path: apps/auth-service/package-lock.json
-
       - name: Install Dependencies
         working-directory: apps/auth-service
         run: npm ci
-
       - name: Generate Prisma Client
         working-directory: apps/auth-service
         run: npx prisma generate
         env:
           DATABASE_URL: postgresql://sf1_user:test_password@localhost:5432/sf1_auth_test
-
       - name: Run Prisma Migrations
         working-directory: apps/auth-service
         run: npx prisma db push
         env:
           DATABASE_URL: postgresql://sf1_user:test_password@localhost:5432/sf1_auth_test
-
       - name: Run Tests
         working-directory: apps/auth-service
         run: npm test || echo "No tests defined"
@@ -162,47 +148,32 @@ jobs:
           JWT_REFRESH_SECRET: test_jwt_refresh_secret_for_ci_minimum_32_chars
 
   # ==========================================
-  # DEPLOY: Nur auf main-Branch Push
+  # DEPLOY: NUR bei Tag v*.*.*  (manuelles Freigabe-Gate)
+  #   echtes Rebuild + Health-Check + Auto-Rollback via scripts/deploy.sh
   # ==========================================
-  deploy:
+  deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: [frontend-ci, backend-ci, test-auth]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment:
+      name: production
+      url: https://seedfinderpro.de
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     steps:
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.8.0
+      - name: SSH-Key in Agent laden (taucht nicht im Log auf)
+        uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Deploy via SSH
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+      - name: Server-Hostkey vertrauen
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'ENDSSH'
-            set -e
-            cd /root/SF-1-Ultimate-
-
-            echo "[Deploy] Pulling latest code..."
-            git pull origin main
-
-            echo "[Deploy] Restarting services (rolling, one by one)..."
-            docker-compose restart community-service
-            sleep 5
-            docker-compose restart journal-service
-            sleep 5
-            docker-compose restart auth-service
-            sleep 5
-            docker-compose restart price-service
-            sleep 5
-            docker-compose restart frontend
-          ENDSSH
-
-      - name: Health Check
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          chmod 600 ~/.ssh/known_hosts
+      - name: Deploy (getaggter Release)
         run: |
-          sleep 60
-          curl -fsS https://seedfinderpro.de/api/community/health || exit 1
-          echo "Deployment verified!"
-
-      - name: Notify on Failure
-        if: failure()
-        run: echo "::error::Deployment to production failed!"
+          ssh -o StrictHostKeyChecking=yes \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "cd '${{ secrets.SERVER_PATH }}' && git fetch --all --prune --tags && ./scripts/deploy.sh production '${{ github.ref_name }}'"
