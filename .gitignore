@@ -159,3 +159,4 @@ la docker-compose*
 .worktrees/
 apps/price-service/core
 core
+reports/
