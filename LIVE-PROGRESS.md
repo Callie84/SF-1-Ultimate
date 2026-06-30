@@ -1,15 +1,21 @@
 # LIVE-PROGRESS — SF-1 v1 Produktiv
 
-**Last-Update:** 2026-06-05T09:00:00Z
-**Status:** ✅ clean
+**Last-Update:** 2026-06-30T05:30:00Z
+**Status:** ✅ clean (System stabil; offene Aufräum-Punkte siehe NEXT ACTION)
 
 ## ➡ NEXT ACTION
-`/auth/2fa`-Seite implementieren — 2FA-Login-Flow ist broken (Login-Seite leitet zu `/auth/2fa` weiter, aber die Seite existiert nicht). Außerdem: Login-Fix committen (`apps/web-app/src/app/auth/login/page.tsx`).
+Server-Git-Divergenz aufräumen: Server ist 2 Commits vor origin/main + hat eine redundante uncommittete Dockerfile-Zeile (openssl-Fix ist bereits in main, Commit 6ea5650). Schritte: `git log --oneline origin/main..HEAD` ansehen, dann `git checkout -- apps/auth-service/Dockerfile`, dann gemeinsam sauber auf origin/main bringen (NICHT blind reset --hard). Danach: alte GitHub-Tokens widerrufen, GitHub Environment `production` + Required Reviewers anlegen. (Weiterhin offen: `/auth/2fa`-Seite implementieren — siehe unten.)
 
 ## Aktueller Task
 —
 
 ## Letzter abgeschlossener Task
+[2026-06-30] **CI/CD-Pipeline-Umbau + Auth-Incident behoben** (d5bef83, 6ea5650)
+- Sicherheit: Server-Token raus (SSH-Deploy-Key), Claude Code vom Server entfernt, 4 GitHub-Secrets, 2 SSH-Keys (A: Actions->Server, B: Server->GitHub read-only)
+- CI/CD: tag-basierter Production-Deploy mit Rebuild/Health-Check/Auto-Rollback (`scripts/deploy.sh`) statt kaputtem `docker-compose restart`
+- Incident: auth-service Crash-Loop nach Rebuild (Prisma/OpenSSL) -> Fix `openssl` in `apps/auth-service/Dockerfile` prod-Stage -> healthy. Siehe Code-Patterns.md.
+- Offen: Server-Git-Divergenz, Token-Revoke, production-Gate, deploy.sh node:20-alpine-Services (pull+restart), Rollback-Basislinie
+
 [2026-06-05] **Login-Bug: 2FA-Flow fehlte in Login-Seite** (kein Commit)
 - Root Cause: 2FA aktiviert → `requires2FA: true` → kein `accessToken` → `undefined`-Cookie → "Invalid or expired token"
 - Fix: Login-Seite leitet jetzt zu `/auth/2fa` weiter bei `requires2FA: true`
