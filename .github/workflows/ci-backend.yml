@@ -79,7 +79,6 @@ jobs:
         service:
           - tools-service
           - notification-service
-          - ai-service
 
     steps:
       - name: Checkout code

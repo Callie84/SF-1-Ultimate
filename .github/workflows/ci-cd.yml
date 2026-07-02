@@ -65,7 +65,6 @@ jobs:
           - tools-service
           - notification-service
           - search-service
-          - ai-service
           - media-service
           - gamification-service
     steps:
