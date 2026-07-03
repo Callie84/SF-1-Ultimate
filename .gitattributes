@@ -1,0 +1,7 @@
+# SF-1 Ultimate - Zeilenenden-Normalisierung
+# Shell-Skripte MUESSEN LF sein (Ausfuehrung auf Linux-Server, z.B. scripts/deploy.sh).
+*.sh    text eol=lf
+
+# YAML konsistent LF (beseitigt die CRLF-Warnung bei Workflow-Dateien)
+*.yml   text eol=lf
+*.yaml  text eol=lf
