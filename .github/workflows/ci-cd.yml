@@ -34,7 +34,7 @@ jobs:
           cache-dependency-path: apps/web-app/package-lock.json
       - name: Install Dependencies
         working-directory: apps/web-app
-        run: npm ci
+        run: npm ci --legacy-peer-deps
       - name: TypeScript Check
         working-directory: apps/web-app
         run: npx tsc --noEmit
@@ -78,7 +78,7 @@ jobs:
           cache-dependency-path: apps/${{ matrix.service }}/package-lock.json
       - name: Install Dependencies
         working-directory: apps/${{ matrix.service }}
-        run: npm ci
+        run: npm ci --legacy-peer-deps
       - name: TypeScript Check
         working-directory: apps/${{ matrix.service }}
         run: npx tsc --noEmit || echo "TypeScript check done"
@@ -126,7 +126,7 @@ jobs:
           cache-dependency-path: apps/auth-service/package-lock.json
       - name: Install Dependencies
         working-directory: apps/auth-service
-        run: npm ci
+        run: npm ci --legacy-peer-deps
       - name: Generate Prisma Client
         working-directory: apps/auth-service
         run: npx prisma generate

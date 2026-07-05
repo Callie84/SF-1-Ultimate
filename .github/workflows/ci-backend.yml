@@ -57,7 +57,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: apps/${{ matrix.service }}
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Run Tests
         working-directory: apps/${{ matrix.service }}
@@ -93,7 +93,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: apps/${{ matrix.service }}
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: Build
         working-directory: apps/${{ matrix.service }}

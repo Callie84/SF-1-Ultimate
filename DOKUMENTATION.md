@@ -8738,3 +8738,12 @@ Alle 7 betroffenen Services (price, media, journal, notification, search, gamifi
 3. `ai-service`-Entfernung aus CI-Matrix nochmal verifizieren (Commit 3af758d, war vorher durch die TS-Fehler ueberdeckt)
 4. Sicherheits-Scan (`npm audit`) fuer alle 7 Services nachholen — waehrend der Arbeit bewusst zurueckgestellt, um nicht zwei Baustellen gleichzeitig zu haben
 5. Aufraeum-Kandidaten von 2026-07-05 abarbeiten: apps/scraper-service, services/content-service, Root-Status-Dateien archivieren
+
+## 2026-07-05 (Abend) — CI-Workflows: npm-ci-ERESOLVE-Konflikt behoben (Item A Nachwehen)
+**Kontext:** Nach dem Push aller TypeScript-Fixes waren bei GitHub weiterhin 3 von 5 Workflows rot: "CI - Backend Integration Tests", "CI/CD Pipeline", "Docker Build Check". Ursache lag NICHT an den TypeScript-Fixes selbst.
+
+**Ursache:** Alle CI-Workflows nutzen `npm ci` (strikt, ohne Toleranz fuer Peer-Dependency-Konflikte) statt lokal `npm install --legacy-peer-deps` (das wir die ganze Session ueber pro Service brauchten). `bullmq@5.78.0` deklariert `redis@>=5.0.0` als **peerOptional** (nicht zwingend), das Projekt nutzt aber bewusst `redis@^4.6.0`. `npm ci` bricht bei jedem Peer-Konflikt sofort ab, `npm install --legacy-peer-deps` toleriert das. Dieses Problem bestand vermutlich schon laenger, wurde aber von den lauteren TypeScript-Fehlern ueberdeckt.
+
+**Fix:** `--legacy-peer-deps` zu allen `npm ci`-Aufrufen in `.github/workflows/ci-backend.yml` (2 Stellen) und `.github/workflows/ci-cd.yml` (3 Stellen) ergaenzt. Kein Workaround, sondern korrekte Reaktion auf eine explizit als optional markierte Peer-Dependency — passt zusammen mit dem heutigen BullMQ-Learning (wir uebergeben ohnehin nur {host,port,password}, nie den fertigen node-redis-Client, brauchen also den redis-v5-Adapter von bullmq gar nicht).
+
+**Docker Build Check bleibt separat zu untersuchen:** Betrifft laut Workflow-Datei nur `auth-service` + `web-app` (Frontend) — keiner von beiden nutzt bullmq/redis, also vermutlich unabhaengige, aeltere Ursache. Log wird noch angefordert.
