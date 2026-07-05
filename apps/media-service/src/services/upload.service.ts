@@ -44,7 +44,7 @@ export class UploadService {
     const fileType = getMimeTypeCategory(file.mimetype);
     
     // Processing je nach Typ
-    let processedBuffers: { [key: string]: Buffer } = {};
+    let processedBuffers: { [key: string]: Buffer | undefined } = {};
     let metadata: any = {};
     
     if (isImageMimeType(file.mimetype)) {
@@ -253,7 +253,7 @@ export class UploadService {
       query.userId = userId;
     }
     
-    return File.findOne(query).lean();
+    return File.findOne(query).lean<IFile>();
   }
   
   /**
@@ -286,7 +286,7 @@ export class UploadService {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .lean(),
+        .lean<IFile[]>(),
       File.countDocuments(query)
     ]);
     

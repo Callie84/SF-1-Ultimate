@@ -77,7 +77,7 @@ export class StatsService {
   private estimateHarvest(grow: any, entries: any[]): number | null {
     if (!grow.lightWattage) return null;
     
-    const baseEfficiency = {
+    const baseEfficiency: Record<string, number> = {
       autoflower: 0.7,
       feminized: 1.0,
       regular: 0.9,
@@ -91,7 +91,7 @@ export class StatsService {
   private estimateDaysToHarvest(grow: any, entries: any[]): number | null {
     const currentWeek = entries.slice(-1)[0]?.week || 0;
     
-    const floweringWeeks = {
+    const floweringWeeks: Record<string, number> = {
       autoflower: 10,
       feminized: 9,
       regular: 10,

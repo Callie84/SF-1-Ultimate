@@ -1,10 +1,34 @@
 import { Queue, Worker } from 'bullmq';
-import { redis } from '../config/redis';
 import { pushService } from '../services/push.service';
 import { logger } from '../utils/logger';
 
+// BullMQ braucht eine eigene Verbindungs-Beschreibung (Host/Port/Passwort),
+// nicht den fertigen node-redis-Client (der ist mit BullMQ nicht kompatibel).
+function getBullMQConnection() {
+  const redisUrl = process.env.REDIS_URL;
+  if (redisUrl) {
+    try {
+      const url = new URL(redisUrl);
+      return {
+        host: url.hostname,
+        port: parseInt(url.port || '6379'),
+        password: url.password || undefined,
+      };
+    } catch {
+      // fallback
+    }
+  }
+  return {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379'),
+    password: process.env.REDIS_PASSWORD,
+  };
+}
+
+const connection = getBullMQConnection();
+
 const pushQueue = new Queue('push', {
-  connection: redis
+  connection
 });
 
 const pushWorker = new Worker('push', async (job) => {
@@ -22,7 +46,7 @@ const pushWorker = new Worker('push', async (job) => {
     throw error; // Retry
   }
 }, {
-  connection: redis,
+  connection,
   concurrency: 10
 });
 

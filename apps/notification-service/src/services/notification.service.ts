@@ -1,5 +1,5 @@
 import { Notification, INotification } from '../models/Notification.model';
-import { Preference } from '../models/Preference.model';
+import { Preference, IPreference } from '../models/Preference.model';
 import { emailService } from './email.service';
 import { websocketService } from './websocket.service';
 import { redis } from '../config/redis';
@@ -176,16 +176,27 @@ export class NotificationService {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .lean(),
+        .lean<INotification[]>(),
       Notification.countDocuments(query),
       Notification.countDocuments({ userId, isRead: false })
     ]);
     
     return { 
-      notifications: notifications as INotification[], 
+      notifications, 
       total, 
       unread 
     };
+  }
+  
+  /**
+   * Delete notification
+   */
+  async deleteNotification(notificationId: string, userId: string): Promise<void> {
+    const result = await Notification.deleteOne({ _id: notificationId, userId });
+
+    if (result.deletedCount > 0) {
+      await redis.decr(`notifications:unread:${userId}`);
+    }
   }
   
   /**

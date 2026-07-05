@@ -1,10 +1,14 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IReaction extends Document {
   userId: string;
   growId: string;
   type: 'fire' | 'frosty' | 'jealous' | 'helpful' | 'impressive';
   createdAt: Date;
+}
+
+export interface IReactionModel extends Model<IReaction> {
+  getReactionCounts(growId: string): Promise<Array<{ _id: string; count: number }>>;
 }
 
 const ReactionSchema = new Schema<IReaction>({
@@ -31,4 +35,4 @@ ReactionSchema.statics.getReactionCounts = async function(growId: string) {
   ]);
 };
 
-export const Reaction = mongoose.model<IReaction>('Reaction', ReactionSchema);
+export const Reaction = mongoose.model<IReaction, IReactionModel>('Reaction', ReactionSchema);

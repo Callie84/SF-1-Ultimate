@@ -1,5 +1,5 @@
 // /apps/community-service/src/services/message.service.ts
-import { Conversation, IConversation } from '../models/Conversation.model';
+import { Conversation, IConversation, LeanConversation } from '../models/Conversation.model';
 import { Message, IMessage } from '../models/Message.model';
 import { AppError } from '../utils/errors';
 
@@ -36,7 +36,7 @@ export class MessageService {
   async getConversations(
     userId: string,
     options: { skip?: number; limit?: number } = {}
-  ): Promise<{ conversations: IConversation[]; total: number }> {
+  ): Promise<{ conversations: LeanConversation[]; total: number }> {
     const { skip = 0, limit = 20 } = options;
 
     const filter = {
@@ -49,11 +49,11 @@ export class MessageService {
         .sort({ lastMessageAt: -1 })
         .skip(skip)
         .limit(limit)
-        .lean(),
+        .lean<LeanConversation[]>(),
       Conversation.countDocuments(filter)
     ]);
 
-    return { conversations: conversations as IConversation[], total };
+    return { conversations, total };
   }
 
   /**
@@ -137,11 +137,11 @@ export class MessageService {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .lean(),
+        .lean<IMessage[]>(),
       Message.countDocuments(filter)
     ]);
 
-    return { messages: messages as IMessage[], total };
+    return { messages, total };
   }
 
   /**

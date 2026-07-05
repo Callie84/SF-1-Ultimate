@@ -8628,3 +8628,113 @@ SPEC-Schritt 1 (slug filterbar + Reindex) vorab erledigt; Index 10.025, slug-Abr
 **CI/CD (Commit d5bef83):** `.github/workflows/ci-cd.yml` — kaputter `docker-compose restart`-Deploy ersetzt durch tag-basierten Production-Deploy (`v*.*.*`, manuelles Environment-Gate). Neues `scripts/deploy.sh`: baut Build-Services neu (auth/price/backup), Health-Check, Auto-Rollback auf letzten guten ref, verweigert Deploy bei getrackten Änderungen. Bestehende Test/Build-Jobs + ci-backend/ci-frontend/docker-build/security unverändert.
 **Incident (Commit 6ea5650):** Erster manueller `deploy.sh production main` rebuildete auth-service → Crash-Loop. Ursache: Prisma fand kein OpenSSL im Image (neues `node:20-alpine` = OpenSSL 3, libssl.1.1 fehlt) → lud falsche Engine. Fix: `openssl` in `apk add` der Production-Stage von `apps/auth-service/Dockerfile`. Auf Server gebaut + in main. auth-service healthy (PostgreSQL+Redis connected, Port 3001). Detail: Code-Patterns.md 2026-06-30.
 **Offen:** Server-Git-Divergenz aufräumen (2 Commits vor origin) · alte Tokens widerrufen · production-Environment-Gate (Required Reviewers) · deploy.sh um node:20-alpine-Services (pull+restart) erweitern · Rollback-Basislinie setzen.
+
+## 2026-07-05 — TypeScript-Typschulden: price-service fehlerfrei (1/7 Services erledigt)
+**Kontext:** Workstream "Item A" (7 Services mit TS-Fehlern: price, media, journal, notification, search, gamification, community) aus Kontext-Snapshot.
+**price-service:** `npm install --legacy-peer-deps` nötig (bullmq@5.78 vs. redis@4.7 Peer-Dependency-Konflikt, ungefährlich/optional — kein `--force` nötig). Danach `tsc --noEmit` zeigte genau 1 Fehler: `seedfinder-enrichment.service.ts:7` importierte `closeBrowser` aus `config/playwright.ts`, wurde aber nie aufgerufen (Karteileichen-Import, kein funktionaler Bug — der geteilte Playwright-Browser wird bewusst offengehalten für Wiederverwendung, nur Page+Context werden pro Request geschlossen). Fix: ungenutzten Import entfernt. `tsc --noEmit` danach fehlerfrei.
+**Nebenfund (noch offen, kein Blocker):** `closeBrowser()` in `config/playwright.ts` wird aktuell im gesamten Service nirgends aufgerufen — prüfen, ob der Shutdown-Handler in `index.ts` das beim Server-Stopp sauber schließen sollte (Chromium-Prozess-Leak bei Neustarts vermeiden).
+**Security-Hinweis (nicht bearbeitet):** `npm install` meldete 12 vulnerabilities (1 low, 6 moderate, 5 high) in Third-Party-Paketen. Bewusst noch nicht mit `npm audit fix` angefasst, um nicht zwei Baustellen gleichzeitig zu öffnen — separater Task nach Abschluss aller 7 TS-Fixes.
+**Naechster Service:** media-service.
+
+## 2026-07-05 — TypeScript-Typschulden: media-service fehlerfrei (2/7 Services erledigt)
+**Ausgangslage:** 20 Fehler in 5 Dateien.
+**Karteileiche entfernt:** `middleware/auth.middleware.ts` war ein kompletter Duplikat/Ueberbleibsel (Kommentar verwies auf `/SF-1-Ultimate/shared/middleware/`, fuer "ALLE Services" gedacht) und wurde von KEINER Route importiert (alle Routen nutzen `middleware/auth.ts`). Datei nicht geloescht, sondern umbenannt zu `_unused_auth.middleware.ts.bak` (reversibel, aber aus dem TS-Compile-Scope raus). Behebt 2 Fehler.
+**processing.service.ts:** `.withMetadata(false)` (2x) entfernt — Sharp-Version akzeptiert `false` nicht mehr als Parameter; ohne den Aufruf entfernt Sharp EXIF-Daten ohnehin automatisch (keine Verhaltensaenderung). Behebt 2 Fehler.
+**Quota.model.ts:** 4 nachtraeglich angehaengte Statics (`getOrCreate`, `incrementUsage`, `decrementUsage`, `resetMonthly`) + 4 Virtuals (`remainingMB`, `remainingFiles`, `usagePercent`, `isQuotaExceeded`) waren im Typ-System nicht deklariert. Neues `IQuotaModel`-Interface (extends `Model<IQuota>`) ergaenzt, Virtuals in `IQuota` ergaenzt, Model-Erzeugung auf `mongoose.model<IQuota, IQuotaModel>(...)` umgestellt. Behebt 8 Fehler.
+**upload.service.ts:** a) `processedBuffers`-Typ von `{ [key: string]: Buffer }` auf `{ [key: string]: Buffer | undefined }` korrigiert (Thumbnails koennen optional fehlen, war im Code schon so behandelt, nur der Typ war zu strikt). b) 2x `.lean()` durch `.lean<IFile>()` bzw. `.lean<IFile[]>()` ersetzt (bekannter Mongoose+TS-Typkonflikt bei `.lean()`-Rueckgabetyp, Standard-Fix laut Mongoose-Doku). Behebt 6 Fehler.
+**virus-scan.service.ts:** a) `@types/clamscan` als devDependency ergaenzt (existiert offiziell auf npm/DefinitelyTyped). b) **Echter Bug, kein reiner Typo:** `redis.brpop(...)` mit `item[1]`-Zugriff war fuer die ALTE Redis-Client-API (Array-Rueckgabe `[key, value]`). Die installierte `redis`-v4-Bibliothek liefert bei `brPop` (richtige Schreibweise) ein Objekt `{key, element}` zurueck — `item[1]` haette zur Laufzeit `undefined` ergeben und `JSON.parse(undefined)` waere gecrasht, sobald der Virus-Scan-Worker das erste Mal wirklich ein Element aus der Queue bekommen haette. Fix: `brpop`→`brPop`, `item[1]`→`item.element`. c) Nach dem `@types/clamscan`-Update kam ein NEUER (vorher unsichtbarer) Fehler zum Vorschein: `scanLog: null` ist laut echtem Typ nicht erlaubt (erwartet `string | undefined`). Zeile entfernt (Standardverhalten = kein Scan-Log, unveraendert). Behebt insgesamt 2 + 1 Fehler.
+**Ergebnis:** `tsc --noEmit` zeigt keine Fehler mehr.
+**Naechster Service:** journal-service.
+
+## 2026-07-05 — TypeScript-Typschulden: journal-service fehlerfrei (3/7 Services erledigt)
+**Ausgangslage:** 15 Fehler in 5 Dateien.
+**Karteileiche entfernt:** `middleware/auth.middleware.ts` — identisches Muster wie bei media-service (unbenutzte "Shared-Middleware"-Kopie, alle Routen nutzen `middleware/auth.ts`). Umbenannt zu `_unused_auth.middleware.ts.bak`. Behebt 1 Fehler.
+**Reaction.model.ts:** Static `getReactionCounts()` war TypeScript nicht bekannt (gleiches Muster wie Quota.model.ts). Neues `IReactionModel`-Interface ergaenzt, Model-Erzeugung auf `mongoose.model<IReaction, IReactionModel>(...)` umgestellt. Behebt 1 Fehler (in grow.service.ts).
+**grow.service.ts:** `grow.quality = data.quality` — `markHarvested()` nimmt `quality?: number` entgegen, das Grow-Schema erlaubt aber nur `1|2|3|4|5`. Typ-Cast ergaenzt; die Mongoose-Schema-Validierung (`min:1, max:5`) faengt ungueltige Werte beim Speichern ohnehin ab, keine Verhaltensaenderung. Behebt 1 Fehler.
+**photo.service.ts:** `.withMetadata(false)` an 3 Stellen entfernt (identischer Sharp-Fix wie media-service). Behebt 3 Fehler.
+**Grow.model.ts:** Virtual `daysRunning` (Tage seit Grow-Start) war im `IGrow`-Interface nicht deklariert, genutzt in stats.service.ts. Ergaenzt. Behebt 2 Fehler.
+**reminder.service.ts:** a) 4x `.lean()` durch `.lean<IReminder[]>()` ersetzt (gleicher Mongoose+TS-Typkonflikt wie media-service upload.service.ts). b) `bulkCreate()`: `insertMany(docs)` bemaengelte fehlenden Default fuer `isRecurring` sowie zu allgemein typisiertes `status`-Feld (TS weitet `'pending'` in einem `.map()`-Objektliteral automatisch zu `string` statt es als exakten Wert zu behalten). Fix: `isRecurring: r.isRecurring ?? false` (identisch zum Schema-Default) + `status: 'pending' as const`. Behebt 6 Fehler.
+**stats.service.ts:** Zwei Nachschlage-Tabellen (`baseEfficiency`, `floweringWeeks`) wurden mit `grow: any` indiziert, was TS als "implizit any"-Zugriff ablehnte. Auf `Record<string, number>` typisiert (Fallback-Werte `|| 0.8` / `|| 9` greifen unveraendert bei unbekannten Typen). Behebt 2 Fehler.
+**Ergebnis:** `tsc --noEmit` zeigt keine Fehler mehr (nach 1 Nachbesserung: `status: 'pending'` brauchte zusaetzlich `as const`, da der erste Fix nur `isRecurring` betraf).
+**Naechster Service:** notification-service.
+
+## 2026-07-05 — TypeScript-Typschulden: notification-service fehlerfrei (4/7 Services erledigt) — inkl. 2 echten Bugs
+**Ausgangslage:** 11 Fehler in 6 Dateien. Diese Runde enthielt KEINE reinen Typ-Kosmetik-Fehler — alle 6 Dateien hatten echten Handlungsbedarf.
+
+**Karteileiche entfernt:** `middleware/auth.middleware.ts` — identisches Muster wie in allen bisherigen Services. Umbenannt zu `_unused_auth.middleware.ts.bak`.
+
+**middleware/validate.ts — Zod-Major-Update:** `zod` steht in diesem Service auf `^4.3.6` (Zod v4, waehrend andere Services noch v3 nutzen). Zod v4 hat `ZodError.errors` ersatzlos in `.issues` umbenannt (offizielle Breaking-Change, nicht in Zod's eigenem Migrations-Guide dokumentiert, siehe GitHub-Issue #5063 im Zod-Repo). Fix: `error.errors` → `error.issues`.
+
+**BUG #1 (echter fehlender Code, kein Typo) — services/notification.service.ts:** Die Route `DELETE /api/notifications/:id` (routes/notifications.routes.ts) rief `notificationService.deleteNotification()` auf — diese Methode existierte im Service **nie**. Der "Benachrichtigung loeschen"-Button haette im Betrieb einen 500er-Serverfehler geworfen. Methode neu geschrieben (Notification.deleteOne + Unread-Counter dekrementieren, analog zu markAsRead). Zusaetzlich: fehlender `IPreference`-Import ergaenzt (Preference.model.ts exportiert den Typ, wurde aber nicht importiert) + `.lean()`-Typkonflikt mit `.lean<INotification[]>()` behoben (redundanten `as INotification[]`-Cast dabei entfernt, war ohnehin nicht typsicher).
+
+**BUG #2 (echter Architektur-Fehler, kein Typo) — workers/email.worker.ts + push.worker.ts:** Beide Worker uebergaben BullMQ (Warteschlangen-Bibliothek) den fertigen `node-redis`-v4-Client (`connection: redis`) als Verbindung. **BullMQ unterstuetzt node-redis-Clients so nicht direkt** — es braucht entweder eine `ioredis`-Instanz oder eine einfache Verbindungsbeschreibung (Host/Port/Passwort), aus der BullMQ sich selbst eine ioredis-Verbindung baut. Das war vermutlich seit Einfuehrung nie lauffaehig (TypeScript haette dies schon vorher angezeigt, wurde aber vermutlich nie kompiliert/deployed mit strikten Checks). Fix: gleiches, bereits bewaehrtes Verbindungs-Muster wie in `price-service/src/workers/feed.worker.ts` uebernommen (`getBullMQConnection()`-Helper, parst `REDIS_URL` zu `{host, port, password}`). Zusaetzlich `redis.setex` → `redis.setEx` (node-redis-v4-Methodennamen sind camelCase, gleiches Muster wie media-service `brpop`→`brPop`).
+
+**Ergebnis:** `tsc --noEmit` zeigt keine Fehler mehr.
+**Wichtig fuer Deployment:** Diese Aenderung sollte vor dem naechsten Deploy von notification-service besonders beachtet werden — falls E-Mail-/Push-Benachrichtigungen im Live-Betrieb bisher gar nicht ankamen, waere das der wahrscheinliche Grund (Worker konnten nie erfolgreich Jobs aus der Queue verarbeiten).
+**Naechster Service:** search-service.
+
+## 2026-07-05 — TypeScript-Typschulden: search-service fehlerfrei (5/7 Services erledigt) — 3 tote Dateien einer verlassenen Baustelle gefunden
+**Ausgangslage:** 20 Fehler in 6 Dateien.
+
+**Karteileiche entfernt:** `middleware/auth.middleware.ts` — identisches Muster wie in allen bisherigen Services. Umbenannt zu `_unused_auth.middleware.ts.bak`.
+
+**GROSSER FUND — verlassene Parallel-Architektur (3 Dateien, 12 der 20 Fehler):** `services/indexer.service.ts`, `workers/indexer.worker.ts` und `services/sync.service.ts` bildeten zusammen einen kompletten, aelteren Ansatz fuer Datenbank-Synchronisation via Redis-Pub/Sub. Dieser Ansatz wurde offenbar durch einen neueren, funktionierenden Ansatz ersetzt: `services/indexing.service.ts` (fast identischer Name!) + `workers/sync.worker.ts`, die eine BullMQ-Warteschlange statt Pub/Sub nutzen und tatsaechlich von `routes/search.routes.ts` importiert werden. Verifiziert durch Pruefung aller Imports in index.ts und search.routes.ts — die 3 alten Dateien werden von NICHTS mehr referenziert. Ihre TS-Fehler stammten von Funktionsnamen, die in den Config-Dateien laengst umbenannt wurden (`meilisearch`→`meiliClient`, `initializeMeilisearch`→`initializeIndexes`, `connectRedis` existiert nicht mehr). Alle 3 zu `_unused_*.bak` umbenannt statt repariert, da funktionslos.
+
+**middleware/auth.ts (die ECHTE Datei, nicht die Karteileiche):** `JWT_SECRET` wird beim Modul-Start mit `if (!JWT_SECRET) throw ...` geprueft (gute, sichere Praxis — kein Fallback-Secret wie in anderen Services). TypeScript kann diese Absicherung aber nicht in die weiter unten definierten Funktionen (`authMiddleware`, `optionalAuthMiddleware`) hineinrechnen, da es sich technisch um eine Closure-Grenze handelt. Fix: `JWT_SECRET as string` an den 2 Aufrufstellen von `jwt.verify()`. Behebt 4 Fehler (2 Stellen x je 2 Fehler).
+
+**indexing.service.ts (die ECHTE, genutzte Datei):** `_id`-Felder aus bewusst schemalosen Hilfsmodellen (`new mongoose.Schema({}, {strict:false})` fuer Cross-Service-Reads auf fremde Collections) sind TypeScript komplett unbekannt (`unknown`), `.toString()` darauf nicht erlaubt. Fix: `strain._id.toString()` u.ae. durch `String(strain._id)` ersetzt (global verfuegbare Funktion, akzeptiert `unknown` ohne Cast, identisches Ergebnis). Behebt 3 Fehler.
+
+**Ergebnis:** `tsc --noEmit` zeigt keine Fehler mehr.
+**Beobachtung, nicht behoben (ausserhalb des heutigen Scopes):** Die jetzt als tot markierte `sync.service.ts` nutzte `redis.subscribe(channel, callback)` mit Pro-Kanal-Callbacks — das ist kein gueltiges ioredis-Muster (ioredis liefert Nachrichten nur ueber das globale `'message'`-Event). Falls dieser Pub/Sub-Ansatz jemals reaktiviert werden sollte, muesste das grundlegend anders aufgebaut werden. Da die Datei tot ist, aktuell irrelevant.
+**Naechster Service:** gamification-service.
+
+## 2026-07-05 — TypeScript-Typschulden: gamification-service fehlerfrei (6/7 Services erledigt)
+**Ausgangslage:** 10 Fehler in 4 Dateien.
+
+**Karteileiche entfernt:** `middleware/auth.middleware.ts` — identisches Muster wie in allen bisherigen Services. Umbenannt zu `_unused_auth.middleware.ts.bak`.
+
+**UserProfile.model.ts:** 5 Instanz-Funktionen (`calculateXPForLevel`, `calculateLevel`, `addXP`, `addBadge`, `addAchievement`, `updateStreak` — alle real implementiert ueber `UserProfileSchema.methods.xxx`) waren im `IUserProfile`-Interface nicht deklariert (gleiches Muster wie Quota/Reaction, diesmal Instanz- statt Static-Methoden). Alle 6 direkt im Interface nachgetragen. Behebt 1 Fehler direkt (virtuelles Feld `progressToNextLevel` nutzte `calculateXPForLevel`) und automatisch 4 weitere in profile.service.ts (dort wurden dieselben Funktionen aufgerufen).
+
+**profile.service.ts + achievement.service.ts:** 4x derselbe bekannte `.lean()`-Typkonflikt (Mongoose+TS), mit `.lean<IUserProfile>()` / `.lean<IUserProfile[]>()` / `.lean<IAchievement[]>()` behoben.
+
+**Ergebnis:** `tsc --noEmit` zeigt keine Fehler mehr.
+**Naechster Service:** community-service (letzter der 7 Services).
+
+## 2026-07-05 — TypeScript-Typschulden: community-service fehlerfrei (7/7 — WORKSTREAM ABGESCHLOSSEN)
+**Ausgangslage:** 15 Fehler in 6 Dateien. Hinweis: `npm install` brach beim ersten Versuch mit `EHOSTUNREACH` ab (kurzer Netzwerkausfall), zweiter Versuch lief sauber durch — kein Code-Problem.
+
+**Karteileiche entfernt:** `middleware/auth.middleware.ts` — identisches Muster wie in allen 6 anderen Services. Umbenannt zu `_unused_auth.middleware.ts.bak`.
+
+**middleware/auth.ts:** Gleiches JWT_SECRET-Closure-Problem wie search-service. Fix: `JWT_SECRET as string` an 2 Stellen. Behebt 4 Fehler.
+
+**FUND — mongoose.models[x]-Hot-Reload-Guard verwirrt TS-Typinferenz:** `AdLayout.model.ts` und `AdZoneConfig.model.ts` nutzen das verbreitete Schutzmuster `mongoose.models['X'] || mongoose.model<T>('X', Schema)` (verhindert "Cannot overwrite model"-Fehler bei Hot-Reload). Da `mongoose.models['X']` intern als `Model<any>` typisiert ist, inferiert TypeScript aus dem `||`-Ausdruck einen nutzlosen Vereinigungstyp, der z.B. `.findOne()` faelschlich als "Array ODER Einzelobjekt" erscheinen laesst (ads.routes.ts). Fix: explizite Typannotation `export const X: mongoose.Model<IX> = ...` an beiden Modell-Definitionen. Behebt 3 Fehler. **Dieses Muster sollte bei zukuenftigen Modellen mit Hot-Reload-Guard von Anfang an mit expliziter Typannotation geschrieben werden.**
+
+**FUND — Map-Feld wird durch .lean() korrekt aber typwidrig zu Objekt:** `Conversation.model.ts`s `unreadCounts`-Feld ist als echte `Map<string, number>` deklariert (korrekt fuer hydrierte Dokumente, wo `.get()`/`.set()` verwendet wird). Die Konversations-Liste (`message.service.ts: getConversations()`) nutzt aber `.lean()`, wodurch Mongoose das Map-Feld automatisch in ein normales Objekt umwandelt — **das ist hier fachlich richtig so** (eine echte Map wuerde von `JSON.stringify()` als leeres `{}` serialisiert werden und beim Frontend als kaputte Daten ankommen). Der bisherige Code cast'e das Ergebnis unsauber als `IConversation[]` (mit dem falschen Map-Typ). Sauberer Fix: neuer Typ `LeanConversation` (Conversation-Typ mit `unreadCounts: Record<string,number>` statt `Map`) exportiert und in `getConversations()` verwendet — spiegelt jetzt exakt das tatsaechliche Laufzeitverhalten wider, keine Typluege mehr. Zusaetzlich `message.service.ts`s zweiter `.lean()`-Aufruf (Message-Liste) mit `.lean<IMessage[]>()` behoben (keine Map-Problematik dort). Behebt 2 Fehler.
+
+**thread.service.ts:** 2x Standard-`.lean<IThread[]>()`-Fix (getThreads, search) + 1x `never[]`-Typinferenz beim Aufbau verschachtelter Reply-Baeume behoben (`replies: [] as any[]` statt `replies: []` beim Erstellen der Lookup-Map, da TypeScript ein leeres Array ohne Kontext sonst als "kann niemals befuellt werden" typisiert). Behebt 3 Fehler.
+
+**vote.service.ts:** 2x dynamische Modell-Auswahl (`const Model = type === 'thread' ? Thread : Reply`) — TypeScript kann `.updateOne()`/`.find()` auf einer Vereinigung zweier unterschiedlich generischer Mongoose-Modelle nicht sauber aufloesen ("This expression is not callable"). Bewusst mit `const Model: any = ...` als dynamisch gekennzeichnet (Verhalten unveraendert, betrifft nur 2 interne Hilfsfunktionen die ohnehin generisch mit "irgendeinem" Modell arbeiten). Behebt 2 Fehler.
+
+**Ergebnis:** `tsc --noEmit` zeigt keine Fehler mehr.
+
+---
+
+## ZUSAMMENFASSUNG: Item A (TypeScript-Typschulden) VOLLSTAENDIG ABGESCHLOSSEN (2026-07-05)
+
+Alle 7 betroffenen Services (price, media, journal, notification, search, gamification, community) sind jetzt `tsc --noEmit`-fehlerfrei. Bilanz ueber alle 7 Services:
+
+- **7x** dieselbe Karteileiche entfernt (`middleware/auth.middleware.ts` — unbenutzte Kopie einer "Shared-Middleware", die es so nie gab; jeder Service hat stattdessen sein eigenes funktionierendes `middleware/auth.ts`)
+- **3 komplett tote Dateien** einer verlassenen Pub/Sub-Sync-Architektur in search-service gefunden und stillgelegt (indexer.service.ts, indexer.worker.ts, sync.service.ts)
+- **Mehrere echte Laufzeit-Bugs gefunden und behoben, nicht nur Typ-Kosmetik:**
+  - media-service: `redis.brpop` mit falschem Rueckgabeformat (Redis-v3-API-Rest in v4-Code) — Virus-Scan-Worker haette beim ersten Queue-Item gecrasht
+  - notification-service: fehlende `deleteNotification()`-Funktion — Loeschen-Button haette 500er geworfen
+  - notification-service: BullMQ+node-redis Verbindungs-Inkompatibilitaet in 2 Workern — E-Mail-/Push-Versand vermutlich nie funktionsfaehig gewesen
+- **Wiederkehrendes Lernmuster:** Nachtraeglich per `.methods.xxx =` / `.statics.xxx =` an Mongoose-Modelle angehaengte Funktionen fehlten regelmaessig im TypeScript-Interface (Quota, Reaction, UserProfile) — in allen Faellen nachgetragen, keine Verhaltensaenderung noetig.
+- **Wiederkehrender `.lean()`-Typkonflikt** (Mongoose+TS `FlattenMaps`/`collection.conn.db`-Inkompatibilitaet) in praktisch jedem Service — durchgaengig mit `.lean<T>()`-Typparameter geloest.
+
+**Naechste Schritte (neuer Workstream, noch nicht begonnen):**
+1. Alle Aenderungen committen und zu GitHub pushen (Lenovo → GitHub, wie immer zuerst)
+2. Pruefen, ob CI-Backend/CI-CD-Pipeline/Docker-Build jetzt tatsaechlich gruen werden
+3. `ai-service`-Entfernung aus CI-Matrix nochmal verifizieren (Commit 3af758d, war vorher durch die TS-Fehler ueberdeckt)
+4. Sicherheits-Scan (`npm audit`) fuer alle 7 Services nachholen — waehrend der Arbeit bewusst zurueckgestellt, um nicht zwei Baustellen gleichzeitig zu haben
+5. Aufraeum-Kandidaten von 2026-07-05 abarbeiten: apps/scraper-service, services/content-service, Root-Status-Dateien archivieren

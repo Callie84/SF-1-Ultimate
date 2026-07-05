@@ -16,7 +16,7 @@ export class AchievementService {
     const profile = await profileService.getOrCreate(userId);
     
     // Alle aktiven Achievements holen
-    const achievements = await Achievement.find({ isActive: true }).lean();
+    const achievements = await Achievement.find({ isActive: true }).lean<IAchievement[]>();
     
     const unlocked: IAchievement[] = [];
     let totalXP = 0;
@@ -130,7 +130,7 @@ export class AchievementService {
    * Alle Achievements abrufen
    */
   async getAllAchievements(userId?: string): Promise<any[]> {
-    const achievements = await Achievement.find({ isActive: true }).lean();
+    const achievements = await Achievement.find({ isActive: true }).lean<IAchievement[]>();
     
     if (!userId) {
       return achievements;

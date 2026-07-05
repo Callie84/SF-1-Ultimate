@@ -1,5 +1,5 @@
 // /apps/media-service/src/models/Quota.model.ts
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IQuota extends Document {
   userId: string;
@@ -17,6 +17,20 @@ export interface IQuota extends Document {
   
   createdAt: Date;
   updatedAt: Date;
+
+  // Virtuals (siehe unten im Schema definiert)
+  remainingMB: number;
+  remainingFiles: number;
+  usagePercent: number;
+  isQuotaExceeded: boolean;
+}
+
+// Zusatz-Funktionen (Statics), die am Quota-Modell selbst haengen (z.B. Quota.getOrCreate(...))
+export interface IQuotaModel extends Model<IQuota> {
+  getOrCreate(userId: string, isPremium?: boolean): Promise<IQuota>;
+  incrementUsage(userId: string, sizeMB: number): Promise<IQuota | null>;
+  decrementUsage(userId: string, sizeMB: number): Promise<IQuota | null>;
+  resetMonthly(): Promise<{ modifiedCount: number }>;
 }
 
 const QuotaSchema = new Schema<IQuota>({
@@ -108,4 +122,4 @@ QuotaSchema.statics.resetMonthly = async function() {
   return result;
 };
 
-export const Quota = mongoose.model<IQuota>('Quota', QuotaSchema);
+export const Quota = mongoose.model<IQuota, IQuotaModel>('Quota', QuotaSchema);

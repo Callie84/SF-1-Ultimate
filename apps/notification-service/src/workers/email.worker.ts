@@ -4,8 +4,33 @@ import { emailService } from '../services/email.service';
 import { Notification } from '../models/Notification.model';
 import { logger } from '../utils/logger';
 
+// BullMQ braucht eine eigene Verbindungs-Beschreibung (Host/Port/Passwort),
+// nicht den fertigen node-redis-Client (der ist mit BullMQ nicht kompatibel).
+function getBullMQConnection() {
+  const redisUrl = process.env.REDIS_URL;
+  if (redisUrl) {
+    try {
+      const url = new URL(redisUrl);
+      return {
+        host: url.hostname,
+        port: parseInt(url.port || '6379'),
+        password: url.password || undefined,
+      };
+    } catch {
+      // fallback
+    }
+  }
+  return {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379'),
+    password: process.env.REDIS_PASSWORD,
+  };
+}
+
+const connection = getBullMQConnection();
+
 const emailQueue = new Queue('email', {
-  connection: redis
+  connection
 });
 
 const emailWorker = new Worker('email', async (job) => {
@@ -48,7 +73,7 @@ const emailWorker = new Worker('email', async (job) => {
     throw error; // Retry
   }
 }, {
-  connection: redis,
+  connection,
   concurrency: 5
 });
 
@@ -82,7 +107,7 @@ async function getUserEmail(userId: string): Promise<string | null> {
     const data = await response.json();
     
     // Cache for 1 hour
-    await redis.setex(`user:email:${userId}`, 3600, data.email);
+    await redis.setEx(`user:email:${userId}`, 3600, data.email);
     
     return data.email;
   } catch (error) {

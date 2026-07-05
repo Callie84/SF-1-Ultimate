@@ -143,7 +143,7 @@ export class ProfileService {
       return JSON.parse(cached);
     }
     
-    const profile = await UserProfile.findOne({ userId }).lean();
+    const profile = await UserProfile.findOne({ userId }).lean<IUserProfile>();
     
     if (profile) {
       // Cache 5 Min
@@ -168,7 +168,7 @@ export class ProfileService {
     return UserProfile.find({})
       .sort(sort)
       .limit(limit)
-      .lean();
+      .lean<IUserProfile[]>();
   }
   
   /**

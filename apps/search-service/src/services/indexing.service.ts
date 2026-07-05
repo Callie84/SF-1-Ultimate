@@ -162,7 +162,7 @@ export class IndexingService {
         .lean();
       
       const documents = strains.map(strain => ({
-        id: strain._id.toString(),
+        id: String(strain._id),
         name: strain.name,
         slug: strain.slug,
         breeder: strain.breeder,
@@ -212,7 +212,7 @@ export class IndexingService {
         .lean();
       
       const documents = threads.map(thread => ({
-        id: thread._id.toString(),
+        id: String(thread._id),
         title: thread.title,
         content: thread.content,
         category: thread.category,
@@ -260,7 +260,7 @@ export class IndexingService {
         .lean();
       
       const documents = grows.map(grow => ({
-        id: grow._id.toString(),
+        id: String(grow._id),
         strainName: grow.strainName,
         strainId: grow.strainId,
         notes: grow.notes,

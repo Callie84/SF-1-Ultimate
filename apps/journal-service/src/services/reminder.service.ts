@@ -230,7 +230,7 @@ class ReminderService {
     })
       .sort({ dueDate: 1, dueTime: 1 })
       .limit(20)
-      .lean();
+      .lean<IReminder[]>();
   }
 
   // Get overdue reminders
@@ -243,7 +243,7 @@ class ReminderService {
       dueDate: { $lt: now }
     })
       .sort({ dueDate: -1 })
-      .lean();
+      .lean<IReminder[]>();
   }
 
   // Update overdue status (called by worker/cron)
@@ -265,7 +265,7 @@ class ReminderService {
   async getGrowReminders(growId: string, userId: string): Promise<IReminder[]> {
     return Reminder.find({ growId, userId })
       .sort({ dueDate: 1 })
-      .lean();
+      .lean<IReminder[]>();
   }
 
   // Get calendar data (reminders grouped by date)
@@ -282,7 +282,7 @@ class ReminderService {
       dueDate: { $gte: startDate, $lte: endDate }
     })
       .sort({ dueDate: 1, dueTime: 1 })
-      .lean();
+      .lean<IReminder[]>();
 
     // Group by date string (YYYY-MM-DD)
     const grouped: Record<string, IReminder[]> = {};
@@ -335,7 +335,8 @@ class ReminderService {
   async bulkCreate(reminders: CreateReminderData[]): Promise<IReminder[]> {
     const docs = reminders.map(r => ({
       ...r,
-      status: 'pending',
+      isRecurring: r.isRecurring ?? false,
+      status: 'pending' as const,
       notificationSent: false
     }));
 

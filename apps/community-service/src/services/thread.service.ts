@@ -116,7 +116,7 @@ export class ThreadService {
         .sort(sort)
         .skip(skip)
         .limit(limit)
-        .lean(),
+        .lean<IThread[]>(),
       Thread.countDocuments(query)
     ]);
     
@@ -150,7 +150,7 @@ export class ThreadService {
       .lean();
     
     // Nested-Replies strukturieren
-    const replyMap = new Map(replies.map(r => [r._id.toString(), { ...r, replies: [] }]));
+    const replyMap = new Map(replies.map(r => [r._id.toString(), { ...r, replies: [] as any[] }]));
     const topLevelReplies: any[] = [];
     
     replies.forEach(reply => {
@@ -351,7 +351,7 @@ export class ThreadService {
         .sort({ score: { $meta: 'textScore' } })
         .skip(skip)
         .limit(limit)
-        .lean(),
+        .lean<IThread[]>(),
       Thread.countDocuments(searchQuery)
     ]);
     

@@ -58,7 +58,7 @@ export async function authMiddleware(
       }
 
       try {
-        const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
+        const payload = jwt.verify(token, JWT_SECRET as string) as JwtPayload;
         userId = payload.userId;
         userRole = payload.role || 'user';
         userPremium = payload.premium || false;
@@ -105,7 +105,7 @@ export async function optionalAuthMiddleware(
 
       if (token) {
         try {
-          const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
+          const payload = jwt.verify(token, JWT_SECRET as string) as JwtPayload;
           userId = payload.userId;
           userRole = payload.role || 'user';
           userPremium = payload.premium || false;

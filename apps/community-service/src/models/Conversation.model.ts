@@ -19,6 +19,15 @@ export interface IConversation extends Document {
   updatedAt: Date;
 }
 
+// Wenn eine Konversation ohne volles Mongoose-Dokument gelesen wird (.lean()),
+// wandelt Mongoose das Map-Feld "unreadCounts" automatisch in ein normales
+// Objekt um (wichtig fuer korrekte JSON-Antworten, da echte Maps von
+// JSON.stringify nicht serialisiert werden koennen). Dieser Typ bildet genau
+// diesen Fall ab.
+export type LeanConversation = Omit<IConversation, 'unreadCounts'> & {
+  unreadCounts: Record<string, number>;
+};
+
 const ConversationSchema = new Schema<IConversation>({
   participants: [{
     type: String,

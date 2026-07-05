@@ -4,7 +4,7 @@
 
 import * as cheerio from 'cheerio';
 import { Seed } from '../models/Seed.model';
-import { createStealthContext, closeBrowser } from '../config/playwright';
+import { createStealthContext } from '../config/playwright';
 import { extractFlavorsFromText } from '../config/flavor-vocabulary.de';
 import { logger } from '../utils/logger';
 

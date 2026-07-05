@@ -41,6 +41,6 @@ const AdLayoutSchema = new Schema<IAdLayout>(
   { timestamps: true }
 );
 
-export const AdLayout =
+export const AdLayout: mongoose.Model<IAdLayout> =
   mongoose.models['AdLayout'] ||
   mongoose.model<IAdLayout>('AdLayout', AdLayoutSchema);

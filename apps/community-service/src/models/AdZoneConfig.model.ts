@@ -40,6 +40,6 @@ const AdZoneConfigSchema = new Schema<IAdZoneConfig>(
   { timestamps: true }
 );
 
-export const AdZoneConfig =
+export const AdZoneConfig: mongoose.Model<IAdZoneConfig> =
   mongoose.models["AdZoneConfig"] ||
   mongoose.model<IAdZoneConfig>("AdZoneConfig", AdZoneConfigSchema);

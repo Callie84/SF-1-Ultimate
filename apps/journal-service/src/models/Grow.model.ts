@@ -61,6 +61,9 @@ export interface IGrow extends Document {
   deletedAt?: Date;
   isPermanentlyDeleted: boolean;
 
+  // Virtual (siehe unten im Schema definiert)
+  daysRunning: number;
+
   createdAt: Date;
   updatedAt: Date;
 }

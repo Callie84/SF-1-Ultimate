@@ -39,17 +39,14 @@ export class PhotoService {
         sharp(data.file.buffer)
           .rotate()
           .resize(2048, 2048, { fit: 'inside', withoutEnlargement: true })
-          .withMetadata(false)
           .jpeg({ quality: 90 })
           .toBuffer(),
         sharp(data.file.buffer)
           .resize(300, 300, { fit: 'cover' })
-          .withMetadata(false)
           .jpeg({ quality: 80 })
           .toBuffer(),
         sharp(data.file.buffer)
           .resize(800, 800, { fit: 'inside' })
-          .withMetadata(false)
           .jpeg({ quality: 85 })
           .toBuffer(),
         sharp(data.file.buffer).metadata(),

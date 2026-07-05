@@ -169,7 +169,7 @@ export class GrowService {
     grow.harvestDate = data.harvestDate;
     grow.yieldWet = data.yieldWet;
     grow.yieldDry = data.yieldDry;
-    grow.quality = data.quality;
+    grow.quality = data.quality as 1 | 2 | 3 | 4 | 5 | undefined;
     if (data.growAreaM2 !== undefined) grow.growAreaM2 = data.growAreaM2;
     
     await grow.save();

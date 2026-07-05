@@ -8,7 +8,6 @@ import { logger } from '../utils/logger';
 const clamScanConfig = {
   removeInfected: false,
   quarantineInfected: false,
-  scanLog: null,
   debugMode: false,
   clamdscan: {
     host: process.env.CLAMAV_HOST || 'clamav',
@@ -79,12 +78,12 @@ export class VirusScanService {
   async processQueue(): Promise<void> {
     while (true) {
       try {
-        // BRPOP: Blockierend bis Item verfügbar
-        const item = await redis.brpop('queue:virus-scan', 5);
+        // BRPOP: Blockierend bis Item verfuegbar
+        const item = await redis.brPop('queue:virus-scan', 5);
         
         if (!item) continue;
         
-        const { fileId } = JSON.parse(item[1]);
+        const { fileId } = JSON.parse(item.element);
         
         await this.scanFile(fileId);
         

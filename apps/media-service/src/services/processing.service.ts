@@ -37,7 +37,6 @@ export class ProcessingService {
           fit: 'inside',
           withoutEnlargement: true
         })
-        .withMetadata(false) // EXIF komplett entfernen
         .jpeg({ quality: 90 })
         .toBuffer();
       
@@ -86,7 +85,6 @@ export class ProcessingService {
   ): Promise<Buffer> {
     return sharp(buffer)
       .resize(width, height, { fit: 'cover' })
-      .withMetadata(false)
       .jpeg({ quality: 80 })
       .toBuffer();
   }

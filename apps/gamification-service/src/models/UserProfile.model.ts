@@ -35,6 +35,14 @@ export interface IUserProfile extends Document {
   
   createdAt: Date;
   updatedAt: Date;
+
+  // Instance Methods (siehe unten im Schema definiert)
+  calculateXPForLevel(level: number): number;
+  calculateLevel(): void;
+  addXP(amount: number): { levelUp: boolean; newLevel?: number };
+  addBadge(badgeId: string): boolean;
+  addAchievement(achievementId: string): boolean;
+  updateStreak(): void;
 }
 
 const UserProfileSchema = new Schema<IUserProfile>({

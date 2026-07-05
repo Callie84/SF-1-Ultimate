@@ -107,7 +107,7 @@ export class VoteService {
   ): Promise<void> {
     const field = voteType === 'upvote' ? 'upvoteCount' : 'downvoteCount';
     
-    const Model = targetType === 'thread' ? Thread : Reply;
+    const Model: any = targetType === 'thread' ? Thread : Reply;
     
     await Model.updateOne(
       { _id: targetId },
@@ -151,7 +151,7 @@ export class VoteService {
       query.createdAt = { $gte: now };
     }
     
-    const Model = options.type === 'thread' ? Thread : Reply;
+    const Model: any = options.type === 'thread' ? Thread : Reply;
     const limit = Math.min(options.limit || 10, 50);
     
     const results = await Model.find(query)
