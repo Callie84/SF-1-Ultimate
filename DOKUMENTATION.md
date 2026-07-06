@@ -8890,3 +8890,58 @@ Aufraeum-Kandidaten (Option C).
 **Nebenfund (Regel 22a):** Beim ersten `git commit`-Versuch blockierte eine verwaiste `.git/index.lock`-Datei ("Unable to create ... File exists"). Vor dem Loeschen erst per `Get-Process git` geprueft, dass kein aktiver Git-Prozess mehr lief (leere Ausgabe) — dann `Remove-Item` auf die Lock-Datei, danach Commit/Push erfolgreich. Ursache der verwaisten Lock-Datei nicht abschliessend geklaert (vermutlich vorheriger abgebrochener Git-Vorgang) — falls das oefter auftritt, naeher untersuchen.
 
 **Offen:** GitHub meldete beim Push zusaetzlich 149 Dependabot-Vulnerabilities (1 critical, 78 high, 57 moderate, 13 low) auf dem Default-Branch — unabhaengig von diesem Fix, gehoert zum laufenden Security-Audit-Workstream (price-service-BullMQ/redis-Konflikt weiterhin offen, siehe oben). Nicht Teil dieser Aenderung, nur zur Kenntnis genommen.
+
+---
+
+## 2026-07-06 (Abend) — Git-Sync mit GitHub + Verifikation automerged Dependabot-PR #6
+
+**Ausgangslage:** Lenovo-lokal war Commit `fe3278f` (Doku-Nachtrag Cookie-Fix) unpushed, waehrend auf GitHub `origin/main` bereits zwei neue Commits lagen (`a83bed3` Dependabot-Bump + `af3856b` Merge PR #6, auth-service-Branch, automatisch gemergt). Zwei unterschiedliche Commits auf beiden Seiten, aber unterschiedliche Dateien betroffen (Doku vs. package.json/-lock.json) — daher sauberer Rebase ohne Konflikte erwartet.
+
+**Schritt 1 — Sync:** `git pull --rebase origin main` lief ohne Konflikt durch, danach `git push` (`af3856b..895979b`). Kein Merge-Commit noetig, lineare Historie erhalten.
+
+**Schritt 2 — Sichtung Dependabot-Commit `a83bed3`** ("bump npm_and_yarn group across 7 directories with 11 updates"). Betroffene Services: auth-service, backup-service, journal-service, media-service, notification-service, tools-service, web-app (jeweils `package.json` + `package-lock.json`).
+
+| Service | Paket | Alt → Neu | Einstufung |
+|---|---|---|---|
+| auth-service | multer | 1.4.5-lts.1 → 2.2.0 | **Major** (Risiko) |
+| auth-service | @types/jest, jest | 29.x → 30.x | Major, aber nur Dev-Dependency |
+| auth-service | tsx | 4.20.6 → 4.23.0 | Minor (sicher) |
+| backup-service | tsx | 4.6.2 → 4.23.0 | Minor (sicher) |
+| journal-service | multer | 1.4.5-lts.1 → 2.2.0 | **Major** (Risiko) |
+| journal-service | tsx | 4.20.6 → 4.23.0 | Minor (sicher) |
+| media-service | multer | 1.4.5-lts.1 → 2.2.0 | **Major** (Risiko) |
+| media-service | tsx | 4.20.6 → 4.23.0 | Minor (sicher) |
+| notification-service | nodemailer | 8.0.10 → 9.0.1 | **Major** (Risiko) |
+| notification-service | tsx | 4.20.6 → 4.23.0 | Minor (sicher) |
+| tools-service | nodemailer | 8.0.2 → 9.0.1 | **Major** (Risiko) |
+| tools-service | tsx | 4.20.6 → 4.23.0 | Minor (sicher) |
+| web-app | next | 14.2.0 → 16.2.10 | **Major (2 Sprünge, ueberspringt 15 komplett)** — groesstes Risiko |
+| web-app | axios | 1.6.8 → 1.16.0 | Minor innerhalb v1 (sicher) |
+| web-app | js-yaml, lodash, socket.io-parser, flatted, mdast-util-to-hast | jeweils Patch/Minor (indirekt) | sicher |
+| web-app | uuid | entfernt (indirekte Dependency) | kein direkter Verbrauch, unkritisch |
+
+**Wichtigster Befund:** `next` sprang direkt von 14.2.0 auf 16.2.10 — genau das Paket, fuer das heute Frueh erst der Cookie-Async-Fix als Next-15-Vorbereitung committet wurde (`3e96586`). Dependabot hat Next 15 komplett uebersprungen. Peer-Dependency-Check: Next 16 verlangt laut `node_modules/next/package.json` `react: "^18.2.0 || ^19.0.0"` — installiertes React 18.3.1 ist weiterhin gueltig, kein Peer-Konflikt.
+
+**Schritt 3 — tsc --noEmit je Service:**
+
+| Service | Ergebnis |
+|---|---|
+| auth-service | OK, keine Fehler |
+| backup-service | OK, keine Fehler |
+| journal-service | OK, keine Fehler |
+| media-service | OK, keine Fehler |
+| notification-service | OK, keine Fehler |
+| tools-service | OK, keine Fehler |
+| web-app | OK, keine Fehler (Exit Code 0) — **aber:** `node_modules` fehlte lokal komplett, erst per `npm ci` nach Lockfile installiert (1002 Pakete, Lockfile dabei nicht veraendert), danach `tsc --noEmit` gruen |
+
+**Wichtige Einschraenkung:** `tsc --noEmit` prueft nur Typen, keine Laufzeit-Logik. Bei multer 1→2, nodemailer 8→9 und besonders next 14→16 (zwei Major-Versionen) sind Typ-Kompatibilitaet und tatsaechliches Laufzeitverhalten zwei verschiedene Dinge. Vor einem Produktions-Deploy sollten diese drei Aenderungen praktisch getestet werden (Datei-Upload ueber multer, Mail-Versand ueber nodemailer, kompletter Seitenaufruf/Build der web-app).
+
+**Status:** Alles committet/gepusht, Arbeitsverzeichnis sauber. Kein offener lokaler Stand.
+
+**Bewusst nicht angefasst:** Offener Dependabot-Branch `dependabot/npm_and_yarn/apps/notification-service/...` (noch nicht gemergt) — laut Auftrag nicht anruehren, nur zur Kenntnis genommen.
+
+**Naechste Schritte (Empfehlung):**
+1. Vor dem naechsten Deploy: web-app lokal starten (`npm run dev`/`build`) und zentrale Seiten/Flows manuell pruefen (Next 14→16 ist ein grosser Sprung, tsc allein reicht nicht als Freigabe)
+2. Datei-Upload-Endpunkte in auth-service, journal-service, media-service testen (multer 1→2 aendert u.a. Storage-API-Details)
+3. Mail-Versand in notification-service und tools-service testen (nodemailer 8→9)
+4. Offenen notification-service-Dependabot-Branch bei Gelegenheit separat pruefen und entscheiden (mergen oder schliessen)
