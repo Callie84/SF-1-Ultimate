@@ -8756,3 +8756,12 @@ Alle 7 betroffenen Services (price, media, journal, notification, search, gamifi
 **Fix:** In `docker-build.yml`, Job `build-auth-service`: `file: ./docker/Dockerfile.production` → `file: apps/auth-service/Dockerfile`. Keine einzige Zeile Anwendungscode angefasst — reine CI-Konfigurationskorrektur.
 
 **Lernpunkt:** `auth-service` war nie Teil des heutigen 7-Service-TypeScript-Workstreams (Item A), weil `ci-cd.yml`s `backend-ci`-Job TypeScript-Fehler dort bisher stillschweigend toleriert (`|| echo "TypeScript check done"`). Der strikte Docker-Build hat diesen blinden Fleck jetzt aufgedeckt. Empfehlung fuer spaeter: pruefen, ob diese Toleranz in `ci-cd.yml` noch gewollt ist, oder ob sie andere Fehler in auth-service/tools-service verdeckt.
+
+## 2026-07-05 (Abend) — Docker Build Check: build-frontend-Job war eine Karteileiche
+**Fehlerbild:** Nach dem auth-service-Fix schlug "Build Frontend Docker Image" fehl: `failed to read dockerfile: open Dockerfile: no such file or directory`.
+
+**Ursachen-Analyse:** `apps/web-app` hat bewusst KEINE `Dockerfile` — in der echten Produktions-`docker-compose.yml` laeuft das Frontend als generisches `node:20-alpine`-Image mit gemounteten Quellcode (`volumes: ./apps/web-app:/app`) und `command: npm install --include=dev && npm run build && npm run start` beim Container-Start, genau wie die meisten Backend-Services (kein eigenes Docker-Image wird gebaut). Der `docker-build.yml`-Job `build-frontend` versuchte trotzdem, ein eigenstaendiges Image zu bauen und zu `ghcr.io` zu pushen — ein Ueberbleibsel eines nie genutzten Deployment-Wegs, analog zu den vielen Karteileichen im Code, die heute schon gefunden wurden.
+
+**Rueckfrage an Callie gestellt** (Option A: Job entfernen vs. B: echtes Dockerfile fuer web-app bauen) — **Callie entschied sich fuer Option A.**
+
+**Fix:** `build-frontend`-Job in `docker-build.yml` mit `if: false` deaktiviert (nicht geloescht, Kommentar erklaert warum) — reversibel, falls spaeter doch ein echtes Frontend-Image gebraucht wird (z.B. fuer schnellere Deploys ohne Live-Build auf dem Server).
