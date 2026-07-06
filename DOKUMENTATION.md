@@ -8765,3 +8765,107 @@ Alle 7 betroffenen Services (price, media, journal, notification, search, gamifi
 **Rueckfrage an Callie gestellt** (Option A: Job entfernen vs. B: echtes Dockerfile fuer web-app bauen) — **Callie entschied sich fuer Option A.**
 
 **Fix:** `build-frontend`-Job in `docker-build.yml` mit `if: false` deaktiviert (nicht geloescht, Kommentar erklaert warum) — reversibel, falls spaeter doch ein echtes Frontend-Image gebraucht wird (z.B. fuer schnellere Deploys ohne Live-Build auf dem Server).
+
+**Ergebnis: ALLE 5 GITHUB-WORKFLOWS GRUEN** (CI - Frontend, Security Scan, CI - Backend Integration Tests, CI/CD Pipeline, Docker Build Check). Bestaetigt von Callie nach Push von Commit `4a410f3`.
+
+---
+
+## GESAMTZUSAMMENFASSUNG DES TAGES (2026-07-05)
+
+4 Commits, von "CI seit Wochen rot wegen TS-Schulden" zu "alle 5 Workflows gruen":
+
+| Commit | Inhalt |
+|---|---|
+| `0900e6e` | TypeScript-Typschulden in allen 7 Services behoben (price, media, journal, notification, search, gamification, community) |
+| `2e1d15c` | CI-Workflows: `npm ci --legacy-peer-deps` (bullmq/redis Peer-Dependency-Konflikt) |
+| `ef054b2` | Docker-Build: auth-service nutzt jetzt korrektes Dockerfile (Prisma-Generate-Schritt) |
+| `4a410f3` | Docker-Build: build-frontend-Job deaktiviert (Karteileiche, kein Dockerfile vorhanden) |
+
+**Bilanz aller Funde des Tages:**
+- 7x identische `auth.middleware.ts`-Karteileiche entfernt
+- 4 weitere komplett tote Dateien (3x search-service Pub/Sub-Altlasten, 1x build-frontend-CI-Job)
+- 3 echte Laufzeit-Bugs behoben (media-service redis.brpop, notification-service fehlende deleteNotification(), notification-service BullMQ-Verbindungsfehler in 2 Workern)
+- 2 CI-Konfigurationsfehler behoben (npm-Peer-Dependency-Toleranz, falsche Dockerfile-Referenz)
+- auth-service als bisher unentdeckter blinder Fleck identifiziert (TS-Fehler dort wurden von `ci-cd.yml` stillschweigend toleriert)
+
+**Naechste Schritte (neuer, noch nicht begonnener Workstream):**
+1. Sicherheits-Scan (`npm audit`) fuer alle Services nachholen (waehrend der Arbeit bewusst zurueckgestellt)
+2. Pruefen, ob die TS-Fehler-Toleranz in `ci-cd.yml` (`|| echo "TypeScript check done"`) noch gewollt ist oder weitere Fehler versteckt (z.B. in tools-service)
+3. Aufraeum-Kandidaten von heute Morgen abarbeiten: apps/scraper-service, services/content-service, Root-Status-Dateien archivieren
+4. Aus der Profi-Standard-Checkliste: Dependency-Scanning aktivieren, Rechtliches pruefen (Affiliate-Kennzeichnung, Cookie-Banner), Uptime-Monitoring einrichten
+
+---
+
+## 2026-07-06 - Security-Nachholbedarf: npm audit fuer alle Services [ERLEDIGT, lokal - Push folgt]
+
+Workstream-Punkt 1 von oben (Sicherheits-Scan) abgearbeitet. Vorgehen: erst nur pruefen
+(npm audit --json, keine Aenderung), dann Pilot an einem risikoarmen Service, dann
+Batch-Fix ueber alle restlichen, jeweils mit tsc --noEmit-Kontrolle danach.
+
+**Ausgangslage (Vorher):** 10 Services geprueft (Root war bereits sauber). Keine
+kritischen Funde. Verteilung: backup-service (6), auth-service (8), community-service (9),
+gamification-service (5), journal-service (5), media-service (5),
+notification-service (20, davon 6 hoch), price-service (12, davon 5 hoch),
+search-service (6), tools-service (6).
+
+**Ursachenanalyse:** Fast alle Funde liessen sich auf 3 gemeinsame, rein transitive
+Cluster zurueckfuehren (kein individuelles Problem pro Service):
+1. `@sentry/node` zieht veraltete `@opentelemetry/*`-Pakete nach (moderat, alle Services)
+2. Jest/Babel-Testtoolchain (`@babel/core`, `js-yaml`, niedrig/moderat, nur Dev)
+3. Socket.io/HTTP-Stack (`ws`, `engine.io`, `socket.io-adapter`, `undici`, `form-data`,
+   hoch, betrifft price/notification/auth/community)
+
+**Ergebnis nach Fix (`npm audit fix`, bewusst OHNE `--force` - kein Major-Sprung bei
+direkten Abhaengigkeiten):**
+
+| Service | Vorher | Nachher | tsc --noEmit |
+|---|---|---|---|
+| backup-service (Pilot) | 6 | 1 (esbuild, nur Windows-Dev-Server) | OK |
+| auth-service | 8 | 0 | OK |
+| community-service | 9 | 0 | OK |
+| gamification-service | 5 | 0 | OK |
+| journal-service | 5 | 0 | OK |
+| media-service | 5 | 0 | OK |
+| search-service | 6 | 0 (siehe Sonderfall unten) | OK |
+| price-service | 12 | 0 (siehe Sonderfall unten) | OK |
+| notification-service | 20 | 9 (nodemailer + firebase-admin, bewusst nicht angefasst) | OK |
+| tools-service | 6 | 1 (nodemailer, bewusst nicht angefasst) | OK |
+
+**Sonderfall search-service:** `npm audit fix` deckte einen bislang unbemerkten
+fehlenden Typ-Declaration-Fehler auf (TS7016, Modul `pg` ohne `@types/pg`) - vermutlich
+bisher nur zufaellig ueber einen anderen Paketpfad abgedeckt und durch die
+Neuberechnung des Abhaengigkeitsbaums sichtbar geworden. Nachtrag `@types/pg` als
+devDependency behoben, tsc jetzt sauber.
+
+**Sonderfall price-service:** normaler `npm audit fix` scheiterte an ERESOLVE
+(bullmq@5.78.0 hat peerOptional `redis>=5.0.0`, Projekt nutzt bewusst weiter
+`redis@^4.6.0`, wie bereits gestern in Commit `2e1d15c` fuer die CI-Pipeline mit
+`--legacy-peer-deps` geloest). Gleiches Mittel hier angewendet - KEIN Versionssprung,
+`redis` bleibt bei 4.7.1, 0 Schwachstellen danach, tsc sauber. `npm ls` markiert
+redis@4.7.1 weiterhin als "invalid" laut bullmq-Peer-Wunsch (strukturell bereits vorher
+so, kein neuer Fehler) - Praxistest des Preisalarm-Workers vor dem naechsten Deploy
+empfohlen (gleiche Faktorenlage wie der BullMQ-Bug in notification-service vom 05.07.).
+
+**Bewusst zurueckgestellt (nicht Teil dieses Fixes):**
+- `nodemailer` (notification-service, tools-service): Major-Sprung 6.x/... -> 9.0.3
+  noetig. Recherche: groesster Bruch war bereits 5->6 (2019, Lizenzwechsel,
+  Templating entfernt); 6->9 seither ueberwiegend Security-Haertung ohne API-Bruch
+  bei createTransport/sendMail. Einschaetzung: eher niedriges Risiko, aber noch nicht
+  getestet.
+- `firebase-admin` (notification-service): Major-Sprung noetig, ABER firebase-admin
+  v14 verlangt Node.js 22+. Vor jedem Versuch muss zuerst die Node-Version auf dem
+  Server geprueft werden (noch offen) - sonst Absturzrisiko bei Deploy.
+
+**Nebenfund (Regel 22a):** Beim ersten Skriptlauf lud sich automatisch ein
+Kubernetes-Tunnel-Banner aus Callies PowerShell-Profil (`Start-K8sTunnel`/
+`Stop-K8sTunnel`) - widerspricht der Kein-Kubernetes-Regel. Von Callie bestaetigt:
+Altlast, kann weg. Noch nicht entfernt, siehe
+`SF-Brain/Learnings/2026-07-06-Powershell-Profil-K8s-Ueberraschung.md` und
+Aufraeum-Kandidaten (Option C).
+
+**Naechste Schritte:**
+1. Commit + Push dieser Aenderungen (10x package-lock.json + search-service/package.json)
+2. Praxistest price-service-Preisalarm-Worker vor dem naechsten Server-Deploy
+3. Server-Node-Version pruefen (Voraussetzung fuer firebase-admin v14)
+4. nodemailer- und firebase-admin-Major-Upgrade als eigener, fokussierter Termin
+5. Kubernetes-Profilskript aufraeumen (Option C)
