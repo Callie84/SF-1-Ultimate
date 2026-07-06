@@ -8869,3 +8869,24 @@ Aufraeum-Kandidaten (Option C).
 3. Server-Node-Version pruefen (Voraussetzung fuer firebase-admin v14)
 4. nodemailer- und firebase-admin-Major-Upgrade als eigener, fokussierter Termin
 5. Kubernetes-Profilskript aufraeumen (Option C)
+
+---
+
+## 2026-07-06 — Fix: CI-Fehler durch Next.js-14.2-Cookie-Typen (web-app)
+
+**Problem:** CI-Lauf schlug fehl mit `error TS2339: Property 'get' does not exist on type 'Promise<ReadonlyRequestCookies>'` in `apps/web-app/src/app/page.tsx:6`.
+
+**Ursache:** `package.json` deklariert `next: "^14.2.0"`, Lockfile-Pruefung (Select-String) bestaetigt tatsaechlich installierte Version `14.2.33`. Ab diesem 14.2.x-Patch liefert Next.js vorab die TypeScript-Typen des kuenftigen Next-15-Verhaltens fuer `cookies()`/`headers()` (asynchron), obwohl die Funktion zur Laufzeit in 14.x noch synchron arbeitet. Bekannte, offiziell dokumentierte Next.js-Uebergangsfalle vor einem 14->15-Upgrade.
+
+**Fix:** `Home`-Komponente in `page.tsx` zu `async function` gemacht, `cookies()` mit `await` aufgerufen. Zukunftssicher (funktioniert unveraendert auch nach einem spaeteren Next-15-Upgrade).
+
+**Verifikation:**
+- Datei einzeln geprueft (nicht blind), Fund bestaetigt via direktem Lesen von `page.tsx` + `package.json`.
+- Lockfile-Version per PowerShell `Select-String` gegengeprueft (Regel: kritische Reads nie nur per Filesystem-MCP).
+- Repo-weite Suche (`Select-String -Pattern "cookies\(\)|headers\(\)"`) bestaetigt: keine weiteren betroffenen Stellen in `apps/web-app/src`.
+
+**Commit:** `3e96586` — "fix: cookies() async fuer Next.js 14.2 Typen-Vorlauf auf Next 15", gepusht nach GitHub main (`b3eff35..3e96586`).
+
+**Nebenfund (Regel 22a):** Beim ersten `git commit`-Versuch blockierte eine verwaiste `.git/index.lock`-Datei ("Unable to create ... File exists"). Vor dem Loeschen erst per `Get-Process git` geprueft, dass kein aktiver Git-Prozess mehr lief (leere Ausgabe) — dann `Remove-Item` auf die Lock-Datei, danach Commit/Push erfolgreich. Ursache der verwaisten Lock-Datei nicht abschliessend geklaert (vermutlich vorheriger abgebrochener Git-Vorgang) — falls das oefter auftritt, naeher untersuchen.
+
+**Offen:** GitHub meldete beim Push zusaetzlich 149 Dependabot-Vulnerabilities (1 critical, 78 high, 57 moderate, 13 low) auf dem Default-Branch — unabhaengig von diesem Fix, gehoert zum laufenden Security-Audit-Workstream (price-service-BullMQ/redis-Konflikt weiterhin offen, siehe oben). Nicht Teil dieser Aenderung, nur zur Kenntnis genommen.
