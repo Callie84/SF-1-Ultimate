@@ -8796,7 +8796,7 @@ Alle 7 betroffenen Services (price, media, journal, notification, search, gamifi
 
 ---
 
-## 2026-07-06 - Security-Nachholbedarf: npm audit fuer alle Services [ERLEDIGT, lokal - Push folgt]
+## 2026-07-06 - Security-Nachholbedarf: npm audit fuer alle Services [ERLEDIGT - committet & gepusht, CI gruen]
 
 Workstream-Punkt 1 von oben (Sicherheits-Scan) abgearbeitet. Vorgehen: erst nur pruefen
 (npm audit --json, keine Aenderung), dann Pilot an einem risikoarmen Service, dann
@@ -8864,7 +8864,7 @@ Altlast, kann weg. Noch nicht entfernt, siehe
 Aufraeum-Kandidaten (Option C).
 
 **Naechste Schritte:**
-1. Commit + Push dieser Aenderungen (10x package-lock.json + search-service/package.json)
+1. ~~Commit + Push dieser Aenderungen~~ ERLEDIGT: Commits `64008c4` (Doku-Nachtrag) + `04d70dd` (Security-Fix), CI nach Push vollstaendig gruen.
 2. Praxistest price-service-Preisalarm-Worker vor dem naechsten Server-Deploy
 3. Server-Node-Version pruefen (Voraussetzung fuer firebase-admin v14)
 4. nodemailer- und firebase-admin-Major-Upgrade als eigener, fokussierter Termin
