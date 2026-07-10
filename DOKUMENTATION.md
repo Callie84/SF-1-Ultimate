@@ -8945,3 +8945,46 @@ Aufraeum-Kandidaten (Option C).
 2. Datei-Upload-Endpunkte in auth-service, journal-service, media-service testen (multer 1→2 aendert u.a. Storage-API-Details)
 3. Mail-Versand in notification-service und tools-service testen (nodemailer 8→9)
 4. Offenen notification-service-Dependabot-Branch bei Gelegenheit separat pruefen und entscheiden (mergen oder schliessen)
+
+---
+
+## 2026-07-10 — Workflow-Audit (Claude Chat + Claude Code) + Session-Plan Repo-Hygiene/Exa.ai
+
+**Kontext:** Auf Bitte von Callie vollstaendiger Konsistenz-Audit ueber Claude-Skills (Claude Chat, `/mnt/skills/user/`), Memory-Edits und (per Claude Code) den echten Repo-Stand.
+
+**Kernbefund Claude-Skills:** 11 von 24 SF-1-User-Skills enthielten noch kubectl/Kubernetes/Caddy-Inhalte trotz expliziter No-Kubernetes-Regel — am schwersten wog der Master-Skill `sf1-project.md` selbst (Kubernetes statt Docker Compose, Caddy statt Traefik, PostgreSQL/Meilisearch fehlten, 11 statt 13 Services). Alle 11 betroffenen Skills wurden noch in derselben Session korrigiert (u.a. `sf1-project`, `k8s-debugging` -> `docker-compose-debugging` umgebaut, `caddy-proxy` -> `traefik-proxy` umgebaut, `ci-cd-pipeline`, `backup-restore`, `api-gateway-config`, `security-audit`, `image-processing`, `mongodb-admin`, `monitoring-stack`, `nodejs-backend`). Veralteter Vault-Pfad (`E:\--Projekte--\SF-Brain` statt `C:\Users\Klingen\--Projekte--\SF-Brain`) im `sf1-obsidian-vault`-Skill korrigiert. Alle korrigierten Skills haben jetzt ein `stand: 2026-07-10`-Feld fuer kuenftige Drift-Erkennung.
+
+**Memory-Bereinigung:** Veraltete Laufwerksangaben (D:, E:) aus den Memory-Edits entfernt, redundanter unstrukturierter Bulk-Block aufgeloest und mit den echten Einzelinfos zusammengefuehrt (Ueberschneidung mit userPreferences beseitigt).
+
+**Kernbefund Claude Code (echter Repo-Scan, schwerwiegender als die Skills):**
+- `CLAUDE_CONTEXT.md` listet `ai-service` noch als aktiv, obwohl seit Commit `3af758d` entfernt.
+- `scraper-service` (Code vorhanden, nicht in docker-compose.yml, bekannter Aufraeum-Kandidat) und `services/content-service` (nur package-lock.json) bestaetigt als unbereinigte Karteileichen.
+- **README.md und docs/DEPLOYMENT.md behaupten explizit "Kubernetes" und "Caddy (Production)"** — das ist die Quelle, die jeder Aussenstehende (Partner, Mitentwickler) im oeffentlichen Repo zuerst sieht. Direkter Widerspruch zur tatsaechlichen Docker-Compose+Traefik-Architektur.
+- Kompletter `k8s/`-Ordner + 4x `apps/*/k8s/deployment.yml` (price, media, gamification, community) sind nie entfernter, toter Deployment-Pfad.
+- docker-compose.yml enthaelt deutlich mehr Dienste als bisher dokumentiert: Prometheus, Alertmanager, Grafana, Loki, Promtail, node-exporter, Plausible, Unleash.
+- Deploy-Reihenfolge-Regel (Lenovo -> GitHub -> Server) fehlt als Pflicht-Regel in CLAUDE.md, existiert nur informell in Session-Logs.
+
+**Ergebnis / naechste Schritte:** Gemeinsam mit Callie ein 3-Sessions-Plan erstellt (Datei: `SF1-Session-Plan-Repo-Cleanup-und-Exa.md`, Ablage empfohlen SF-Brain/SF-1 Projekt/Plans/):
+- **Session 1 (naechste Session, JETZT startklar):** Repo-Hygiene — README.md/docs/DEPLOYMENT.md korrigieren, CLAUDE_CONTEXT.md aktualisieren (echte 13er-Service-Liste + vollstaendige Infra-Liste), `k8s/`-Ordner nach Secret-Scan archivieren (SF-Brain/Archiv/k8s-legacy-2026-07/), Deploy-Reihenfolge-Regel in CLAUDE.md als Pflicht-Regel ergaenzen, historische Handover-Dateien archivieren. Lenovo -> GitHub, kein Server-Zugriff noetig. Fertig-Kriterium: 0 kubectl/Kubernetes/Caddy-Treffer repoweit (ausser Archiv), CI gruen.
+- **Session 2:** Exa.ai-Grundgeruest (`apps/research-service`) anlegen — nur Struktur + Budget-Guard-Code, kein echter API-Key, 0 Euro Kosten.
+- **Session 3:** Erster echter Exa-Pilot (Kalt-Recherche DACH-Seedbank-Kandidaten fuer Erstkontakt, da noch keine Seedbank angeschrieben wurde), striktes 0-Euro-Ziel: eigener Monats-Zaehler (900 von 1.000 Frei-Requests) PLUS Spending-Limit direkt im Exa-Dashboard als eigentliche Absicherung.
+
+**Status:** Callie hat den Plan bestaetigt ("passt so"), Session 1 wird als naechstes gestartet.
+
+---
+
+## 2026-07-10 (Fortsetzung) — Session 1 durchgefuehrt: Repo-Hygiene-Bereinigung
+
+**Kontext:** Umsetzung des oben abgestimmten Session-1-Plans. Lenovo lokal, kein Server-Zugriff.
+
+**Durchgefuehrte Aenderungen:**
+1. `CLAUDE_CONTEXT.md`: Service-Tabelle ersetzt durch echte 12-Service-Liste (ai-service entfernt, war bereits vorher aus docker-compose.yml geloescht). `scraper-service` und `services/content-service` explizit als toter Code markiert. Infra-Liste ergaenzt: Prometheus, Alertmanager, Grafana, Loki, Promtail, node-exporter, Plausible, Unleash.
+2. `README.md`: "Orchestration: Kubernetes" -> "Docker Compose", "Reverse Proxy: Caddy (Production)" -> "Traefik", "Deployment: Docker + Kubernetes" -> "Docker Compose", Kubernetes-Deployment-Codeblock durch Docker-Compose-Befehle ersetzt.
+3. `docs/DEPLOYMENT.md`: Kompletter "Kubernetes Deployment"-Abschnitt (TOC-Eintrag + Inhalt) entfernt, Caddy-Alternative durch echtes Traefik-Docker-Compose-Beispiel ersetzt, Kubernetes-Rollback-Abschnitt entfernt, Doku-Links auf Docker Compose/Traefik umgestellt.
+4. **k8s-Manifeste:** Vor jeglicher Aktion Secrets-Scan durchgefuehrt und Callie das Ergebnis gezeigt (nur Platzhalter-Credentials in `k8s/secrets.yaml`, alle `apps/*/k8s/deployment.yml` nutzen ausschliesslich `secretKeyRef`-Verweise ohne Klartext). Abweichung vom Plan entdeckt und gemeldet: tatsaechlich 10 Service-spezifische `k8s/`-Ordner vorhanden (nicht nur die 4 im Plan genannten: price, media, gamification, community — zusaetzlich api-gateway, auth-service, journal-service, notification-service, search-service, tools-service). Callie hat explizit bestaetigt, alle 10 + den Haupt-`k8s/`-Ordner zu entfernen. Alle Inhalte vorher 1:1 nach `SF-Brain/Archiv/k8s-legacy-2026-07/` kopiert (k8s-root/ + apps-k8s/{service}/), danach per `git rm -r --cached` + `rm -rf` aus dem Repo entfernt.
+5. `CLAUDE.md`: Neuer Abschnitt "Deploy-Reihenfolge" mit dem vorgegebenen Wortlaut (Lenovo -> GitHub -> Server, hartes Verbot direkten Server-Zugriffs ohne Schritt 1+2) ergaenzt.
+6. `scraper-service`/`services/content-service`: NICHT geloescht wie angewiesen. Uebersicht erstellt und Callie gezeigt: `apps/scraper-service` enthaelt nur eine einzelne Route-Datei (`admin.routes.ts`), die nicht lauffaehig ist (importiert nicht existierende `middleware/auth.middleware` und `services/scraper.service`); `services/content-service` enthaelt ausschliesslich eine `package-lock.json`, keinerlei Code. Beide: keine Referenzen in docker-compose.yml, CI-Workflows oder package.json-Workspaces gefunden — isolierte Karteileichen.
+7. Historische Root-Dateien (`PROJECT_TREE.md`, `HANDOVER_FINAL.md`, `HANDOVER_2025-10-25.md`, `FRONTEND_HANDOVER.md`, `PRODUCTION_HARDENING_REPORT.md`, `QUICK-DEPLOY.md`) nach `SF-Brain/Archiv/Repo-Historie-2026-07/` verschoben und aus dem Repo entfernt. `CHANGELOG.md` erhaelt oben einen Hinweis auf moeglicherweise veraltete Kubernetes/Caddy-Angaben in aelteren Eintraegen.
+8. Weitere kubectl/k8s/Caddy-Reste korrigiert: `docker/README.md` (2x "Kubernetes" in Erklaertexten -> "Docker Compose"/"Traefik"), `code-quality/README.md` (Commit-Scope `k8s` -> `traefik`), `apps/api-gateway/README.md` + `apps/auth-service/README.md` (`kubectl apply -f k8s/deployment.yml` -> `docker-compose up -d <service>`).
+
+**Nicht Teil dieser Session (bewusst ausgelassen):** Exa.ai-Grundgeruest (Session 2), Loeschentscheidung fuer scraper-service/content-service (liegt bei Callie).
