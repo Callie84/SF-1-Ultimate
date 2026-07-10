@@ -53,9 +53,6 @@ providers:
   file:
     directory: /etc/traefik/dynamic
     watch: true
-  
-  kubernetes:
-    endpoint: ""
-    namespaces:
-      - services
-      - default
+
+  docker:
+    exposedByDefault: false
