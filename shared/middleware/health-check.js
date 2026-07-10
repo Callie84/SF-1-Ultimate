@@ -55,7 +55,7 @@ class HealthCheckManager {
             timestamp: new Date().toISOString()
         });
     };
-    // Liveness Endpoint (nur für Kubernetes)
+    // Liveness Endpoint (fuer Docker-Healthcheck)
     liveness = (req, res) => {
         res.json({
             status: 'alive',

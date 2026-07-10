@@ -73,7 +73,7 @@ export class HealthCheckManager {
     });
   };
 
-  // Liveness Endpoint (nur für Kubernetes)
+  // Liveness Endpoint (fuer Docker-Healthcheck)
   liveness = (req: Request, res: Response) => {
     res.json({
       status: 'alive',

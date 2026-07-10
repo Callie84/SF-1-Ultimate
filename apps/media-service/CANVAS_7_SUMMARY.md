@@ -331,13 +331,7 @@ await uploadService.uploadBatch({
 
 ## 🐳 DEPLOYMENT
 
-### Kubernetes
-- **Replicas:** 2
-- **Service:** ClusterIP (Port 3008)
-- **Secrets:** S3-Credentials, MongoDB, Redis
-- **Optional:** ClamAV-Sidecar
-
-### Docker
+### Docker Compose
 ```bash
 docker build -t media-service .
 docker run -p 3008:3008 \
@@ -406,7 +400,6 @@ docker run -p 3008:3008 \
 - `src/services/` - 6 Business-Logic-Services
 - `src/routes/` - 3 API-Router
 - `src/utils/` - MIME-Types, Errors, Logger
-- `k8s/deployment.yml` - Kubernetes-Config
 - `README.md` - Vollständige Doku
 
 ---

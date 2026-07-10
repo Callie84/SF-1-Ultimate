@@ -280,12 +280,9 @@ POST /           → Erstellen [Mod-Only]
 
 ## 🐳 DEPLOYMENT
 
-### Kubernetes:
-- **Replicas:** 2
-- **CPU Request:** 100m
-- **CPU Limit:** 500m
-- **Memory Request:** 256Mi
-- **Memory Limit:** 512Mi
+### Docker Compose:
+- **Restart Policy:** always
+- **Resource Limits:** siehe docker-compose.yml
 
 ### Health-Checks:
 - **Liveness:** GET /health (10s initial, 30s interval)
@@ -333,7 +330,6 @@ POST /           → Erstellen [Mod-Only]
 - `src/services/` - 5 Business-Logic-Classes
 - `src/routes/` - 5 API-Router
 - `src/middleware/` - Auth + Validation
-- `k8s/deployment.yml` - Kubernetes-Config
 - `README.md` - Vollständige Doku
 
 ---
