@@ -408,20 +408,11 @@ healthcheck:
   retries: 3
 ```
 
-**Kubernetes:**
+**Traefik (Health-Check-basiertes Routing):**
 ```yaml
-livenessProbe:
-  httpGet:
-    path: /health
-    port: 3001
-  initialDelaySeconds: 30
-  periodSeconds: 10
-
-readinessProbe:
-  httpGet:
-    path: /ready
-    port: 3001
-  initialDelaySeconds: 10
+labels:
+  - "traefik.http.services.auth-service.loadbalancer.healthcheck.path=/health"
+  - "traefik.http.services.auth-service.loadbalancer.healthcheck.interval=10s"
   periodSeconds: 5
 ```
 

@@ -167,30 +167,14 @@ pm2 save
 pm2 startup  # Auto-Start nach Reboot
 ```
 
-### Option B: Docker Swarm (Production)
+### Option B: Docker Compose (Production, empfohlen)
 
 ```bash
-# Swarm initialisieren
-docker swarm init
+docker-compose -f docker-compose.production.yml up -d
 
-# Services deployen
-docker stack deploy -c docker-compose.production.yml sf1
-
-# Status prüfen
-docker stack services sf1
-docker service logs sf1_auth-service
-```
-
-### Option C: Kubernetes (Enterprise)
-
-```bash
-# Helm Chart verwenden (falls vorhanden)
-helm install sf1-ultimate ./charts/sf1-ultimate \
-  --set env.JWT_SECRET=$JWT_SECRET \
-  --set env.DATABASE_URL=$DATABASE_URL
-
-# Oder mit kubectl
-kubectl apply -f k8s/
+# Status pruefen
+docker-compose ps
+docker-compose logs -f auth-service
 ```
 
 ---
@@ -373,12 +357,8 @@ aws secretsmanager get-secret-value --secret-id sf1/jwt-secret
 ### Horizontal Scaling
 
 ```bash
-# Docker Swarm - Services replizieren
-docker service scale sf1_auth-service=3
-docker service scale sf1_price-service=2
-
-# Kubernetes - Replicas anpassen
-kubectl scale deployment auth-service --replicas=3
+# Docker Compose - Services replizieren
+docker-compose up -d --scale auth-service=3 --scale price-service=2
 ```
 
 ### Load Balancing
@@ -411,14 +391,11 @@ npm run test:e2e -- --env=production
 ### Canary Deployment
 
 ```bash
-# 10% Traffic auf neue Version
-kubectl set image deployment/auth-service auth=sf1/auth:v2.0
-kubectl rollout pause deployment/auth-service
+# Neue Version fuer einen Service bauen und einzeln austauschen
+docker-compose build auth-service
+docker-compose up -d --no-deps auth-service
 
-# Metrics beobachten...
-
-# Falls OK: Rollout fortsetzen
-kubectl rollout resume deployment/auth-service
+# Metrics beobachten, bei Problemen: vorherigen Commit auschecken und neu bauen
 ```
 
 ---
@@ -433,9 +410,6 @@ docker-compose logs -f --tail=100 auth-service
 
 # PM2
 pm2 logs auth-service
-
-# Kubernetes
-kubectl logs -f deployment/auth-service
 ```
 
 ### Häufige Probleme
