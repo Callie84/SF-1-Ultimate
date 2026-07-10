@@ -1,17 +1,14 @@
 # SF-1 Ultimate — Vollständige Entwicklungsdokumentation
 
 **Projekt:** seedfinderpro.de — Cannabis Growing Community Platform
-<<<<<<< HEAD
-**Stand:** 2026-06-03 — TypeScript-Build price-service sauber (0 Fehler) | nvm/Node.js nativ in WSL2
+**Stand:** 2026-06-03 — TypeScript-Build price-service sauber (0 Fehler) | Flavor-Coverage Phase 1+2 deployed | Playwright-Scraper aktiv | Cron 02:00 | nvm/Node.js nativ in WSL2
 **Status:** ✅ Production-Ready — Security Audit abgeschlossen
-=======
-**Stand:** 2026-06-03 — Flavor-Coverage Phase 1+2 deployed | Playwright-Scraper aktiv | Cron 02:00
-**Status:** ✅ Production-Ready
->>>>>>> d298111 (docs: dk-Session-End — Flavor Phase 1+2 vollständig dokumentiert)
 **Stack:** Next.js 14, Express Microservices, MongoDB, PostgreSQL, Redis, Meilisearch, Docker Compose, Traefik, Ollama (KI)
 
 > **⚠️ Hinweis:** Sessions 30–92 sind hauptsächlich in `/root/SF-Brain/SF-1 Projekt/Status & Roadmap.md` dokumentiert (Vault).
 > Diese Datei wird systematisch aktualisiert ab Session 94.
+
+> **Meta-Korrektur 2026-07-11:** Verbliebene Git-Merge-Konfliktmarker (`<<<<<<<`/`=======`/`>>>>>>>`) aus einem früheren Merge in dieser Datei entfernt — Header pro Feld zu einer Zeile zusammengeführt, beide Doku-Abschnitte (price-service-Fix zuerst, dann Flavor-Coverage) vollständig erhalten.
 
 ---
 
@@ -52,7 +49,6 @@ Kompilierter Service ohne Key gestartet und geprüft:
 
 ---
 
-<<<<<<< HEAD
 ## price-service TypeScript-Build Fix [abgeschlossen 2026-06-03]
 
 ### Problem / Ziel
@@ -112,7 +108,9 @@ cd apps/price-service && npm install --legacy-peer-deps
 ```bash
 npm run build  # Exit 0, keine Fehler
 ```
-=======
+
+---
+
 ## Flavor-Coverage Pipeline Phase 1+2 [abgeschlossen 2026-06-03]
 
 ### Problem / Ziel
@@ -191,7 +189,6 @@ Smoke-Test: 3/3 grün ✅
 - `ad4978d` — feat(flavors): Suffix-Stripping im Crawl-Name-Matcher
 - `666905c` — feat(flavors): Playwright-Scraper Phase 2 — System-Chromium statt Firecrawl
 - `d7c71c9` — chore: LIVE-PROGRESS finalisieren
->>>>>>> d298111 (docs: dk-Session-End — Flavor Phase 1+2 vollständig dokumentiert)
 
 ---
 
