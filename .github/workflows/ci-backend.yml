@@ -79,6 +79,7 @@ jobs:
         service:
           - tools-service
           - notification-service
+          - research-service
 
     steps:
       - name: Checkout code
