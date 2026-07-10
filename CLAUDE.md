@@ -47,6 +47,12 @@ Vollständig in Vault: `Regeln & Protokolle/Pflicht-Regeln.md`
 
 ---
 
+## Deploy-Reihenfolge
+
+HARTES VERBOT, KEINE AUSNAHMEN: 1. Lenovo (lokal) -> 2. GitHub (push + verifizieren) -> 3. Server (erst danach). Kein direkter Server-Zugriff vor Schritt 1+2, außer explizite Anweisung von Callie.
+
+---
+
 ## SF-1 Mastertest — Trigger
 
 Wenn der User sagt "starte master test", "mastertest starten", "führe mastertest aus" oder ähnliches:
