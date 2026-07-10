@@ -33,22 +33,32 @@ Eine Fullstack Cannabis-Community-Plattform mit:
 
 ---
 
-## Microservices (alle laufen auf sf1-network)
+## Microservices (Stand 2026-07-10, verifiziert gegen docker-compose.yml)
 
-| Service | Port | Pfad | Status |
-|---------|------|------|--------|
-| frontend | 3000 | / | ✅ (Up 3d) |
-| auth-service | 3001 | /api/auth/* | ✅ (just restarted) |
-| price-service | 3002 | /api/prices/*, /api/strains/* | ✅ (Up 10h) |
-| journal-service | 3003 | /api/journal/*, /api/grows/* | ✅ (Up 10h) |
-| tools-service | 3004 | /api/tools/* | ✅ (just fixed) |
-| community-service | 3005 | /api/community/* | ✅ (Up 10h) |
-| notification-service | 3006 | /api/notifications/* | ✅ (just fixed) |
-| search-service | 3007 | /api/search/* | ✅ (just fixed) |
-| media-service | 3008 | /api/media/* | ✅ (Up 25h) |
-| gamification-service | 3009 | /api/gamification/* | ✅ (Up 25h) |
-| ai-service | 3010 | /api/ai/* | ✅ (just fixed) |
-| backup-service | 3011 | /api/backup/* | ✅ (Up 25h) |
+**12 aktive Services (alle laufen auf sf1-network):**
+
+| Service | Port | Pfad |
+|---------|------|------|
+| web-app (frontend) | 3000 | / |
+| api-gateway (Traefik) | 80/443 | Routing |
+| auth-service | 3001 | /api/auth/* |
+| price-service | 3002 | /api/prices/*, /api/strains/* |
+| journal-service | 3003 | /api/journal/*, /api/grows/* |
+| tools-service | 3004 | /api/tools/* |
+| community-service | 3005 | /api/community/* |
+| notification-service | 3006 | /api/notifications/* |
+| search-service | 3007 | /api/search/* |
+| media-service | 3008 | /api/media/* |
+| gamification-service | 3009 | /api/gamification/* |
+| backup-service | 3011 | /api/backup/* |
+
+**Toter Code (nicht in docker-compose.yml, nicht laufend):**
+- `ai-service` — vollständig entfernt (siehe DOKUMENTATION.md, Entfernung committet); frühere Erwähnungen in diesem Dokument sind veraltete Session-Historie, kein aktiver Service
+- `apps/scraper-service` — existiert im Repo, ist aber nicht in docker-compose.yml eingebunden; Aufräum-Kandidat
+- `services/content-service` — existiert außerhalb von `apps/`, ist nicht in docker-compose.yml eingebunden; Aufräum-Kandidat
+
+**Infrastruktur/Monitoring (zusätzlich zu Datenbanken, siehe Tech Stack):**
+Prometheus, Alertmanager, Grafana, Loki, Promtail, node-exporter, Plausible (+ eigene Postgres/ClickHouse-Instanzen), Unleash (+ eigene Postgres-Instanz)
 
 ---
 
