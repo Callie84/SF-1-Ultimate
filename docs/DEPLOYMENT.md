@@ -8,7 +8,6 @@ Vollständige Anleitung für Production Deployment.
 
 - [Voraussetzungen](#voraussetzungen)
 - [Docker Deployment](#docker-deployment)
-- [Kubernetes Deployment](#kubernetes-deployment)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Backup & Restore](#backup--restore)
 - [Monitoring Setup](#monitoring-setup)
@@ -134,86 +133,6 @@ docker-compose logs -f auth-service
 
 # Nur Errors
 docker-compose logs -f | grep ERROR
-```
-
----
-
-## ☸️ Kubernetes Deployment
-
-### 1. Cluster vorbereiten
-
-```bash
-# kubectl installieren
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-
-# Helm installieren
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-```
-
-### 2. Namespace erstellen
-
-```bash
-kubectl create namespace sf1-ultimate
-kubectl config set-context --current --namespace=sf1-ultimate
-```
-
-### 3. Secrets erstellen
-
-```bash
-# Von .env Datei
-kubectl create secret generic sf1-secrets --from-env-file=.env
-
-# Oder manuell
-kubectl create secret generic sf1-secrets \
-  --from-literal=POSTGRES_PASSWORD=your_password \
-  --from-literal=MONGO_PASSWORD=your_password \
-  --from-literal=JWT_SECRET=your_secret
-```
-
-### 4. Services deployen
-
-```bash
-# Alle Services
-kubectl apply -f k8s/
-
-# Oder einzeln
-kubectl apply -f k8s/postgres.yaml
-kubectl apply -f k8s/mongodb.yaml
-kubectl apply -f k8s/redis.yaml
-kubectl apply -f k8s/auth-service.yaml
-# ... etc
-```
-
-### 5. Ingress konfigurieren
-
-```bash
-# NGINX Ingress Controller
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm install nginx-ingress ingress-nginx/ingress-nginx
-
-# SSL Zertifikat (Let's Encrypt)
-helm repo add jetstack https://charts.jetstack.io
-helm install cert-manager jetstack/cert-manager --set installCRDs=true
-
-# Ingress erstellen
-kubectl apply -f k8s/ingress.yaml
-```
-
-### 6. Status prüfen
-
-```bash
-# Pods
-kubectl get pods
-
-# Services
-kubectl get services
-
-# Ingress
-kubectl get ingress
-
-# Logs
-kubectl logs -f deployment/auth-service
 ```
 
 ---
@@ -360,15 +279,18 @@ sudo certbot certonly --standalone -d seedfinderpro.de -d www.seedfinderpro.de
 sudo certbot renew --dry-run
 ```
 
-### Caddy (Alternative)
+### Traefik (im Stack enthalten)
 
-Caddy handled SSL automatisch:
+Traefik (Service `api-gateway` in `docker-compose.yml`) übernimmt SSL/TLS automatisch per Let's-Encrypt-Resolver — kein separates Setup nötig:
 
-```bash
-# Caddyfile
-seedfinderpro.de {
-    reverse_proxy localhost:80
-}
+```yaml
+# Auszug docker-compose.yml
+api-gateway:
+  image: traefik:v2.10
+  command:
+    - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+    - "--certificatesresolvers.letsencrypt.acme.storage=/certs/acme.json"
+    - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
 ```
 
 ---
@@ -472,24 +394,13 @@ docker exec service-name node --prof app.js
 
 ## 📚 Rollback
 
-### Docker
+### Docker Compose
 
 ```bash
 # Zu vorheriger Version
 docker-compose down
 git checkout previous-commit
 docker-compose up -d
-```
-
-### Kubernetes
-
-```bash
-# Rollback Deployment
-kubectl rollout undo deployment/auth-service
-
-# Zu spezifischer Revision
-kubectl rollout history deployment/auth-service
-kubectl rollout undo deployment/auth-service --to-revision=2
 ```
 
 ---
@@ -515,7 +426,8 @@ Vor Production Deployment:
 ## 📚 Weitere Ressourcen
 
 - [Docker Docs](https://docs.docker.com/)
-- [Kubernetes Docs](https://kubernetes.io/docs/)
+- [Docker Compose Docs](https://docs.docker.com/compose/)
+- [Traefik Docs](https://doc.traefik.io/traefik/)
 - [GitHub Actions Docs](https://docs.github.com/en/actions)
 - [Let's Encrypt Docs](https://letsencrypt.org/docs/)
 

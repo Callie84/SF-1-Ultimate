@@ -223,7 +223,7 @@ SF-1-Ultimate/
 - **Scraping:** Playwright
 - **Search:** Meilisearch
 - **AI:** OpenAI GPT-4 Vision
-- **Deployment:** Docker + Kubernetes
+- **Deployment:** Docker Compose
 
 ### Frontend
 
@@ -240,9 +240,9 @@ SF-1-Ultimate/
 ### Infrastructure
 
 - **Container:** Docker
-- **Orchestration:** Kubernetes
+- **Orchestration:** Docker Compose
 - **API Gateway:** Traefik
-- **Reverse Proxy:** Caddy (Production)
+- **Reverse Proxy:** Traefik
 - **Monitoring:** Prometheus + Grafana (planned)
 
 ---
@@ -359,20 +359,17 @@ npm run test:coverage
 
 ## 📦 Deployment
 
-### Docker Compose (Development)
+### Docker Compose (Development & Production)
 
 ```bash
+# Development
 docker-compose up -d
-```
 
-### Kubernetes (Production)
-
-```bash
-# Apply all services
-kubectl apply -f apps/*/k8s/
+# Production
+docker-compose -f docker-compose.production.yml up -d
 
 # Check status
-kubectl get pods -n sf1-ultimate
+docker-compose ps
 ```
 
 ### Environment Variables
