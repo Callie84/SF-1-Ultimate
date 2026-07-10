@@ -8988,3 +8988,17 @@ Aufraeum-Kandidaten (Option C).
 8. Weitere kubectl/k8s/Caddy-Reste korrigiert: `docker/README.md` (2x "Kubernetes" in Erklaertexten -> "Docker Compose"/"Traefik"), `code-quality/README.md` (Commit-Scope `k8s` -> `traefik`), `apps/api-gateway/README.md` + `apps/auth-service/README.md` (`kubectl apply -f k8s/deployment.yml` -> `docker-compose up -d <service>`).
 
 **Nicht Teil dieser Session (bewusst ausgelassen):** Exa.ai-Grundgeruest (Session 2), Loeschentscheidung fuer scraper-service/content-service (liegt bei Callie).
+
+---
+
+## 2026-07-10 (Fortsetzung) — apps/scraper-service + services/content-service entfernt
+
+**Kontext:** Callie hat nach der Uebersicht aus der vorherigen Session die Loeschung bestaetigt.
+
+**Vorab-Pruefung:** Repo-weite Suche nach `scraper-service`/`content-service` (ausserhalb der beiden Ordner selbst) ergab nur Treffer in `CLAUDE_CONTEXT.md` und `DOKUMENTATION.md` (Doku-Stellen, die die Ordner als toten Code markierten) — keine Referenzen in Code-Imports, docker-compose.yml, CI-Workflows oder package.json-Workspaces. Ergebnis Callie gezeigt vor der Loeschung.
+
+**Aktion:** `git rm -r apps/scraper-service services/content-service`. `apps/scraper-service` enthielt nur eine nicht lauffaehige Route-Datei (fehlende Middleware/Service-Imports), `services/content-service` nur eine `package-lock.json` ohne jeglichen Code. Preis-Scraping-Funktionalitaet ist vollstaendig in `price-service` (`src/scrapers/`, `src/feeds/`) abgedeckt.
+
+**Nacharbeit:** `CLAUDE_CONTEXT.md` aktualisiert — beide Eintraege im "Toter Code"-Abschnitt von "Aufräum-Kandidat" auf "entfernt (2026-07-10)" geaendert.
+
+**Commit:** `chore: remove dead scraper-service and content-service (functionality fully covered by price-service)`

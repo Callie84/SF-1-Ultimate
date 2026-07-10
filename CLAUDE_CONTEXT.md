@@ -52,10 +52,9 @@ Eine Fullstack Cannabis-Community-Plattform mit:
 | gamification-service | 3009 | /api/gamification/* |
 | backup-service | 3011 | /api/backup/* |
 
-**Toter Code (nicht in docker-compose.yml, nicht laufend):**
+**Toter Code (entfernt):**
 - `ai-service` — vollständig entfernt (siehe DOKUMENTATION.md, Entfernung committet); frühere Erwähnungen in diesem Dokument sind veraltete Session-Historie, kein aktiver Service
-- `apps/scraper-service` — existiert im Repo, ist aber nicht in docker-compose.yml eingebunden; Aufräum-Kandidat
-- `services/content-service` — existiert außerhalb von `apps/`, ist nicht in docker-compose.yml eingebunden; Aufräum-Kandidat
+- `apps/scraper-service` und `services/content-service` — entfernt (2026-07-10); Preis-Scraping läuft vollständig in `price-service` (`src/scrapers/`, `src/feeds/`)
 
 **Infrastruktur/Monitoring (zusätzlich zu Datenbanken, siehe Tech Stack):**
 Prometheus, Alertmanager, Grafana, Loki, Promtail, node-exporter, Plausible (+ eigene Postgres/ClickHouse-Instanzen), Unleash (+ eigene Postgres-Instanz)
