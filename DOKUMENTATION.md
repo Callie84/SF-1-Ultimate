@@ -15,6 +15,43 @@
 
 ---
 
+## research-service — Exa.ai-Grundgerüst (13. Service) [angelegt 2026-07-11]
+
+### Ziel
+Grundgerüst für die Exa.ai-Integration. Der Service baut und startet sauber, arbeitet
+aber im **inaktiven Modus**, solange kein `EXA_API_KEY` gesetzt ist — kein einziger
+Live-Request gegen die Exa-API. Erst mit gesetztem Key werden echte Company-Searches
+ausgeführt.
+
+### Struktur (`apps/research-service/`)
+- `src/index.ts` — Express-App, Port **3010**, `/health` (Traefik-/Docker-kompatibel), Graceful Shutdown.
+- `src/exaClient.ts` — Budget-Guard + Redis-Cache-Wrapper um `exa-js`:
+  - `MONTHLY_REQUEST_LIMIT=900` (via `EXA_MONTHLY_REQUEST_LIMIT` überschreibbar), Monatszähler in Redis (`exa:requests:YYYY-MM`, TTL 32 Tage), Ergebnis-Cache 3 Tage (`exa:cache:<base64>`).
+  - Ohne `EXA_API_KEY`: kein Crash — beim Start kontrollierte Warnung, `guardedSearch()` wirft `ExaInactiveError`.
+  - Budget-Guard-Logik 1:1 aus dem Integrationsplan übernommen; einzige Anpassung: `set()` nutzt die **ioredis**-Signatur `set(key, val, 'EX', sec)` statt der node-redis-v4-Objekt-Form.
+- `src/routes/partners.ts` — Stub `POST /partners` (Company-Search, `category='company'`), Zod-Validierung. Ohne Key → **HTTP 503**, bei Budget-Limit → 429.
+- `src/routes/priceWatch.ts`, `src/routes/strainEnrich.ts` — reine Stubs, geben aktuell **501 Not Implemented** zurück (spätere Phasen).
+- `Dockerfile` — Multi-Stage (deps/builder/prod-deps/runner) analog `auth-service`, non-root User, `HEALTHCHECK` auf 3010.
+- `tsconfig.json` — gleiche strict-Einstellungen wie die anderen TS-Services.
+
+### Konfiguration
+- `.env.example` ergänzt: `EXA_API_KEY=` (leer), `EXA_MONTHLY_REQUEST_LIMIT=900`, `RESEARCH_SERVICE_URL=http://research-service:3010`.
+- `docker-compose.yml`: `research-service` als 13. Service, Port 3010, `traefik.enable=false` (nur intern erreichbar, kein Public-Routing über seedfinderpro.de), `depends_on: redis (healthy)`.
+- `.github/workflows/ci-backend.yml`: `research-service` in die Build-Check-Matrix (`test-stateless-services`) aufgenommen.
+
+### Verifikation (lokal, ohne Docker)
+Kompilierter Service ohne Key gestartet und geprüft:
+- `GET /health` → 200, `mode: "inactive"`
+- `POST /partners` (gültiger Body) → **503** mit klarer Meldung, **kein Crash-Loop**
+- `POST /partners` (ungültiger Body) → 400 (Zod)
+- `POST /price-watch`, `GET /strain-enrich` → 501
+
+### Offene Punkte
+- **Lokaler `docker compose build` nicht durchführbar:** das lokale Netzwerk hat einen TLS-intercepting Proxy, der `apk`/`npm` in Containern mit „server certificate not trusted“ / `UNABLE_TO_VERIFY_LEAF_SIGNATURE` blockiert. Betrifft **jeden** Docker-Build hier, nicht den Dockerfile. Build wird auf CI/Server (ohne diesen Proxy) validiert; TS-Build lokal grün.
+- Kein Server-Deploy in dieser Session (bewusst).
+
+---
+
 <<<<<<< HEAD
 ## price-service TypeScript-Build Fix [abgeschlossen 2026-06-03]
 
