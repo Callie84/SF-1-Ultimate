@@ -346,7 +346,7 @@ CMD ["node", "dist/index.js"]
 **Why**:
 - Properly handles SIGTERM/SIGINT signals
 - Reaps zombie processes
-- Ensures graceful shutdown in Kubernetes
+- Ensures graceful shutdown in Docker Compose
 
 **Without dumb-init**:
 ```bash
@@ -643,8 +643,8 @@ COPY --from=builder /app/dist ./dist
 ### 6. **Health Checks Are Critical**
 
 Without health checks:
-- Kubernetes doesn't know when pod is ready
-- Load balancers send traffic to unhealthy containers
+- Docker Compose / Traefik doesn't know when a container is ready
+- Traefik routes traffic to unhealthy containers
 - Failed containers keep running
 
 ```dockerfile

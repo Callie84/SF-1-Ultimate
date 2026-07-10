@@ -75,5 +75,5 @@ DISCORD_CLIENT_SECRET=...
 ## Deployment
 
 ```bash
-kubectl apply -f k8s/deployment.yml
+docker-compose up -d auth-service
 ```

@@ -44,7 +44,7 @@ bash scripts/health-check.sh
 ## Deployment
 
 ```bash
-kubectl apply -f k8s/deployment.yml
+docker-compose up -d api-gateway
 ```
 
 ## Monitoring

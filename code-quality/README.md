@@ -413,7 +413,7 @@ This project follows the [Conventional Commits](https://www.conventionalcommits.
 
 **Scope** (required):
 - Service names: `auth`, `prices`, `learn`, `chat`, `frontend`
-- Infrastructure: `docker`, `k8s`, `nginx`, `monitoring`, `security`
+- Infrastructure: `docker`, `traefik`, `nginx`, `monitoring`, `security`
 - General: `api`, `db`, `deps`, `config`, `scripts`, `tests`, `docs`
 
 **Subject** (required):
