@@ -12,6 +12,35 @@
 
 ---
 
+## Security: Kritischer Dependabot-Finding CVE-2026-47429 behoben — vitest 1.6.1 → 3.2.6 [abgeschlossen 2026-07-11]
+
+### Problem / Ziel
+GitHub-Dependabot meldete **einen kritischen** Finding (CVSS 9.8, GHSA-5xrq-8626-4rwp / CVE-2026-47429): `vitest` < 3.2.6 erlaubt, wenn der **Vitest-UI-Server** lauscht und ins Netz exponiert ist (oder unter Windows im Browser-Mode), das Umgehen der Datei-Serving-Prüfung via Pfad-Trick (`\\?\..\`) → beliebiges Datei-Lesen und über die Rerun-/Write-Features effektiv **Remote Code Execution**.
+
+### Betroffener Bereich & reale Ausnutzbarkeit
+- Package steckt **ausschließlich** in der Test-Harness `tests/` (Paket `sf1-mastertest`), **scope: development** — in **keinem** der 13 Services (`grep '"vitest"' apps/*/package.json` → leer), nicht deployt, kein Produktions-Runtime-Code.
+- **Im Ist-Zustand nicht aktiv ausnutzbar:** alle Scripts nutzen `vitest run` (reiner CLI-Modus) — **kein** UI-Server, **kein** `--api.host`/`api.host`. Der Exploit-Pfad (lauschender/exponierter UI-Server bzw. Windows-Browser-Mode) wird durch die tatsächliche Nutzung nicht ausgelöst. Reales Risiko daher praktisch null; Einstufung „critical" spiegelt die *Kapazität* der Lücke, nicht die konkrete Exposition.
+
+### Lösung
+- `tests/`: `npm install --save-dev vitest@3.2.6 --legacy-peer-deps` (Fix-Version = `3.2.6`; alle Versionen < 3.2.6 verwundbar, **kein** 1.x/2.x-Backport → zwingend Major-Sprung 1.6.1 → 3.2.6).
+- `@vitest/ui` ist **keine** direkte Dependency → nichts weiter zu bumpen.
+- Config-Prüfung vor dem Upgrade: `tests/vitest.config.ts` (+ Duplikat `mastertest.config.ts`) nutzen nur `globals`, `testTimeout`, `hookTimeout`, `reporters: ['verbose']`, `sequence.concurrent` — allesamt in vitest 3.x **unverändert gültig**, keine deprecated/entfernten Optionen, keine Workspace-Config → **keine** Config-Anpassung nötig.
+
+### Verifikation (lokal, Lenovo)
+- `npx vitest --version` → **3.2.6**; `npm audit` → vitest/CVE-2026-47429 **verschwunden**.
+- `npx tsc --noEmit` in `tests/` → **Exit 0** (Tests typisieren sauber gegen vitest-3.x-Typen).
+- `npx vitest run services/auth.test.ts` → Harness läuft: Config geladen, `globals` aktiv, 7 Tests **entdeckt & ausgeführt** (5 passed / 2 failed). Die 2 Failures sind reine **Netzwerk-/Service-Failures** (`expected undefined to be 200`, leerer Token) — **keine** Vitest-API-Brüche.
+- **Hinweis zur Suite-Vollprüfung:** Die Mastertest-Suite sind **Integrationstests gegen die 13 Live-Services** (`tests/helpers/client.ts` zielt auf server-interne Docker-IPs `172.17.0.x`, aufgelöst per `docker inspect` in `scripts/sf1-daily-mastertest.sh`). Sie ist auf Lenovo **nicht grün lauffähig**, weil dort keine `sf1-*`-Container laufen und die IPs server-intern sind — unabhängig von der vitest-Version. CI führt die Suite **nicht** aus (kein Workflow referenziert `tests/`/`vitest`). Ein echter GREEN-Volllauf erfolgt server-seitig über den täglichen 06:00-Cron — **kein** Server-Deploy in dieser Session.
+
+### Geänderte Dateien
+- `tests/package.json` — `vitest` `^1.6.0` → `^3.2.6`
+- `tests/package-lock.json` — Lockfile neu aufgelöst (vitest-3.x-Dependency-Baum)
+
+### Verbleibend (NICHT in dieser Session)
+- `npm audit` in `tests/` zeigt noch **2 high** (`axios`, `form-data`) — **vorbestehend**, nicht durch dieses Upgrade eingeführt (axios `^1.6.0` war bereits da, form-data transitiv via axios). Gehören zu den übrigen Dependabot-Findings, die in einer eigenen späteren Session bearbeitet werden.
+
+---
+
 ## research-service — Exa.ai-Grundgerüst (13. Service) [angelegt 2026-07-11]
 
 ### Ziel
