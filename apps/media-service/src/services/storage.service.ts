@@ -8,11 +8,11 @@ const CDN_URL = process.env.CDN_URL; // Optional: CloudFront/Cloudflare URL
 
 // S3-Client (MinIO oder AWS S3)
 const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'eu-central-1',
+  region: process.env.S3_REGION || 'eu-central-1',
   endpoint: process.env.S3_ENDPOINT, // Für MinIO: http://minio:9000
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!
+    accessKeyId: process.env.S3_ACCESS_KEY!,
+    secretAccessKey: process.env.S3_SECRET_KEY!
   },
   forcePathStyle: !!process.env.S3_ENDPOINT // MinIO benötigt path-style
 });
@@ -114,7 +114,7 @@ export class StorageService {
     }
     
     // AWS S3
-    return `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    return `https://${BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${key}`;
   }
   
   /**

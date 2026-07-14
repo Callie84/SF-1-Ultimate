@@ -86,9 +86,9 @@ JWT_REFRESH_SECRET=another_secure_random_string
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 
-# AWS S3 (für Media)
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
+# S3 / Object Storage (für Media)
+S3_ACCESS_KEY=your_access_key
+S3_SECRET_KEY=your_secret_key
 
 # SMTP (für Emails)
 SMTP_HOST=smtp.gmail.com
