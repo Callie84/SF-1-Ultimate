@@ -32,7 +32,8 @@ Angleichung an das projektweit genutzte Schema von auth-/journal-service (`S3_*`
 
 ### Verifikation
 - ✅ CI vollständig grün ([PR #12](https://github.com/Callie84/SF-1-Ultimate/pull/12)), inkl. Backend CI (media-service), Integration Tests, CodeQL, Security Scan.
-- ⏳ Ausstehend nach Server-Deploy (erst nach Callies Freigabe): `docker logs sf1-media-service --tail 20` + echter Test-Upload gegen S3.
+- ✅ **Server-Deploy 2026-07-14** (Netcup, nach Freigabe): Fast-Forward `f15b4f7`→`946563c` (Server hing 29 Commits zurück), **nur** `media-service`-Container recreated (`docker-compose up -d --no-deps media-service`, andere Services unberührt). Container `healthy`, Logs sauber (Redis+MongoDB connected, Port 3008; ClamAV-Warnung vorbestehend/erwartet).
+- ✅ **Echter Test-Upload verifiziert:** `POST /api/media/upload` (aus dem Container, Port 3008 nicht host-gemappt) → **HTTP 201**, Original + 4 Thumbnails nach Bucket `sf1-uploads` geschrieben (`isProcessed: true`); öffentliche URLs liefern **HTTP 200**. Vor dem Fix hätte der `PutObjectCommand` mit `undefined`-Credentials gefehlt. Test-Objekt-Präfix: `strain/deploy-verify-20260714/PkLkSPd8LqKGdBSl*` (Mongo `_id` 6a568aa3…544a2e) — Test-Artefakt, kann entfernt werden.
 
 ---
 
