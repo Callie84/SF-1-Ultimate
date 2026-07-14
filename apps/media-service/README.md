@@ -66,18 +66,18 @@ POST /api/media/quota/downgrade → Free downgraden
 ### AWS S3
 ```bash
 S3_ENDPOINT=""  # Leer lassen
-AWS_REGION="eu-central-1"
-AWS_ACCESS_KEY_ID="..."
-AWS_SECRET_ACCESS_KEY="..."
+S3_REGION="eu-central-1"
+S3_ACCESS_KEY="..."
+S3_SECRET_KEY="..."
 S3_BUCKET="sf1-media"
 ```
 
 ### MinIO (Self-Hosted)
 ```bash
 S3_ENDPOINT="http://minio:9000"
-AWS_REGION="us-east-1"  # Beliebig
-AWS_ACCESS_KEY_ID="minioadmin"
-AWS_SECRET_ACCESS_KEY="minioadmin"
+S3_REGION="us-east-1"  # Beliebig
+S3_ACCESS_KEY="minioadmin"
+S3_SECRET_KEY="minioadmin"
 S3_BUCKET="sf1-media"
 ```
 
@@ -125,9 +125,9 @@ NODE_ENV=production
 MONGODB_URL=mongodb://...
 REDIS_URL=redis://...
 S3_BUCKET=sf1-media
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
-AWS_REGION=eu-central-1
+S3_ACCESS_KEY=...
+S3_SECRET_KEY=...
+S3_REGION=eu-central-1
 S3_ENDPOINT=  # Leer für AWS, oder MinIO-URL
 CDN_URL=      # Optional
 CLAMAV_HOST=clamav
