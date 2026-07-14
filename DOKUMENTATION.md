@@ -12,6 +12,30 @@
 
 ---
 
+## media-service — S3-Upload-Bug behoben (Env-Var-Mismatch) [2026-07-14]
+
+### Bug
+media-service konnte in Produktion **keine Bilder hochladen**. `apps/media-service/src/services/storage.service.ts`
+las zur Laufzeit `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION`, aber der
+`media-service`-Block in `docker-compose.yml` übergab dem Container **keine** dieser Variablen
+(nur `NODE_ENV`, `MONGODB_URL`, `REDIS_URL`, `CORS_ORIGIN`). Credentials waren zur Laufzeit
+`undefined` → jeder `PutObjectCommand` schlug fehl. auth-service und journal-service waren nicht
+betroffen (bekamen `S3_*` bereits korrekt). Grep bestätigte: media-service war der einzige Service
+mit dem Mismatch.
+
+### Gewählte Lösung — Option A (Vereinheitlichung)
+Angleichung an das projektweit genutzte Schema von auth-/journal-service (`S3_*`):
+- `storage.service.ts`: `S3_ACCESS_KEY` / `S3_SECRET_KEY` / `S3_REGION` statt `AWS_*` (inkl. AWS-URL-Fallback). `forcePathStyle` bleibt konditional (`!!S3_ENDPOINT`).
+- `docker-compose.yml`: media-service erhält `S3_ENDPOINT` / `S3_BUCKET` / `S3_REGION` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` — **geteilter Bucket `sf1-uploads`** (bewusste Entscheidung, wie auth/journal; kein dedizierter media-Bucket).
+- `.env.example`: tote „Legacy AWS SDK Vars" (`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`) entfernt — kein Code griff nach Umstellung noch darauf zu (grep-bestätigt).
+- `apps/media-service/README.md` + `docs/DEPLOYMENT.md`: Doku auf `S3_*` angeglichen.
+
+### Verifikation
+- ✅ CI vollständig grün ([PR #12](https://github.com/Callie84/SF-1-Ultimate/pull/12)), inkl. Backend CI (media-service), Integration Tests, CodeQL, Security Scan.
+- ⏳ Ausstehend nach Server-Deploy (erst nach Callies Freigabe): `docker logs sf1-media-service --tail 20` + echter Test-Upload gegen S3.
+
+---
+
 ## Security: Kritischer Dependabot-Finding CVE-2026-47429 behoben — vitest 1.6.1 → 3.2.6 [abgeschlossen 2026-07-11]
 
 ### Problem / Ziel
@@ -75,6 +99,53 @@ Kompilierter Service ohne Key gestartet und geprüft:
 ### Offene Punkte
 - **Lokaler `docker compose build` nicht durchführbar:** das lokale Netzwerk hat einen TLS-intercepting Proxy, der `apk`/`npm` in Containern mit „server certificate not trusted“ / `UNABLE_TO_VERIFY_LEAF_SIGNATURE` blockiert. Betrifft **jeden** Docker-Build hier, nicht den Dockerfile. Build wird auf CI/Server (ohne diesen Proxy) validiert; TS-Build lokal grün.
 - Kein Server-Deploy in dieser Session (bewusst).
+
+### Erster echter Exa.ai-Pilotlauf [durchgeführt 2026-07-14]
+
+**Ziel:** Einmaliger manueller Testlauf, striktes 0-€-Ziel (nur Free Tier, 10 $ Gratis-Guthaben, keine Kreditkarte hinterlegt). Kein Server-Deploy, kein Cronjob, keine Automatisierung.
+
+**Setup (lokal, Lenovo):**
+- `EXA_API_KEY` in root `.env` vorhanden (36 Zeichen, Wert nicht geloggt) → `research-service` startet in **`mode:active`** (`GET /health` bestätigt). Vorher `mode:inactive`.
+- Docker/Redis lokal nicht verfügbar (Docker-CLI OOM bei ~2,2 GB freiem RAM). Für den Budget-Zähler/Cache wurde ein **minimaler lokaler RESP-Server in Node** genutzt (nur `GET/SET/INCR/EXPIRE`, In-Memory, keine externen Calls) — funktional identisch für den Budget-Guard. Die Exa-Requests selbst gingen real gegen die Exa-API.
+
+**Verbrauch:** **9 von 900** Requests im Monatszähler `exa:requests:2026-07` (1 Gate-Request + 8 Zusatz-Requests). Gesamtkosten ~**$0.10** vom Gratisguthaben (1×$0.007 @ 10 Ergebnisse, 8×$0.012 @ 15 Ergebnisse). Weit unter Limit, 0 € echte Kosten.
+
+**Kandidatenliste (DACH-Cannabis-Seedbanks / Samen-Shops, affiliate-relevant):**
+
+*Primär — Onlineshops mit Cannabis-Samen-Verkauf, Sitz in DE/AT/CH:*
+| Firma | Website | Begründung |
+|-------|---------|------------|
+| Bud Voyage | https://bud-voyage.de/ | DE-Onlineshop, laut Eigenbeschreibung „eine der führenden Marken und Onlineshops für Cannabissamen in Deutschland“; Fokus stabile Genetik, einsteigerfreundlich → idealer Seed-Affiliate-Partner. |
+| Cannoptikum KG | https://cannoptikum.com/ | AT (Tirol, gegr. 2020), unabhängig, spezialisiert auf hochwertige Cannabis-Samen für Sammler/Breeder; transparente Genetik-Infos. |
+| Cannaspot | https://cannaspot.de/ | DE-Shop für Cannabis-Anbau: Samen, Stecklinge, Growbedarf, Zubehör — breites Sortiment inkl. Samenverkauf. |
+| Greenfield Shop (BHG Greenfield GmbH) | https://greenfield-shop.com/ | AT (seit 2016), verkauft CBD-Öl **und** Cannabis-Samen mit großer Sortenauswahl, schneller/diskreter Versand in Österreich. |
+| Topcannaseed / Topgrowshop | https://topcannaseed.com/ | DE (Erkelenz, seit 2004), Premium-Cannabis-Samen plus Growshop; Schwestershop `topgrowshop.de`. Sitz DE korrekt. *(Korrektur 2026-07-14: Exa hatte fälschlich `topinfo.help` als Domain zugeordnet — offizielle Domain ist `topcannaseed.com`. Quelle: manuelle Chat-Recherche 2026-07-14.)* |
+| Linda Seeds | https://linda-seeds.com/ | Großer Samen-Onlineshop (>3.000 Sorten, 100+ Seedbanks), Reseller-Modell. **Sitz: Valencia, Spanien (ES)** — Gerichtsstand/Impressum von linda-seeds.com (spanisches Recht); nur der Gründer stammt ursprünglich aus Köln. ⚠️ **DACH-Sitz-Konflikt:** erfüllt das Kriterium „Sitz in DE/AT/CH" streng genommen **nicht** — nur bedingt als DACH-Kandidat zu führen. *(Korrektur 2026-07-14: Exa hatte fälschlich HQ Berlin / Sitz DE eingetragen. Quelle: manuelle Chat-Recherche 2026-07-14.)* |
+
+*Sekundär — Growshops (Zubehör-Affiliate, Samen unklar/untergeordnet):*
+| Firma | Website | Begründung |
+|-------|---------|------------|
+| Canna Commerce GmbH (goGrow) | https://gogrow.de/ | DE-Growshop (D2C/B2B): Beleuchtung, Belüftung, Substrate, Headshop — Grow-Equipment-Affiliate, Samen nicht bestätigt. |
+| Azzeo GmbH (grow-shop24) | https://grow-shop24.de/ | DE (Regensburg, seit 2017), Indoor-Growshop (Growbox-Sets, Beleuchtung) — Equipment, kein bestätigter Samenverkauf. |
+| Medi Grow GmbH (grow-market.ch) | https://grow-market.ch/ | CH (Dübendorf), Swiss Growshop mit LED/Growboxen — CH-Marktzugang, Samen unklar. |
+
+*Bewusst aussortiert (Kriterium verfehlt):* Medizinal-Cannabis-Apotheken/Pharma (jiroo, mycannabis, cannaflos, cannazen), reine CBD-Shops (hanf-im-glück, goodvibe, growpoint), Hanf-Food/Fiber (HANS Brainfood, hanf-natur, hanfred Tierfutter), klassische Garten-/Gemüsesamen-Firmen (Samen Maier, Samen Mauser, ReinSaat, Probstdorfer, NPZ, Samenhaus Müller, Dürr), LinkedIn-Rauschen sowie Nicht-DACH-Breeder (Royal Queen Seeds, Dutch Passion, Kannabia, Seedsman, Fast Buds, Blimburn, Humboldt, Sticky Seeds, The Vault, Growbank.cz) — Letztere ggf. später als internationale Affiliate-Programme relevant.
+
+**Nächste Schritte (nicht Teil dieser Session):** Shortlist manuell auf Affiliate-/Partnerprogramm prüfen, Kontaktdaten sammeln, ggf. gezielte Nach-Requests (Budget erlaubt bis 900/Monat).
+
+### Nachtrag — Kandidatenliste-Korrektur & Persistenz-Klärung [2026-07-14]
+
+**Persistenz-Befund:** Die Session-3-Kandidatenliste wurde **nie in eine MongoDB** geschrieben. `apps/research-service` hat keinerlei Mongo-Anbindung (keine Dependency, kein Persistenz-Code) — einziger Datenspeicher ist Redis (Monatszähler + Roh-Antwort-Cache, TTL 3 Tage). Die Liste existiert an zwei Orten: (1) Roh-Exa-Antworten als ephemere JSON-Dateien im Session-Scratchpad (unverändert gelassen — sie belegen, was Exa geliefert hat), (2) die kuratierte Tabelle hier in dieser Datei (einziger dauerhaft editierbarer Ort).
+
+**Zwei Korrekturen an den Exa-Rohdaten** (Quelle: manuelle Chat-Recherche 2026-07-14):
+- **Topcannaseed:** Domain `topinfo.help` (von Exa falsch zugeordnet) → korrekt `topcannaseed.com` (Schwestershop `topgrowshop.de`). Sitz DE (Erkelenz) war korrekt.
+- **Linda Seeds:** Sitz `DE` (von Exa als „HQ Berlin" gemeldet) → korrekt **Valencia, Spanien (ES)** (Gerichtsstand/Impressum, spanisches Recht; nur der Gründer aus Köln). Folge: erfüllt das DACH-Sitz-Kriterium nicht mehr → in der Tabelle als DACH-Sitz-Konflikt markiert.
+
+### Offener Punkt — ToS-4.2a-Lücke: Exa-Rohdaten gehen ungefiltert an den Aufrufer [erfasst 2026-07-14, NICHT gefixt]
+
+**Problem:** Laut Projektregel (Exa.ai ToS Abschnitt 4.2a) dürfen Roh-Exa-Ergebnisse **nicht an Endnutzer** ausgeliefert, sondern nur in interne MongoDB-Collections geschrieben werden. Der aktuelle Code setzt das **nicht** um: `POST /partners` (`apps/research-service/src/routes/partners.ts`) gibt das komplette Exa-Rohergebnis direkt per `res.json({ query, category, result })` an den HTTP-Aufrufer zurück; es findet keine Mongo-Persistenz und keine Filterung statt.
+
+**Bewusst heute NICHT gefixt** — nur dokumentiert. Geplante Richtung (spätere Session): Rohergebnis in eine interne Collection (z. B. `research.partner_candidates`) schreiben und dem Aufrufer nur ein gefiltertes/reduziertes DTO (oder eine Referenz-ID) zurückgeben. Erfordert neue Mongo-Anbindung im Service + Deploy-Reihenfolge (Lenovo → GitHub → Server).
 
 ---
 
