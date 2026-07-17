@@ -884,12 +884,15 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3010
+      MONGODB_URL: mongodb://sf1_admin:${MONGO_PASSWORD}@mongodb:27017/sf1_research?authSource=admin&directConnection=true
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       CORS_ORIGIN: ${CORS_ORIGIN}
       EXA_API_KEY: ${EXA_API_KEY:-}
       EXA_MONTHLY_REQUEST_LIMIT: ${EXA_MONTHLY_REQUEST_LIMIT:-900}
     depends_on:
       redis:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
     networks:
       - sf1-network

@@ -12,6 +12,29 @@
 
 ---
 
+## research-service — ToS-4.2a-Compliance: Exa-Rohdaten nach MongoDB statt in API-Response [2026-07-17]
+
+### Problem
+Exa-ToS 4.2a verbietet die direkte Weitergabe von Exa-Rohdaten. `POST /partners` gab bisher den
+kompletten Exa-Response (inkl. `text`-Volltextfeldern) an den Client zurück.
+
+### Lösung
+Exa-Rohdaten werden jetzt vollständig in MongoDB persistiert (DB `sf1_research`, Collection
+`partner_candidates`); die API liefert nur noch bereinigte Metadaten.
+
+- **Neu** `apps/research-service/src/config/mongodb.ts` — Mongoose-Anbindung (Log: `[MongoDB] research-service verbunden`)
+- **Neu** `apps/research-service/src/models/PartnerCandidate.model.ts` — Schema mit `query`, `category`, `resultCount`, `status`, `rawResult` (kompletter Exa-Response)
+- **Geändert** `routes/partners.ts` — POST-Response: nur `candidateId`, `resultCount`, `items[]` (title/url/publishedDate); GET-Response: Kandidatenliste ohne `rawResult`
+- **Geändert** `index.ts` — MongoDB-Connect beim Start
+- **Geändert** `package.json`/Lockfile — mongoose ergänzt (`--legacy-peer-deps`, 0 Vulnerabilities)
+- **Geändert** `docker-compose.yml` — `MONGODB_URL` (sf1_research, authSource=admin) + `depends_on: mongodb (service_healthy)` für research-service
+
+### Verifikation (lokal, Lenovo, 2026-07-17)
+- `tsc --noEmit` Exit 0
+- Container healthy, Log zeigt MongoDB-Verbindung
+- POST/GET getestet: keine `text`-/`rawResult`-Felder im Response; MongoDB-Gegenprobe: `rawResult` vollständig persistiert (10 Ergebnisse, Volltext vorhanden)
+- Hinweis: Port 3010 ist nicht auf den Host gemappt — Tests per `docker exec` im Container
+
 ## media-service — S3-Upload-Bug behoben (Env-Var-Mismatch) [2026-07-14]
 
 ### Bug

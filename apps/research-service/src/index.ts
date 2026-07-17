@@ -11,6 +11,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 
 import { logger } from './utils/logger';
+import { connectMongoDB } from './config/mongodb';
 import { isExaActive, assertExaConfigured } from './exaClient';
 import { partnersRouter } from './routes/partners';
 import { priceWatchRouter } from './routes/priceWatch';
@@ -61,9 +62,25 @@ app.use((_req, res) => {
   res.status(404).json({ error: 'NOT_FOUND', message: 'Route nicht gefunden' });
 });
 
-const server = app.listen(PORT, () => {
-  logger.info(`research-service läuft auf Port ${PORT} (Modus: ${isExaActive() ? 'active' : 'inactive'})`);
-});
+let server: ReturnType<typeof app.listen>;
+
+async function start() {
+  try {
+    await connectMongoDB();
+  } catch (err) {
+    logger.error(
+      '[MongoDB] Verbindung fehlgeschlagen - research-service startet trotzdem. ' +
+        'Speichern von Partner-Kandidaten wird bis zur Behebung fehlschlagen.',
+      err
+    );
+  }
+
+  server = app.listen(PORT, () => {
+    logger.info(`research-service läuft auf Port ${PORT} (Modus: ${isExaActive() ? 'active' : 'inactive'})`);
+  });
+}
+
+start();
 
 // Graceful shutdown
 const shutdown = (signal: string) => {
