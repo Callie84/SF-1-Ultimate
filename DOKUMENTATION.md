@@ -9161,3 +9161,15 @@ Aufraeum-Kandidaten (Option C).
 **Nacharbeit:** `CLAUDE_CONTEXT.md` aktualisiert — beide Eintraege im "Toter Code"-Abschnitt von "Aufräum-Kandidat" auf "entfernt (2026-07-10)" geaendert.
 
 **Commit:** `chore: remove dead scraper-service and content-service (functionality fully covered by price-service)`
+
+---
+
+## 2026-07-17 -- Woechentlicher Status-Bericht (10.-17.07.2026, automatisiert)
+
+**Erledigt:** Repo-Hygiene abgeschlossen (README/DEPLOYMENT.md/CLAUDE_CONTEXT.md bereinigt; k8s-Ordner archiviert; scraper-service/content-service entfernt; Deploy-Reihenfolge-Regel in CLAUDE.md). CVE-2026-47429 behoben (vitest 3.2.6). media-service S3-Env-Vars vereinheitlicht (PR #12).
+
+**In Arbeit:** Grundgeruest apps/research-service (Exa.ai) fuer Seedbank-Partner-Recherche (Prio 1: Affiliate) angelegt, inaktiv ohne API-Key, 0-Euro-Vorgabe eingehalten.
+
+**Blocker:** Kein Vault-Zugriff (SF-Brain) in dieser Session, Filesystem-MCP nicht verbunden - Bericht nur aus Git-Log + Doku. Node-Version-Pruefung fuer firebase-admin-v14 weiterhin offen.
+
+**Naechste Schritte:** Exa-Pilot starten, Server-Node-Version pruefen, nodemailer-Upgrade testen, Vault-Zugriff wiederherstellen.
