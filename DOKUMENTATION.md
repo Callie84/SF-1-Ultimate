@@ -12,6 +12,69 @@
 
 ---
 
+## Exa.ai-Pilot #1 — DACH-Seedbank-Kaltrecherche (einmaliger manueller Lauf) [2026-07-19]
+
+### Ziel & Rahmen
+Erster echter Exa-Pilot (Plan-Session 3): Kaltrecherche nach DACH-Seedbank-Kandidaten für eine
+**erste Affiliate-Erstkontakt-Liste**. Striktes 0-Euro-Ziel (Free Tier / 10$-Gratisguthaben,
+keine Kreditkarte). **Einmaliger manueller Lauf** — kein Server-Deploy, kein Cronjob, keine
+automatische Wiederholung.
+
+### Verbrauch
+- **8 echte Exa-Requests** von 900 (Monatszähler `exa:requests:2026-07`): 1 breite Ausgangs-Query
+  (Step 2) + 7 verfeinerte, DACH-/samen-fokussierte Queries (Step 4, Option „verfeinert").
+- Exa-Kosten laut Response: ~**$0,007/Request** (neural search) → ~**$0,056 gesamt**, weit im
+  Gratisguthaben. Jede Query cachte 3 Tage (`exa:cache:*`), Zähler + Budget-Guard verifiziert.
+
+### Umgebung (Reproduzierbarkeit)
+Lokal (Lenovo) gegen den kompilierten `research-service` (tsx, Port 3010, `mode:active` mit Key aus
+`.env`). **Redis-Besonderheit:** Docker Desktop war in dieser Session instabil (Daemon fiel mehrfach
+aus; WSL2-Backend via `Wsl/0x80070422` deaktiviert). Statt Docker lief ein **wegwerfbares, nur für
+den Pilot geschriebenes ioredis-kompatibles Mini-Redis** (Node/RESP, `scratchpad/mini-redis.js`,
+Port 6380). Keine Repo-Code-Änderung, kein committetes Artefakt.
+
+### ⚠ Datenqualität / Vorbehalt
+`category='company'` (neural) liefert breit „Cannabis-Firmen"; **Sitz und Sortiment sind heuristisch
+aus den Exa-Textdaten abgeleitet und UNVERIFIZIERT** — vor echtem Erstkontakt manuell prüfen (z. B.
+„Linda Seeds" wurde als DE getaggt, Text nennt aber Valencia-Ursprung; einige Sitz-Angaben aus
+ccTLD geraten). LinkedIn-only-Treffer: echte Shop-Domain noch zu verifizieren.
+
+### Kandidatenliste — NEUE DACH-Kandidaten (noch nicht als SF-1-Price-Feed integriert)
+**Deutschland:**
+- **HANS Brainfood GmbH** — hansbrainfood.de — Regensburg; verkauft feminisierte Cannabissamen + Autoflower, „starke Genetik für legalen Anbau in DE". Starker Fit.
+- **Bud Voyage** — bud-voyage.de — „eine der führenden Marken/Onlineshops für Cannabissamen in Deutschland". Starker Fit.
+- **Cannaspot** — cannaspot.de — Steinheim (NRW); Samen, Stecklinge, Growbedarf.
+- **Topcannaseed & Topgrowshop** — topcannaseed.de (Exa-Quelle: topinfo.help) — Erkelenz (NRW); Cannabis-Samen + Growshop, seit 2004.
+- **Legendary Seeds** — legendary-seeds.com — Nuthetal (Brandenburg); Genetik-Entwicklung/Zucht (Breeder).
+- **KANNOBA** — Shop-Domain zu verifizieren (LinkedIn: kannoba-cbd-online) — Kuppenheim (BW); feminisierte Samen online.
+- **Hanf-Zeit** — hanf-zeit.com (LinkedIn) — Steinheim (NRW); produziert/vertreibt u. a. Cannabissamen.
+- **Weedo** — myweedo.de — München; Shop + Magazin, führt u. a. Cannabissamen (teilweise Fit).
+- **Bonorum CBD GmbH** — bonorumcbd.de — Köln; „THC Samen/Stecklinge" neben CBD (teilweise Fit).
+- **HanfHaus Düsseldorf** — Shop-Domain zu verifizieren (LinkedIn) — 25 Jahre Händler (teilweise Fit).
+
+**Österreich:**
+- **Cannoptikum KG** — cannoptikum.com — Rinn (Tirol); unabhängige österr. Genetik/Samen.
+- **BHG Greenfield GmbH (Greenfield Shop)** — greenfield-shop.com — Leoben (Steiermark); Cannabissamen + CBD.
+
+**Schweiz:**
+- **Puregene AG** — puregene.ch — Zeiningen (Aargau); Schweizer Cannabis/Hanf-Genetik, entwickelt Sorten (Breeder).
+- **Swiss Queen** — swissqueen.ch — Aargau; überwiegend CBD, Samen-Fokus unklar (teilweise Fit).
+
+### Vom Pilot gefunden, aber BEREITS SF-1-Price-Feed (kein Erstkontakt nötig)
+DACH: `mr-hanf` (AT, Natters/Tirol — „90%+ Keimgarantie"), `kannabia`, `linda-seeds`, `hanf-im-glueck`.
+International (liefern in DACH): `paradise-seeds`, `blimburn-seeds`, `seedsman`, `seedstockers`,
+`sensi-seeds`, `sumo-seeds`, `rqs` (Royal Queen Seeds).
+
+### Ausgeschlossen (kein Cannabis-Samen-Verkauf / off-scope)
+ReinSaat (Bio-Gemüsesamen), diverse reine CH-CBD/Anbau-Firmen (Marry Jane, Slowweed, swisscann tec,
+Alponics, Swiss Kiss, Orgena, Cannerald).
+
+### Nächste sinnvolle Schritte (NICHT in dieser Session)
+Top-DACH-Kandidaten manuell verifizieren (Sitz, Affiliate-Programm vorhanden?), dann Erstkontakt-Liste
+priorisieren. Optional: verfeinerte Query-Muster in den `partners`-Flow übernehmen.
+
+---
+
 ## research-service — ToS-4.2a-Compliance: Exa-Rohdaten nach MongoDB statt in API-Response [2026-07-17]
 
 ### Problem
