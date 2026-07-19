@@ -40,6 +40,16 @@ strenger als die In-House-Tools (Post Affiliate Pro / Tapfiliate), aber auch dor
 | **Paradise Seeds** (`paradise-seeds`) | **20 %** (o. 15 % + 10 % Rabatt) | k. A. | keine bekannt | Tapfiliate |
 | Seedstockers / Kannabia (`seedstockers`,`kannabia`) | ~bis 15 % | k. A. | unklar, meist über Netzwerke | Netzwerke |
 
+### Anmelde-Links (direkt, alle am 2026-07-19 mit HTTP 200 verifiziert)
+To-do-Liste zum Abarbeiten — bei Anmeldung nötig: Website-URL (seedfinderpro.de), kurze
+Seitenbeschreibung, Auszahlungsdaten (PayPal/Bank, erst für Auszahlung relevant).
+- [ ] **Sensi Seeds** (bis 30 %) → https://sensiseeds.com/en/affiliate/ — via Netzwerk **AWIN** („SensiSeeds EUR"); ggf. etwas längere Netzwerk-Prüfung.
+- [ ] **Dutch Passion** (20→30 %) → https://dutch-passion.postaffiliatepro.com/affiliates/ — Info: https://dutch-passion.com/de/affiliate-program
+- [ ] **Royal Queen Seeds** (15–25 %) → https://royalqueenseeds.postaffiliatepro.com/affiliates/ — Info: https://www.royalqueenseeds.com/affiliates
+- [ ] **Seedsman** (15–20 % + 5 % 2nd-Tier, 60-Tage-Cookie) → https://seedsman.postaffiliatepro.com/affiliates/signup.php — Info: https://www.seedsman.com/en/affiliate-information
+- [ ] **Paradise Seeds** (20 %) → https://paradiseseeds.tapfiliate.com/
+- [ ] *(neuer DACH-Partner)* **Cannoptikum (AT)** → https://cannoptikum.com/partnerprogramm
+
 ### Empfohlene Reihenfolge
 1. Bei den bereits gelisteten Seedbanks (Sensi, Dutch Passion, RQS, Seedsman, Paradise) fürs Affiliate-Programm anmelden → **sofortiger Umsatz ohne neue Integration**.
 2. **Cannoptikum** als erster *neuer* DACH-Partner registrieren.
