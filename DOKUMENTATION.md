@@ -12,6 +12,43 @@
 
 ---
 
+## Exa-Pilot #1 — Follow-up: Affiliate-Programm-Recherche der Kandidaten [2026-07-19]
+
+Nur Web-Recherche (WebFetch/WebSearch), **kein Exa, 0 €**. Ziel: Welche Kandidaten haben ein
+öffentliches Affiliate-Programm — und gibt es eine Traffic-Mindesthürde für die Aufnahme?
+
+### Kernbefund zur Aufnahme-Hürde
+Der „1000-Besucher-Mythos" bestätigt sich **nicht**: Keins der geprüften direkten Seedbank-Programme
+nennt eine **harte Traffic-/Besucher-Mindestgrenze**. Aufnahme läuft über **manuelle Prüfung** und
+verlangt v. a. eine **echte, live, thematisch passende Website** (Cannabis/Seed-Content) — das erfüllt
+SeedFinder. Nuance: netzwerkbasierte Programme (z. B. Sensi via **AWIN**) prüfen Publisher etwas
+strenger als die In-House-Tools (Post Affiliate Pro / Tapfiliate), aber auch dort keine feste Zahl.
+
+### Neue DACH-Kandidaten (aus dem Pilot)
+- **Cannoptikum (AT)** — ✅ Partnerprogramm vorhanden (`cannoptikum.com/partnerprogramm` → `/affiliate/registration`), ausdrücklich für Website-Betreiber offen; Provisionssatz erst nach Registrierung sichtbar. **Bester neuer DACH-Startpunkt.**
+- **HANS Brainfood (DE)**, **Bud Voyage (DE)**, **Greenfield Shop (AT)** — verkaufen Samen, aber **kein** Affiliate-Programm gefunden → nur per aktiver Partneranfrage.
+- **Cannaspot (DE)**, **Legendary Seeds (DE)**, **Topcannaseed (DE, `topcannaseed.com`)** — Abruf durch Bot-Schutz (403/402) blockiert → manuell prüfen.
+- **Puregene (CH)** — B2B-Genetik/Wholesale (Pure Holding), **kein** Consumer-Affiliate → raus.
+
+### Sofort-Umsatz-Weg: Affiliate-Programme BEREITS gelisteter Feeds (keine neue Integration nötig)
+| Seedbank (schon Price-Feed) | Provision | Cookie | Aufnahme-Hürde | Plattform / Anmeldung |
+|---|---|---|---|---|
+| **Sensi Seeds** (`sensi-seeds`) | bis **30 %** (Samen), 17,5 % CBD | k. A. | keine Traffic-Grenze; offen für Blogger/Publisher | AWIN + Google-Formular |
+| **Dutch Passion** (`dutch-passion`) | **20 → 25 → 30 %** (nach Umsatz/Monat) | k. A. | keine; „Website mit Cannabis-/Seed-Content" | Post Affiliate Pro |
+| **Royal Queen Seeds** (`rqs`) | **15–25 %** (steigt mit Umsatz) | k. A. | keine bekannt; Konto + Freigabe | Post Affiliate Pro |
+| **Seedsman** (`seedsman`) | **15 %** (bis 20 %) + 5 % 2nd-Tier | **60 Tage** | keine; kostenlos, Formular + Review | Post Affiliate Pro |
+| **Paradise Seeds** (`paradise-seeds`) | **20 %** (o. 15 % + 10 % Rabatt) | k. A. | keine bekannt | Tapfiliate |
+| Seedstockers / Kannabia (`seedstockers`,`kannabia`) | ~bis 15 % | k. A. | unklar, meist über Netzwerke | Netzwerke |
+
+### Empfohlene Reihenfolge
+1. Bei den bereits gelisteten Seedbanks (Sensi, Dutch Passion, RQS, Seedsman, Paradise) fürs Affiliate-Programm anmelden → **sofortiger Umsatz ohne neue Integration**.
+2. **Cannoptikum** als erster *neuer* DACH-Partner registrieren.
+3. HANS Brainfood / Bud Voyage / Greenfield später aktiv anfragen; Cannaspot/Legendary/Topcannaseed manuell verifizieren.
+
+> Quellen: sensiseeds.com/en/affiliate/ · dutch-passion.com/de/affiliate-program · royalqueenseeds.com/affiliates · seedsman.com/en/affiliate-information · paradiseseeds.tapfiliate.com · cannoptikum.com/partnerprogramm
+
+---
+
 ## Exa.ai-Pilot #1 — DACH-Seedbank-Kaltrecherche (einmaliger manueller Lauf) [2026-07-19]
 
 ### Ziel & Rahmen
