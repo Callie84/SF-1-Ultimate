@@ -19,9 +19,10 @@ async function fetchGrow(id: string) {
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const data = await fetchGrow(params.id);
+  const { id } = await params;
+  const data = await fetchGrow(id);
   const grow = data?.grow;
   if (!grow) return { title: 'Grow-Tagebuch' };
 
@@ -43,12 +44,12 @@ export async function generateMetadata({
     title,
     description: desc,
     alternates: {
-      canonical: `${BASE_URL}/grows/${params.id}`,
+      canonical: `${BASE_URL}/grows/${id}`,
     },
     openGraph: {
       title,
       description: desc,
-      url: `${BASE_URL}/grows/${params.id}`,
+      url: `${BASE_URL}/grows/${id}`,
       type: 'website',
       images: [{ url: ogImageUrl, width: 1200, height: 630, alt: title }],
     },
@@ -64,9 +65,10 @@ export async function generateMetadata({
 export default async function GrowDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const data = await fetchGrow(params.id);
+  const { id } = await params;
+  const data = await fetchGrow(id);
   const grow = data?.grow;
 
   let jsonLd: object | null = null;
@@ -96,7 +98,7 @@ export default async function GrowDetailPage({
               '@type': 'ListItem',
               position: 2,
               name: `${strainName} ${env}`,
-              item: `${BASE_URL}/grows/${params.id}`,
+              item: `${BASE_URL}/grows/${id}`,
             },
           ],
         },
@@ -107,7 +109,7 @@ export default async function GrowDetailPage({
           ...(grow.startDate
             ? { datePublished: new Date(grow.startDate).toISOString() }
             : {}),
-          url: `${BASE_URL}/grows/${params.id}`,
+          url: `${BASE_URL}/grows/${id}`,
         },
       ],
     };

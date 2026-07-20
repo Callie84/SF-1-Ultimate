@@ -46,6 +46,43 @@ Preise enthalten und **kein** „Lade Strain-Daten…" mehr; danach in GSC „In
 
 ---
 
+## web-app — Root-Cause SSR: Next.js 16 async `params` (Detailseiten lieferten „not found") [2026-07-20]
+
+### Auslöser / Entdeckung
+Nach dem v1.2.0-Deploy zeigte der rohe Server-HTML **aller** Strain-Detailseiten weiterhin
+„Strain nicht gefunden", Fallback-Titel `Strain Details` und **kein** JSON-LD — obwohl node-`fetch`
+aus dem Frontend-Container den Detail-Endpoint mit HTTP 200 + gültigen Daten beantwortete und der
+Next-Fetch-Cache gültige Bodies enthielt. Der entscheidende Hinweis kam aus dem Fetch-Cache: ein
+frischer Eintrag mit URL `…/api/community/strains/undefined/reviews` — der **Slug war `undefined`**.
+
+### Root Cause
+Das Projekt läuft auf **Next.js 16.2.10** (nicht 14, wie im Session-Plan angenommen). Seit Next 15
+sind `params` (und `searchParams`) in Server-Components **asynchron** (ein Promise) und müssen
+`await`ed werden. Der Code griff synchron zu (`params.slug` / `params.id`) → `undefined` → der
+server-seitige Fetch lief gegen `…/strains/undefined` → 404 → `null` → „not found". Das betraf
+**alle** server-gerenderten Detailseiten und lähmte damit den gesamten SEO/Indexierungs-Ansatz
+(die schon vorhandene server-seitige Metadaten/JSON-LD-Logik war nie wirksam).
+
+### Fix
+`params`-Signatur auf `Promise<{…}>` umgestellt und `const { slug } = await params;` /
+`const { id } = await params;` in **allen** betroffenen Server-Components — jeweils in
+`generateMetadata` UND der Page-Funktion:
+- `apps/web-app/src/app/strains/[slug]/page.tsx`
+- `apps/web-app/src/app/community/thread/[id]/page.tsx`
+- `apps/web-app/src/app/grows/[id]/page.tsx`
+
+Nicht betroffen: `community/[slug]`, `journal/[id]*`, `profile/[username]`, `u/[username]` u. a. sind
+`'use client'` und nutzen den Client-Hook `useParams()` (synchron korrekt). Typecheck grün.
+
+### Diagnose-Learning (Deploy-Kontext)
+- `apps/web-app` ist als **Bind-Mount** in `sf1-frontend` gehängt (`/root/SF-1-Ultimate- /apps/web-app -> /app`).
+  `next build` regeneriert `.next`, behält aber `.next/cache/fetch-cache` über Deploys → beim Debuggen
+  nützlich (zeigte die `undefined`-URL), kann aber alte Fetch-Responses vorhalten.
+- „Was Google sieht" IMMER mit `curl` gegen den **rohen** HTML prüfen (kein Browser/JS):
+  `<title>`, `application/ld+json`-Count und Loading-Marker.
+
+---
+
 ## price-service — Feed-Health-Monitoring + Feed-Audit + mr-hanf-Fix [2026-07-19]
 
 ### Auslöser

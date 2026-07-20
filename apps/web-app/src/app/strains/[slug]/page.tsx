@@ -44,9 +44,10 @@ async function fetchSeeds(name: string) {
 }
 
 export async function generateMetadata(
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
-  const strain = await fetchStrain(params.slug);
+  const { slug } = await params;
+  const strain = await fetchStrain(slug);
   if (!strain) return { title: 'Strain Details' };
 
   const title = `${strain.name} — Cannabis Strain`;
@@ -63,12 +64,12 @@ export async function generateMetadata(
     title,
     description: desc,
     alternates: {
-      canonical: `${BASE_URL}/strains/${params.slug}`,
+      canonical: `${BASE_URL}/strains/${slug}`,
     },
     openGraph: {
       title,
       description: desc,
-      url: `${BASE_URL}/strains/${params.slug}`,
+      url: `${BASE_URL}/strains/${slug}`,
       type: 'website',
       images: [ogImage],
     },
@@ -84,11 +85,12 @@ export async function generateMetadata(
 export default async function StrainDetailPage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
+  const { slug } = await params;
   const [strain, reviews] = await Promise.all([
-    fetchStrain(params.slug),
-    fetchReviews(params.slug),
+    fetchStrain(slug),
+    fetchReviews(slug),
   ]);
 
   // Seed-Preise server-seitig holen (braucht den Strain-Namen) — damit die
@@ -112,7 +114,7 @@ export default async function StrainDetailPage({
             '@type': 'ListItem',
             position: 2,
             name: strain.name,
-            item: `${BASE_URL}/strains/${params.slug}`,
+            item: `${BASE_URL}/strains/${slug}`,
           },
         ],
       },
@@ -150,7 +152,7 @@ export default async function StrainDetailPage({
           '@type': 'AggregateOffer',
           priceCurrency: 'EUR',
           availability: 'https://schema.org/InStock',
-          url: `${BASE_URL}/strains/${params.slug}`,
+          url: `${BASE_URL}/strains/${slug}`,
         },
       },
     ];
@@ -167,7 +169,7 @@ export default async function StrainDetailPage({
         />
       )}
       <StrainDetailClient
-        slug={params.slug}
+        slug={slug}
         initialStrain={strain ?? undefined}
         initialReviews={reviews ?? undefined}
         initialSeeds={seeds ?? undefined}

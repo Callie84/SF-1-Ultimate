@@ -20,9 +20,10 @@ async function fetchThread(id: string) {
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const data = await fetchThread(params.id);
+  const { id } = await params;
+  const data = await fetchThread(id);
   const thread = data?.thread;
   if (!thread) return { title: 'Community Thread' };
 
@@ -37,12 +38,12 @@ export async function generateMetadata({
     title,
     description: desc,
     alternates: {
-      canonical: `${BASE_URL}/community/thread/${params.id}`,
+      canonical: `${BASE_URL}/community/thread/${id}`,
     },
     openGraph: {
       title,
       description: desc,
-      url: `${BASE_URL}/community/thread/${params.id}`,
+      url: `${BASE_URL}/community/thread/${id}`,
       type: 'article',
       images: [{ url: ogImageUrl, width: 1200, height: 630, alt: title }],
     },
@@ -58,9 +59,10 @@ export async function generateMetadata({
 export default async function ThreadDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const data = await fetchThread(params.id);
+  const { id } = await params;
+  const data = await fetchThread(id);
   const thread = data?.thread;
 
   let jsonLd: object | null = null;
@@ -90,7 +92,7 @@ export default async function ThreadDetailPage({
                     '@type': 'ListItem',
                     position: 3,
                     name: thread.title,
-                    item: `${BASE_URL}/community/thread/${params.id}`,
+                    item: `${BASE_URL}/community/thread/${id}`,
                   },
                 ]
               : [
@@ -98,7 +100,7 @@ export default async function ThreadDetailPage({
                     '@type': 'ListItem',
                     position: 2,
                     name: thread.title,
-                    item: `${BASE_URL}/community/thread/${params.id}`,
+                    item: `${BASE_URL}/community/thread/${id}`,
                   },
                 ]),
           ],
@@ -110,7 +112,7 @@ export default async function ThreadDetailPage({
           ...(thread.createdAt
             ? { datePublished: new Date(thread.createdAt).toISOString() }
             : {}),
-          url: `${BASE_URL}/community/thread/${params.id}`,
+          url: `${BASE_URL}/community/thread/${id}`,
           ...(thread.user?.username
             ? {
                 author: {
