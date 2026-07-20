@@ -1,6 +1,8 @@
 // Feed Importer - Mr. Hanf (DE)
 // Mr. Hanf ist ein deutscher Reseller mit custom xtCommerce Shop
-// Products in div.listingrow.card, prices in span.standard_price or option-item divs
+// Shop-Redesign 2026-07: Produkte in div.listingbox (24/Seite), Name in .lb_title a,
+// Preis in span.mrh-price ("14,99 EUR"), Bild in .lb_image img, Pagination via a[rel="next"].
+// (Alt: div.listingrow.card / span.standard_price — seit dem Redesign tot, lieferte 0 Produkte.)
 import { BaseFeed, FeedProduct, FeedSource } from '../base.feed';
 import { logger } from '../../utils/logger';
 
@@ -60,7 +62,7 @@ export class MrHanfFeed extends BaseFeed {
 
         const $ = await this.fetchHtml(url);
 
-        const items = $('div.listingrow.card');
+        const items = $('div.listingbox');
 
         if (items.length === 0) break;
 
@@ -68,47 +70,49 @@ export class MrHanfFeed extends BaseFeed {
           try {
             const $el = $(el);
 
-            // Product name and URL from h2.lr_title a
-            const nameLink = $el.find('h2.lr_title a').first();
+            // Name + URL: .lb_title a (Titel liegt in <strong class="h3"><a>…</a></strong>)
+            const nameLink = $el.find('.lb_title a').first();
             const name = nameLink.text().trim();
             const productUrl = nameLink.attr('href') || '';
 
             if (!name || !productUrl) return;
 
-            // Breeder from cite element
-            const breeder = $el.find('footer.blockquote-footer cite').first().text().trim() || 'Mr. Hanf';
+            // Breeder aus Klammer im Namen (z. B. "Bubble Gum (00 Seeds)"), sonst Reseller
+            const breederMatch = name.match(/\(([^)]+)\)\s*$/);
+            const breeder = breederMatch ? breederMatch[1].trim() : 'Mr. Hanf';
 
-            // Price from span.standard_price (contains "ab 14,99 EUR")
-            const priceContainer = $el.find('span.standard_price').first();
-            // Remove the "ab" prefix span and get text
-            const priceText = priceContainer.clone().children('span.small_price').remove().end().text().trim();
+            // Preis: span.mrh-price ("14,99 EUR"), Fallback div.lb_price ("ab 14,99 EUR")
+            const priceText = $el.find('.mrh-price').first().text().trim()
+              || $el.find('.lb_price').first().text().trim();
             const price = this.parsePrice(priceText);
 
             if (!price) return;
 
-            // Image from lazy-loaded img
-            const imageUrl = $el.find('img.lazyload').first().attr('data-src') || '';
+            // Bild: .lb_image img
+            const imageUrl = $el.find('.lb_image img').first().attr('src')
+              || $el.find('.lb_image img').first().attr('data-src') || '';
 
-            // Detect type from category path and name
-            const type = this.detectSeedType(categoryPath + ' ' + name);
+            // Verfügbarkeit aus Stock-Text (leer → als lieferbar werten)
+            const stockText = $el.find('.mrh-listing-stock').text().trim().toLowerCase();
+            const inStock = stockText.length === 0
+              ? true
+              : !/ausverkauft|nicht lieferbar|vergriffen|nicht verf/.test(stockText);
 
-            // Try to get seed count from first available option
-            let seedCount = 1;
-            const firstOption = $el.find('div.option-item.option-available span.option-text').first().text().trim();
-            if (firstOption) {
-              seedCount = this.parseSeedCount(firstOption) || 1;
-            }
-
-            // Extract THC from specs table
+            // THC aus Attribut-Tabelle (.tebals), falls vorhanden
             let thc: number | undefined;
-            $el.find('table.tebals tr').each((_j, tr) => {
-              const label = $(tr).find('td').first().text().trim().toLowerCase();
+            $el.find('.tebals tr').each((_j, tr) => {
+              const label = $(tr).find('td, th').first().text().trim().toLowerCase();
               if (label.includes('thc')) {
-                const thcText = $(tr).find('td').last().text().trim();
-                thc = thcText ? parseFloat(thcText.replace(/[^\d.]/g, '')) : undefined;
+                const n = parseFloat(
+                  $(tr).find('td, th').last().text().trim().replace(',', '.').replace(/[^\d.]/g, ''),
+                );
+                if (!Number.isNaN(n)) thc = n;
               }
             });
 
+            // Seed-Menge wird im neuen Listing nicht mehr ausgewiesen ("ab"-Preis) → Default 1
+            const seedCount = 1;
+            const type = this.detectSeedType(categoryPath + ' ' + name);
             const fullUrl = productUrl.startsWith('http') ? productUrl : `${this.baseUrl}${productUrl}`;
 
             products.push({
@@ -117,7 +121,7 @@ export class MrHanfFeed extends BaseFeed {
               type,
               price,
               currency: 'EUR',
-              inStock: $el.find('div.option-item.option-available').length > 0,
+              inStock,
               packSize: `${seedCount} Seeds`,
               seedCount,
               url: fullUrl,
@@ -126,12 +130,12 @@ export class MrHanfFeed extends BaseFeed {
               thc,
             });
           } catch (err) {
-            // Skip
+            // Fehlerhafte Items überspringen
           }
         });
 
-        // Pagination: check for "nächste Seite" link
-        const hasNext = $('ul.pagination a.page-link[title="nächste Seite"]').length > 0;
+        // Pagination: Shop nutzt jetzt <a rel="next">
+        const hasNext = $('a[rel="next"]').length > 0;
         if (!hasNext) break;
         page++;
 

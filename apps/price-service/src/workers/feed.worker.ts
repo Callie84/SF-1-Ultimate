@@ -4,6 +4,7 @@ import { Queue, Worker, Job } from 'bullmq';
 import { getFeed, getFeedSlugs } from '../feeds';
 import { priceService } from '../services/price.service';
 import { websocketService } from '../services/websocket.service';
+import { recordFeedImport } from '../metrics/feed-health.metrics';
 import { logger } from '../utils/logger';
 
 // Redis connection config
@@ -61,6 +62,7 @@ const feedWorker = new Worker(
 
       if (products.length === 0) {
         logger.warn(`[FeedWorker] ${seedbank}: Keine Produkte gefunden!`);
+        recordFeedImport(seedbank, 0, 'empty');
 
         websocketService.broadcastScrapingStatus({
           seedbank,
@@ -112,6 +114,7 @@ const feedWorker = new Worker(
       });
 
       logger.info(`[FeedWorker] ${seedbank} fertig: ${result.seeds} neue Seeds, ${result.prices} neue Preise, ${result.pricesUpdated} Preise aktualisiert (${importTime}s)`);
+      recordFeedImport(seedbank, products.length, 'ok');
 
       return {
       seedbank,
@@ -124,6 +127,7 @@ const feedWorker = new Worker(
 
     } catch (error: any) {
       logger.error(`[FeedWorker] Fehler bei ${seedbank}: ${error.message}`);
+      recordFeedImport(seedbank, 0, 'error');
 
       websocketService.broadcastScrapingStatus({
         seedbank,
@@ -232,7 +236,14 @@ export async function runFeedImportNow(seedbank: string): Promise<{
   const feed = getFeed(seedbank);
   if (!feed) throw new Error(`Unbekannter Feed: ${seedbank}`);
 
-  const products = await feed.importAll();
+  let products;
+  try {
+    products = await feed.importAll();
+  } catch (error) {
+    recordFeedImport(seedbank, 0, 'error');
+    throw error;
+  }
+  recordFeedImport(seedbank, products.length, products.length === 0 ? 'empty' : 'ok');
 
   const scrapedProducts = products.map(p => ({
     name: p.name,

@@ -12,6 +12,55 @@
 
 ---
 
+## price-service — Feed-Health-Monitoring + Feed-Audit + mr-hanf-Fix [2026-07-19]
+
+### Auslöser
+Vor „Preisvergleich als Wachstumshebel" wurde geprüft, ob die Live-Preis-Beschaffung überhaupt
+liefert. Ergebnis eines Live-Tests aller 24 „aktiven" Feeds (`importAll()` direkt gegen die Shops):
+
+| Kategorie | Feeds |
+|---|---|
+| ✅ liefern zuverlässig & schnell | original-seeds-store, seedstockers, herbies, zamnesia, sensi-seeds (294), rqs, paradise, greenhouse, anesia, pyramid, garden-of-green, blimburn (998) |
+| 🟡 funktionieren, aber langsam | dutch-passion (435), seedsman (758) |
+| 🟡 zu langsam (>2min, Per-Produkt-Crawl) | barneys-farm, kannabia |
+| 🔴 liefern still 0 (kein Fehler!) | mr-hanf, cbd-seeds, sweet-seeds, world-of-seeds, spliff-seeds |
+| 🔴 blockiert / kaputt | fastbuds (403 Cloudflare), hanf-im-glueck (~1, Cloudflare), linda-seeds (Firecrawl-Key erschöpft) |
+
+Kernrisiko: ~1/3 der Feeds liefert **0 Produkte ohne Fehler** — der Import gilt als „erfolgreich",
+die Preise fehlen still in der DB.
+
+### 1. Feed-Health-Monitoring (Sicherheitsnetz)
+Neu: `apps/price-service/src/metrics/feed-health.metrics.ts` — Prometheus-Metriken am Default-Register
+(`sf1_`-Prefix, erscheint unter `GET /metrics`):
+- `sf1_feed_last_products{seedbank}` — Produktanzahl des letzten Imports (0 = verdächtig)
+- `sf1_feed_empty_imports_total{seedbank}` — Zähler stiller 0-Produkte-Ausfälle
+- `sf1_feed_failures_total{seedbank}` — Zähler Exceptions
+- `sf1_feed_last_success_timestamp_seconds{seedbank}` — für „seit X h keine Daten"-Alerts
+
+`feed.worker.ts` ruft `recordFeedImport(seedbank, count, status)` an den 3 Punkten
+(Erfolg / 0-Produkte / Exception) sowie in `runFeedImportNow`. Alertmanager kann jetzt auf
+`sf1_feed_last_products == 0` bzw. `increase(sf1_feed_empty_imports_total[…]) > 0` alarmieren.
+Verifiziert: tsc sauber + Metrik-Probe zeigt korrekte Zähler.
+
+### 2. mr-hanf repariert (0 → 2.222 Produkte)
+`mr-hanf.feed.ts`: Shop-Redesign (2026-07) hatte die Selektoren totgelegt. Neu:
+`div.listingbox` (statt `div.listingrow.card`), Name `.lb_title a`, Preis `span.mrh-price`,
+Bild `.lb_image img`, Pagination `a[rel="next"]`, Breeder aus Namens-Klammer, THC aus `.tebals`.
+**Live verifiziert: 2.222 Produkte mit Preis** (feminisiert 1077 + autoflower 1145).
+
+### 3. fastbuds NICHT gefixt (bewusst) — eigener Task
+`fastbuds` (Tier-1, „bis 50%") gibt HTTP 403. Diagnose: **Cloudflare-TLS-Fingerprinting** (JA3) —
+curl (native Windows-TLS) bekommt 200, Node/axios 403; Header-Tricks (User-Agent, sec-ch-ua,
+sec-fetch-*) helfen nicht. Braucht den Stealth-Browser-Pfad (Playwright, wie rqs/sensi/zamnesia) →
+separater Task, kein axios-Quickfix.
+
+### Offen / Folgeschritte
+- Playwright-Scraper für fastbuds; still-0-Feeds cbd-seeds/sweet-seeds/world-of-seeds/spliff-seeds analog zu mr-hanf reparieren (Selektoren veraltet).
+- Grafana-Panel + Alertmanager-Regel auf die neuen `sf1_feed_*`-Metriken.
+- Kein Server-Deploy in dieser Session (Lenovo → GitHub; Server folgt separat).
+
+---
+
 ## Exa-Pilot #1 — Follow-up: Affiliate-Programm-Recherche der Kandidaten [2026-07-19]
 
 Nur Web-Recherche (WebFetch/WebSearch), **kein Exa, 0 €**. Ziel: Welche Kandidaten haben ein
