@@ -92,7 +92,7 @@ router.get('/today', withCache('today', 6*3600), async (req, res, next) => {
  * GET /api/prices/search
  * Search seeds with prices
  */
-router.get('/search', withCache('search:${req.query.q}', 4*3600), async (req, res, next) => {
+router.get('/search', withCache('search', 4*3600), async (req, res, next) => {
   try {
     const query = req.query.q as string;
 
