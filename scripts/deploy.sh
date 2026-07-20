@@ -80,6 +80,23 @@ dc() { "${DC_BIN[@]}" "${PROJECT_ARGS[@]}" -f "$COMPOSE_FILE" --env-file "$ENV_F
 log "Umgebung: $ENVIRONMENT | Compose: $COMPOSE_FILE | Env: $ENV_FILE | Ref: $GIT_REF | DC: ${DC_BIN[*]}"
 
 # ---------- 1) Sauberkeit pruefen (schuetzt getrackte Aenderungen) -----------
+# Bekannte Build-Artefakte, die Next.js/npm bei JEDEM Build automatisch neu
+# schreiben (tsconfig.json: jsx/lib/paths-Umformatierung; package-lock.json:
+# install-Drift). Ohne Behandlung blockieren sie den Deploy jedes Mal an der
+# Dirty-Tree-Pruefung. Sie werden beim naechsten Build ohnehin neu erzeugt ->
+# gefahrlos zuruecksetzen. WICHTIG: NUR diese explizit gelisteten Pfade; jede
+# ANDERE getrackte Aenderung bleibt weiterhin ein harter Abbruch (Schutz bleibt).
+KNOWN_BUILD_ARTIFACTS=(
+  "apps/web-app/tsconfig.json"
+  "apps/web-app/package-lock.json"
+)
+for _artifact in "${KNOWN_BUILD_ARTIFACTS[@]}"; do
+  if ! git diff --quiet -- "$_artifact" 2>/dev/null; then
+    warn "Build-Artefakt zurueckgesetzt (wird beim Build neu erzeugt): $_artifact"
+    git checkout --quiet -- "$_artifact" 2>/dev/null || true
+  fi
+done
+
 log "Pruefe Working-Tree auf getrackte, nicht committete Aenderungen"
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
   err "Getrackte, nicht committete Aenderungen vorhanden. Deploy abgebrochen (Schutz vor Datenverlust)."
