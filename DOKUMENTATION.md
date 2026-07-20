@@ -12,6 +12,48 @@
 
 ---
 
+## Preis-Coverage auf Strain-Detailseiten — Diagnose + Audit-Tool [2026-07-21]
+
+### Symptom
+Fast alle Strain-Detailseiten (`apps/web-app/src/app/strains/[slug]/page.tsx` → `fetchSeeds(strain.name)`
+gegen `GET /api/prices/search?q=<name>`) zeigen keine Preise (`€`-Count im SSR-HTML = 0). **Nicht** SSR
+(funktioniert seit v1.2.1), sondern die namensbasierte Preis-Suche matcht selten.
+
+### Root Cause — zwei disjunkte Namens-Universen in zwei getrennten DBs
+| | Community-Strains | Priced Seeds |
+|---|---|---|
+| Quelle | **Cannlytics API** (US-Katalog, `import-strains-mongoose.js`) | EU-Seedbank-Feeds (Crawl) |
+| DB | `sf1-community` | `sf1-prices` |
+| `breeder` | **existiert nicht** (strains.routes.ts) | Pflichtfeld, Teil des Slugs |
+| Namensform | generisch/US („Blue Dream") | Shop-Produktnamen („Blue Dream Auto", Breeder-Varianten) |
+
+Einzige Brücke ist `strain.name` gegen `Seed.name` — über zwei **nicht joinbare** DBs, also Live-Query.
+Die zwei Namenspopulationen überlappen kaum → Detailseiten bleiben leer.
+
+**Drei sich überlagernde Fehlerschichten:**
+1. **Universe-Mismatch** (größter Hebel): Cannlytics-Namen ≠ EU-Shop-Produktnamen, kein Breeder zum Disambiguieren.
+2. **Feed-Coverage** (s. Abschnitt 2026-07-19): ~1/3 der Feeds liefert still 0 → kleinere Seed-Basis.
+3. **Freshness/Expiry**: `searchSeeds` hängt Price-Docs **ohne** `inStock`/`validUntil`-Filter an, aber Preise
+   laufen nach +24h ab und `cleanExpiredPrices` löscht sie → `€` erscheint nur, wenn zuletzt <24h gescraped.
+   Nebenbefund: `Seed.priceCount` wird nur `$inc`'t, nie bei Expiry dekrementiert → stale-high, kein zuverlässiges Coverage-Signal.
+
+### Audit-Tool (neu)
+`apps/price-service/scripts/price-coverage-audit.js` — read-only, repliziert exakt die Detailseiten-
+Matching-Logik und misst Namenstreffer-% vs. Gültiger-Preis-%. Auf dem Server ausführen:
+```
+MONGODB_COMMUNITY=mongodb://mongodb:27017/sf1-community \
+MONGODB_PRICES=mongodb://mongodb:27017/sf1-prices \
+node apps/price-service/scripts/price-coverage-audit.js 500
+```
+
+### Empfohlene Lösung (nach Audit-Zahlen)
+Kein Live-Fuzzy-Search, sondern **vorberechneter Strain↔Seed-Link**: normalisiertes `matchKey` (lowercase,
+`auto/fem/fast/#N`/Interpunktion strippen) beidseitig, Batch-Job schreibt `Strain.matchedSeedSlugs[]` mit
+Confidence-Threshold; Detailseite liest die vorberechnete Menge und rendert nur gültige Preise
+(`inStock + validUntil>=now`). Feed-Reparatur (still-0-Feeds) läuft als paralleler Track weiter.
+
+---
+
 ## web-app — SSR-Fix Phase 1: Strain-Detailseiten server-rendern (SEO/Indexierung) [2026-07-20]
 
 ### Auslöser
