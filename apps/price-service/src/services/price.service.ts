@@ -8,6 +8,35 @@ import { ScrapedProduct } from '../scrapers/base.scraper';
 // Nicht-Seed-Produkte (Merch) erkennen und beim Import ueberspringen
 const MERCH_RE = /\b(t[- ]?shirts?|stickers?|keychains?|lanyards?|hoodies?|sweatshirts?|beanies?|grinders?|organiplugs|mousepads?|posters?|filter papers?|rolling papers?|plant tags?)\b/i;
 
+// Tokens, die keine Strain-Identität tragen (Seed-Typ, Verpackung, Füllwörter) —
+// beim Namens-Matching ignorieren, sonst matchen "… Auto" / "… Feminized" quer.
+const MATCH_NOISE = new Set([
+  'auto', 'autos', 'autoflower', 'autoflowering', 'automatic', 'automatik',
+  'feminized', 'feminised', 'feminisiert', 'fem', 'fems',
+  'regular', 'reg', 'regulär',
+  'seeds', 'seed', 'samen', 'fast', 'fastflowering', 'fastversion',
+  'the', 'of', 'and', 'und',
+]);
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Zerlegt einen Strain-/Seed-Namen in bedeutungstragende Match-Tokens:
+ * camelCase auftrennen, klein, an Nicht-Alphanumerik splitten, Rausch-Tokens
+ * (Seed-Typ/Verpackung) und zu kurze Tokens (<2) entfernen.
+ * "PinkGorilla Auto" → ["pink", "gorilla"]; "Gorilla Glue #4" → ["gorilla", "glue"].
+ */
+function matchTokens(name: string): string[] {
+  return (name || '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length >= 2 && !MATCH_NOISE.has(t));
+}
+
 /**
  * Parst THC/CBD-Werte aus Strings wie "20%", "16-24%", "Sehr hoch (über 20%)"
  * Gibt den Durchschnitt bei Bereichen zurück, sonst den ersten gefundenen Zahlenwert.
@@ -336,39 +365,22 @@ export class PriceService {
     const cached = await redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
-    // Split query into words for better search
-    // "PinkGorilla" → ["Pink", "Gorilla"] (heuristic split on capitals)
-    // "pink gorilla" → ["pink", "gorilla"] (split on whitespace)
-    let words: string[] = [];
-
-    if (query.includes(' ')) {
-      // Whitespace separated
-      words = query.trim().split(/\s+/).filter(w => w.length > 0);
-    } else {
-      // Try to split camelCase/PascalCase
-      words = query
-        .replace(/([A-Z])/g, ' $1')
-        .trim()
-        .split(/\s+/)
-        .filter(w => w.length > 0);
-    }
-
-    // Build search query: match if any word is found in name/breeder
-    const wordRegexes = words.map(w => ({ $regex: w, $options: 'i' }));
-
-    // Create OR array with word-based searches
-    const searchOrConditions: any[] = [
-      // Match any word in name OR breeder
-      ...wordRegexes.map(w => ({ name: w })),
-      ...wordRegexes.map(w => ({ breeder: w })),
-      // Also try the original query as-is
-      { name: { $regex: query, $options: 'i' } },
-      { breeder: { $regex: query, $options: 'i' } }
-    ];
-
-    const searchQuery: any = {
-      $or: searchOrConditions
-    };
+    // Präzises Matching: ALLE bedeutungstragenden Tokens des Suchbegriffs müssen
+    // als ganzes Wort im Seed vorkommen (name ODER breeder). Das frühere Wort-OR
+    // matchte schon bei EINEM gemeinsamen Wort → "Blue Dream" traf jeden Seed mit
+    // "Blue" (Blueberry …) oder "Dream". AND + Wortgrenzen liefert den richtigen Seed.
+    const tokens = matchTokens(query);
+    const searchQuery: any =
+      tokens.length > 0
+        ? {
+            $and: tokens.map((t) => {
+              const rx = { $regex: `\\b${escapeRegex(t)}\\b`, $options: 'i' };
+              return { $or: [{ name: rx }, { breeder: rx }] };
+            }),
+          }
+        : // Fallback: nichts Bedeutungstragendes übrig (z. B. nur Rausch-Tokens) →
+          // wenigstens den Rohbegriff als Teilstring versuchen.
+          { name: { $regex: escapeRegex(query.trim()), $options: 'i' } };
 
     if (resolvedType) searchQuery.type = resolvedType;
     if (options.breeder) searchQuery.breeder = options.breeder;
