@@ -46,6 +46,28 @@ Preise enthalten und **kein** „Lade Strain-Daten…" mehr; danach in GSC „In
 
 ---
 
+## web-app — SSR-Fix Phase 2: `/strains`-Liste server-rendern [2026-07-20]
+
+### Was
+`/strains` war komplett CSR (`'use client'`, `useStrains`-Hook) → Google sah eine leere Grid-Hülle.
+Umbau nach App-Router-Muster:
+- `apps/web-app/src/app/strains/page.tsx` — jetzt **Server-Component**: holt die erste Seite
+  (`GET /api/community/strains?page=1&limit=20`, `revalidate: 3600`) server-seitig via `COMMUNITY_URL`
+  und rendert `<StrainsListClient initialStrains={…} />`. Neue statische `metadata` (Titel/Description/
+  Canonical/OG) für die Listenseite.
+- `apps/web-app/src/app/strains/strains-list-client.tsx` — **neu**: die bisherige interaktive Logik
+  (Suche/Typ-Filter/Pagination/Vergleich). Nutzt `useStrains(options, initialStrains)` — die
+  Server-Initialdaten greifen nur für die unveränderte Erst-Query (`page===1 && !search && type==='all'`),
+  danach normal client-seitig.
+- `apps/web-app/src/hooks/use-strains.ts` — `useStrains(options, initialData?)` + `StrainsResponse` exportiert.
+
+Ergebnis: Strain-Cards (Namen, Typ, THC/CBD) + Gesamtzahl stehen bereits im rohen SSR-HTML. Typecheck grün.
+
+### Offen
+- Phase 3 (`/prices`-Liste) noch CSR.
+
+---
+
 ## web-app — Root-Cause SSR: Next.js 16 async `params` (Detailseiten lieferten „not found") [2026-07-20]
 
 ### Auslöser / Entdeckung

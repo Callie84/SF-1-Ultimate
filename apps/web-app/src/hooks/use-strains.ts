@@ -30,7 +30,7 @@ export interface Strain {
   updatedAt: string;
 }
 
-interface StrainsResponse {
+export interface StrainsResponse {
   strains: Strain[];
   pagination: {
     page: number;
@@ -47,7 +47,10 @@ interface UseStrainsOptions {
   type?: string;
 }
 
-export function useStrains(options: UseStrainsOptions = {}) {
+export function useStrains(
+  options: UseStrainsOptions = {},
+  initialData?: StrainsResponse
+) {
   return useQuery<StrainsResponse>({
     queryKey: ['strains', options],
     queryFn: () => {
@@ -59,6 +62,7 @@ export function useStrains(options: UseStrainsOptions = {}) {
       return api.get<StrainsResponse>(`/api/community/strains?${params.toString()}`);
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    initialData,
   });
 }
 
