@@ -62,12 +62,13 @@ export function useStrains(options: UseStrainsOptions = {}) {
   });
 }
 
-export function useStrain(id: string | null) {
+export function useStrain(id: string | null, initialData?: Strain) {
   return useQuery<Strain>({
     queryKey: ['strain', id],
     queryFn: () => api.get<Strain>(`/api/community/strains/${id}`),
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
+    initialData,
   });
 }
 
