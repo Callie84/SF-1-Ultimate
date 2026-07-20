@@ -46,6 +46,31 @@ Preise enthalten und **kein** „Lade Strain-Daten…" mehr; danach in GSC „In
 
 ---
 
+## web-app — SSR-Fix Phase 3: `/prices`-Liste server-rendern + Titel-Fix [2026-07-20]
+
+### Was
+`/prices` war komplett CSR (`'use client'`, `useState`/`useEffect`, `apiClient`) → roher HTML zeigte
+wörtlich „Lade Preisdaten…". Umbau nach App-Router-Muster:
+- `apps/web-app/src/app/prices/page.tsx` — jetzt **Server-Component**: holt die erste Browse-Seite
+  (`GET /api/prices/browse?limit=24&skip=0&sort=price`, `revalidate: 3600`) server-seitig via
+  `PRICE_SERVICE_URL` (Default `http://sf1-price-service:3002`) und übergibt sie als `initialData`.
+  Neue statische `metadata`.
+- `apps/web-app/src/app/prices/prices-list-client.tsx` — **neu**: die bisherige interaktive Logik
+  (Suche/Filter/Sort/Preisrange/Pagination/Expand). Initialisiert State mit `initialData` und
+  überspringt den ersten Client-Fetch (`skipInitialFetch`-Ref) — danach normal client-seitig.
+
+Ergebnis: Seed-Cards (Namen, Züchter, `€`-Preise) + Statistik stehen bereits im rohen SSR-HTML,
+kein „Lade Preisdaten…"-Shell mehr.
+
+### Zusätzlich: Titel-Fix Phase 2
+`strains/page.tsx` Listen-Titel endete auf „| SeedFinderPro" — das Root-Layout hängt aber via
+`template: '%s | SeedFinderPro'` bereits ein Suffix an → doppeltes „| SeedFinderPro". Suffix im
+Listen-Titel entfernt (Template ergänzt es einmal). Detailseiten waren schon korrekt.
+
+Typecheck grün. Damit sind alle drei SSR-Phasen (Detail, /strains, /prices) abgeschlossen.
+
+---
+
 ## web-app — SSR-Fix Phase 2: `/strains`-Liste server-rendern [2026-07-20]
 
 ### Was

@@ -8,7 +8,8 @@ const COMMUNITY_URL =
   process.env.COMMUNITY_SERVICE_URL || 'http://sf1-community-service:3005';
 
 export const metadata: Metadata = {
-  title: 'Cannabis Strain-Datenbank — Sorten vergleichen | SeedFinderPro',
+  // Root-Layout hängt via Template " | SeedFinderPro" an — hier NICHT wiederholen.
+  title: 'Cannabis Strain-Datenbank — Sorten vergleichen',
   description:
     'Durchsuche die Cannabis-Strain-Datenbank auf SeedFinderPro: Indica, Sativa, Hybrid & Autoflower mit THC/CBD-Werten, Genetik, Effekten und Preisvergleich.',
   alternates: { canonical: `${BASE_URL}/strains` },
