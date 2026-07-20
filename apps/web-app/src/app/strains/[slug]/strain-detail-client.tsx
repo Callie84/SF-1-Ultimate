@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, ArrowLeft, Leaf, ExternalLink, ShoppingCart, Star, Sprout, Eye, Heart, MessageSquare, Home, Sun } from 'lucide-react';
-import { useStrain } from '@/hooks/use-strains';
+import { useStrain, type Strain } from '@/hooks/use-strains';
 import { useAuth } from '@/components/providers/auth-provider';
 import { useStrainFeed, useGrowReactions, useLikeGrow } from '@/hooks/use-journal';
 import { api } from '@/lib/api-client';
@@ -59,6 +59,16 @@ interface Review {
   createdAt: string;
 }
 
+interface ReviewsResponse {
+  reviews: Review[];
+  count: number;
+  avgRating: number | null;
+}
+
+interface SeedsResponse {
+  seeds: SeedResult[];
+}
+
 function StarRating({
   rating,
   onRate,
@@ -95,14 +105,24 @@ function StarRating({
   );
 }
 
-export function StrainDetailClient({ slug }: { slug: string }) {
+export function StrainDetailClient({
+  slug,
+  initialStrain,
+  initialReviews,
+  initialSeeds,
+}: {
+  slug: string;
+  initialStrain?: Strain;
+  initialReviews?: ReviewsResponse;
+  initialSeeds?: SeedsResponse;
+}) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState('');
 
-  const { data: strain, isLoading: strainLoading } = useStrain(slug);
+  const { data: strain, isLoading: strainLoading } = useStrain(slug, initialStrain);
 
   useEffect(() => {
     if (slug) trackStrainViewed(slug);
@@ -116,6 +136,8 @@ export function StrainDetailClient({ slug }: { slug: string }) {
       ),
     enabled: !!strain?.name,
     staleTime: 5 * 60 * 1000,
+    initialData:
+      initialSeeds && strain?.name === initialStrain?.name ? initialSeeds : undefined,
   });
 
   const strainGrowFeed = useStrainFeed(strain?._id);
@@ -128,6 +150,7 @@ export function StrainDetailClient({ slug }: { slug: string }) {
         `/api/community/strains/${slug}/reviews`
       ),
     staleTime: 2 * 60 * 1000,
+    initialData: initialReviews,
   });
 
   const submitReview = useMutation({

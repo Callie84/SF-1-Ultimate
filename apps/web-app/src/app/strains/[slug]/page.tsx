@@ -4,6 +4,8 @@ import { StrainDetailClient } from './strain-detail-client';
 const BASE_URL = 'https://seedfinderpro.de';
 const COMMUNITY_URL =
   process.env.COMMUNITY_SERVICE_URL || 'http://sf1-community-service:3005';
+const PRICE_URL =
+  process.env.PRICE_SERVICE_URL || 'http://sf1-price-service:3002';
 
 async function fetchStrain(slug: string) {
   try {
@@ -20,6 +22,19 @@ async function fetchReviews(slug: string) {
   try {
     const res = await fetch(
       `${COMMUNITY_URL}/api/community/strains/${slug}/reviews`,
+      { next: { revalidate: 3600 } }
+    );
+    return res.ok ? res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchSeeds(name: string) {
+  if (!name || name.length < 2) return null;
+  try {
+    const res = await fetch(
+      `${PRICE_URL}/api/prices/search?q=${encodeURIComponent(name)}&limit=20`,
       { next: { revalidate: 3600 } }
     );
     return res.ok ? res.json() : null;
@@ -75,6 +90,10 @@ export default async function StrainDetailPage({
     fetchStrain(params.slug),
     fetchReviews(params.slug),
   ]);
+
+  // Seed-Preise server-seitig holen (braucht den Strain-Namen) — damit die
+  // Preistabelle bereits im HTML steht (SEO), nicht erst client-seitig lädt.
+  const seeds = strain ? await fetchSeeds(strain.name) : null;
 
   let jsonLd: object | null = null;
 
@@ -147,7 +166,12 @@ export default async function StrainDetailPage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       )}
-      <StrainDetailClient slug={params.slug} />
+      <StrainDetailClient
+        slug={params.slug}
+        initialStrain={strain ?? undefined}
+        initialReviews={reviews ?? undefined}
+        initialSeeds={seeds ?? undefined}
+      />
     </>
   );
 }

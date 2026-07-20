@@ -12,6 +12,40 @@
 
 ---
 
+## web-app — SSR-Fix Phase 1: Strain-Detailseiten server-rendern (SEO/Indexierung) [2026-07-20]
+
+### Auslöser
+Google indexiert nur die Startseite; `/strains`, `/prices` und die ~1.000 Strain-Detailseiten
+werden abgelehnt, weil der Inhalt client-seitig (CSR) nachgeladen wird → Googles JS-loser Abruf
+sieht nur eine „Lade …"-Hülle. Plan: `SF-Brain/SF-1 Projekt/Plans/SF1-Session-Plan-SSR-SEO-Fix.md`.
+
+### Phase 1 — Strain-Detailseiten (höchster Hebel, ~1.000 Seiten)
+Die Detail-`page.tsx` war bereits Server-Component (Metadaten + Product-JSON-LD server-seitig),
+holte den sichtbaren Body aber über einen `'use client'`-Wrapper erneut client-seitig → Loading-Shell
+im HTML. Fix: Server-Component holt jetzt **Strain + Reviews + Seed-Preise** server-seitig und übergibt
+sie als Props; der Client nutzt sie via React-Query-`initialData` → **kein Loading-Shell mehr, voller
+Inhalt (Name, Typ, THC/CBD, Beschreibung, Genetik, Preistabelle) bereits im SSR-HTML.**
+
+Geänderte Dateien:
+- `apps/web-app/src/app/strains/[slug]/page.tsx` — neue `fetchSeeds(name)` gegen internen Price-Service
+  (`PRICE_SERVICE_URL`, Default `http://sf1-price-service:3002`, `GET /api/prices/search?q=…&limit=20`,
+  `revalidate: 3600`); reicht `initialStrain`/`initialReviews`/`initialSeeds` an den Client durch.
+- `apps/web-app/src/app/strains/[slug]/strain-detail-client.tsx` — nimmt die drei Initial-Props an und
+  verdrahtet sie als `initialData` in die Strain-/Reviews-/Seed-Queries. Interaktives (Reviews-Formular,
+  Grow-Feed, Like) bleibt client-seitig.
+- `apps/web-app/src/hooks/use-strains.ts` — `useStrain(id, initialData?)` um optionales `initialData` erweitert.
+
+Kein neues Env nötig: interne Service-Namen werden server-seitig aufgelöst (wie `COMMUNITY_SERVICE_URL`
+bereits); `PRICE_SERVICE_URL` wird im Code gedefaultet. Typecheck (`tsc --noEmit`) grün.
+
+Verifikation nach Deploy: roher Server-HTML (`curl`, ohne JS) einer Strain-URL muss Name/Beschreibung/
+Preise enthalten und **kein** „Lade Strain-Daten…" mehr; danach in GSC „Indexierung beantragen".
+
+### Offen
+- Phase 2 (`/strains`-Liste) und Phase 3 (`/prices`-Liste) noch CSR — folgen als eigene Schritte.
+
+---
+
 ## price-service — Feed-Health-Monitoring + Feed-Audit + mr-hanf-Fix [2026-07-19]
 
 ### Auslöser
