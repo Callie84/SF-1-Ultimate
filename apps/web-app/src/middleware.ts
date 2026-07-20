@@ -25,6 +25,10 @@ const PUBLIC_PATHS = [
 
 function isPublicPath(pathname: string): boolean {
   if (pathname === '/') return true;
+  // Statische Dateien aus public/ (haben eine Datei-Endung wie .html, .txt, .xml)
+  // niemals auf Login umleiten — sonst sind z. B. Google-Search-Console-
+  // Verifizierungsdateien für Bots nicht erreichbar (307 → /auth/login).
+  if (/\.[a-zA-Z0-9]+$/.test(pathname)) return true;
   return PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + '/')
   );
