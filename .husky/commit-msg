@@ -20,8 +20,9 @@
 # - ci:       CI/CD changes
 # ==========================================
 
-# Run commitlint if available
-if command -v npx &> /dev/null; then
+# Run commitlint nur, wenn es tatsächlich auflösbar ist. `npx --no` bricht sonst
+# mit Exit 1 ab (Package nicht installiert) und blockiert jeden Commit.
+if command -v npx > /dev/null 2>&1 && npx --no -- commitlint --version > /dev/null 2>&1; then
   npx --no -- commitlint --edit "$1"
 else
   echo "⚠️  commitlint not available, skipping commit message validation"
