@@ -28,7 +28,8 @@ FAILED=0
 echo "🧪 Running full test suite..."
 
 if [ -f "package.json" ]; then
-  npm test -- --coverage --passWithNoTests
+  # --if-present: fehlt das test-Script (Root hat keins), wird sauber übersprungen
+  npm run test --if-present -- --coverage --passWithNoTests
 
   if [ $? -ne 0 ]; then
     echo "${RED}✗${NC} Tests failed"
@@ -50,7 +51,7 @@ for service_dir in apps/*/; do
     service_name=$(basename "$service_dir")
     echo "  Testing: $service_name"
 
-    (cd "$service_dir" && npm test -- --passWithNoTests)
+    (cd "$service_dir" && npm run test --if-present -- --passWithNoTests)
 
     if [ $? -ne 0 ]; then
       echo "${RED}✗${NC} Tests failed in $service_name"
@@ -71,9 +72,19 @@ echo "📘 Running TypeScript compilation..."
 for service_dir in apps/*/; do
   if [ -f "$service_dir/tsconfig.json" ]; then
     service_name=$(basename "$service_dir")
-    echo "  Compiling: $service_name"
 
-    (cd "$service_dir" && tsc --noEmit)
+    # tsc auflösen: Service-lokal > Root-Bin; sonst überspringen statt hart failen
+    if [ -x "$service_dir/node_modules/.bin/tsc" ]; then
+      TSC="$service_dir/node_modules/.bin/tsc"
+    elif [ -x "node_modules/.bin/tsc" ]; then
+      TSC="node_modules/.bin/tsc"
+    else
+      echo "  ${YELLOW}⚠${NC} tsc nicht installiert — überspringe $service_name"
+      continue
+    fi
+
+    echo "  Compiling: $service_name"
+    "$TSC" --noEmit -p "$service_dir/tsconfig.json"
 
     if [ $? -ne 0 ]; then
       echo "${RED}✗${NC} TypeScript compilation failed in $service_name"
