@@ -12,6 +12,34 @@
 
 ---
 
+## price-service — Search-Alias-Layer für Abkürzungen (GSC ↔ Girl Scout Cookies) [2026-07-21]
+
+### Ziel
+Der präzise AND-Token-Matcher (v1.4.1) verlangt, dass alle Tokens im Seed-Namen vorkommen. Strains, die
+per Abkürzung ↔ Vollname auseinanderlaufen (GSC vs. Girl Scout Cookies, GG4 vs. Gorilla Glue, GMO vs.
+Garlic Cookies), matchten daher nicht. Der Alias-Layer hebt den Recall, ohne Precision zu opfern.
+
+### Fix
+`price.service.ts`: kuratierte `ALIAS_GROUPS` (bekannte Abkürzungen ↔ Vollnamen), `aliasTokenSets(query)`
+liefert alternative Token-Sets — **nur bei EXAKTER Normalisierungs-Gleichheit** des Begriffs zu einem
+Alias-Mitglied (kein Teil-Overlap → keine Precision-Regression), bidirektional. `searchSeeds` baut daraus
+`{ $or: [tokenAnd(set1), tokenAnd(set2), …] }` — ein Seed passt, wenn er mindestens ein Set vollständig erfüllt.
+
+### Live-Validierung (read-only, gültige Preise pro Query, alt → neu)
+| Query | alt | neu |
+|---|---|---|
+| GSC | 3 | **18** |
+| GG4 | 7 | **16** |
+| Garlic Cookies | 3 | **20** |
+| Cinderella 99 | 4 | **8** |
+| Granddaddy Purple | 6 | **7** |
+
+Zuwächse durchweg der korrekte Strain (GSC→Girl Scout Cookies, Garlic Cookies→GMO Cookies …). Fälle ohne
+Alias-Nutzen (Zkittlez, Do-Si-Dos, SSH) blieben unverändert — kein falscher Zuwachs. Aktive Gruppen:
+gsc, gg/gg4/gorilla glue/original glue, gdp, ssh, c99, gmo/garlic cookies, chemdawg/chemdog, zkittlez-Spellings, dosidos.
+
+---
+
 ## price-service — Detailseiten-Preise leer: kaputter Search-Cache-Key gefixt [2026-07-21]
 
 ### Symptom

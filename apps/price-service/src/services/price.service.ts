@@ -37,6 +37,49 @@ function matchTokens(name: string): string[] {
     .filter((t) => t.length >= 2 && !MATCH_NOISE.has(t));
 }
 
+// Alias-Layer: bekannte Strain-Abkürzungen ↔ Vollnamen. Jede Gruppe listet
+// äquivalente Schreibweisen. Bidirektional — "GSC" findet "Girl Scout Cookies"-
+// Seeds und umgekehrt. Bewusst kuratiert (nur eindeutige Abkürzungen), damit der
+// Recall steigt, ohne die Precision des AND-Token-Matchings zu opfern.
+const ALIAS_GROUPS: string[][] = [
+  ['gsc', 'girl scout cookies'],
+  ['gg', 'gg4', 'gorilla glue', 'gorilla glue #4', 'original glue'],
+  ['gdp', 'granddaddy purple', 'grand daddy purple', 'grandaddy purple'],
+  ['ssh', 'super silver haze'],
+  ['c99', 'cinderella 99'],
+  ['gmo', 'garlic cookies'],
+  ['chemdawg', 'chemdog'],
+  ['zkittlez', 'skittlez', 'skittles'],
+  ['dosidos', 'do si dos'],
+];
+
+// Vorberechnet: normalisierte Token je Gruppenmitglied (Key = join, Tokens = Array).
+const ALIAS_NORM: { key: string; tokens: string[] }[][] = ALIAS_GROUPS.map((group) =>
+  group
+    .map((form) => ({ key: matchTokens(form).join(' '), tokens: matchTokens(form) }))
+    .filter((m) => m.key.length > 0),
+);
+
+/**
+ * Liefert zum Suchbegriff alternative Token-Sets aus dem Alias-Layer.
+ * Trigger NUR bei EXAKTER Normalisierungs-Gleichheit zu einem Alias-Mitglied
+ * (kein Teil-Overlap) → keine Precision-Regression. "GSC" → [["girl","scout",
+ * "cookies"]]; "Girl Scout Cookies" → [["gsc"]]; ohne Alias-Treffer → [].
+ */
+function aliasTokenSets(query: string): string[][] {
+  const qKey = matchTokens(query).join(' ');
+  if (!qKey) return [];
+  const out: string[][] = [];
+  for (const group of ALIAS_NORM) {
+    if (group.some((m) => m.key === qKey)) {
+      for (const m of group) {
+        if (m.key !== qKey) out.push(m.tokens);
+      }
+    }
+  }
+  return out;
+}
+
 /**
  * Parst THC/CBD-Werte aus Strings wie "20%", "16-24%", "Sehr hoch (über 20%)"
  * Gibt den Durchschnitt bei Bereichen zurück, sonst den ersten gefundenen Zahlenwert.
@@ -365,22 +408,31 @@ export class PriceService {
     const cached = await redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
-    // Präzises Matching: ALLE bedeutungstragenden Tokens des Suchbegriffs müssen
+    // Präzises Matching: ALLE bedeutungstragenden Tokens eines Token-Sets müssen
     // als ganzes Wort im Seed vorkommen (name ODER breeder). Das frühere Wort-OR
     // matchte schon bei EINEM gemeinsamen Wort → "Blue Dream" traf jeden Seed mit
     // "Blue" (Blueberry …) oder "Dream". AND + Wortgrenzen liefert den richtigen Seed.
+    //
+    // Token-Sets = der Begriff selbst + evtl. Alias-Alternativen (GSC ↔ Girl Scout
+    // Cookies). Ein Seed passt, wenn er MINDESTENS EIN Set vollständig erfüllt ($or).
     const tokens = matchTokens(query);
+    const tokenSets = [tokens, ...aliasTokenSets(query)].filter((ts) => ts.length > 0);
+
+    const buildTokenAnd = (ts: string[]) => ({
+      $and: ts.map((t) => {
+        const rx = { $regex: `\\b${escapeRegex(t)}\\b`, $options: 'i' };
+        return { $or: [{ name: rx }, { breeder: rx }] };
+      }),
+    });
+
     const searchQuery: any =
-      tokens.length > 0
-        ? {
-            $and: tokens.map((t) => {
-              const rx = { $regex: `\\b${escapeRegex(t)}\\b`, $options: 'i' };
-              return { $or: [{ name: rx }, { breeder: rx }] };
-            }),
-          }
-        : // Fallback: nichts Bedeutungstragendes übrig (z. B. nur Rausch-Tokens) →
+      tokenSets.length === 0
+        ? // Fallback: nichts Bedeutungstragendes übrig (z. B. nur Rausch-Tokens) →
           // wenigstens den Rohbegriff als Teilstring versuchen.
-          { name: { $regex: escapeRegex(query.trim()), $options: 'i' } };
+          { name: { $regex: escapeRegex(query.trim()), $options: 'i' } }
+        : tokenSets.length === 1
+        ? buildTokenAnd(tokenSets[0])
+        : { $or: tokenSets.map(buildTokenAnd) };
 
     if (resolvedType) searchQuery.type = resolvedType;
     if (options.breeder) searchQuery.breeder = options.breeder;
