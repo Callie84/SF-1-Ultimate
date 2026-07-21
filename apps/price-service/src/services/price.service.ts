@@ -43,7 +43,9 @@ function matchTokens(name: string): string[] {
 // Recall steigt, ohne die Precision des AND-Token-Matchings zu opfern.
 const ALIAS_GROUPS: string[][] = [
   ['gsc', 'girl scout cookies'],
-  ['gg', 'gg4', 'gorilla glue', 'gorilla glue #4', 'original glue'],
+  // 'gg' bewusst NICHT als Alias-Mitglied: der 2-Zeichen-Token matcht querbeet
+  // (z. B. "GG-48") → Präzisions-Leak. 'gg4'/'gorilla glue'/'original glue' reichen.
+  ['gg4', 'gorilla glue', 'gorilla glue #4', 'original glue'],
   ['gdp', 'granddaddy purple', 'grand daddy purple', 'grandaddy purple'],
   ['ssh', 'super silver haze'],
   ['c99', 'cinderella 99'],

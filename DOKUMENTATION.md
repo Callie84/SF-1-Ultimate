@@ -12,6 +12,21 @@
 
 ---
 
+## price-service — Alias-Precision: bloßes `gg` aus Gorilla-Glue-Gruppe entfernt [2026-07-21]
+
+Nach dem Deploy des Alias-Layers (v1.4.2) zog der 2-Zeichen-Alias `gg` bei „GG4" Streutreffer über den
+generischen `gg`-Token rein (z. B. „GG-48", „GG flower"). `'gg'` aus `ALIAS_GROUPS` entfernt — die Gruppe
+ist jetzt `['gg4', 'gorilla glue', 'gorilla glue #4', 'original glue']`.
+
+**Live-Validierung (read-only):** GG4 total **80 → 51**; alle Gorilla-Glue-Varianten mit vollem Namen
+bleiben (Gorilla Super Glue, Godzilla Original Glue GG#4, GG#4 Original Glue Regular, GG4 …), nur die
+`gg`-Streuung fällt weg. **Bewusster Trade-off:** Seeds, die *nur* „GG#4" heißen (normalisieren zu `['gg']`,
+weil die Einzelziffer „4" durch den `length>=2`-Filter fällt), matchen nicht mehr — Precision > minimaler
+Recall-Verlust. Wurzel-Alternative (Tokenizer: „GG#4" → `['gg4']`) wäre breiter/risikoreicher, bewusst nicht
+in diesem Patch.
+
+---
+
 ## price-service — Search-Alias-Layer für Abkürzungen (GSC ↔ Girl Scout Cookies) [2026-07-21]
 
 ### Ziel
