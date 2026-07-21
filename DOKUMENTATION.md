@@ -12,6 +12,34 @@
 
 ---
 
+## price-service — Detailseiten-Preise leer: kaputter Search-Cache-Key gefixt [2026-07-21]
+
+### Symptom
+Strain-Detailseiten (`/api/prices/search?q=<name>`) zeigten €=0 bzw. für alle Strains dieselben Preise.
+
+### Root Cause (P0) — nicht Matching, sondern Cache
+`prices.routes.ts`: `withCache('search:${req.query.q}', 4*3600)` stand in **einfachen** Anführungszeichen
+→ Template-Literal wurde nie interpoliert. `cache.middleware.ts` baute daraus den **konstanten** Key
+`cache:search:${req.query.q}` für jede Suche. Folge: die erste Antwort nach Cache-Ablauf wurde 4 h lang
+für **alle** Strains zurückgegeben (X-Cache: HIT, identisches Ergebnis).
+
+**Live-Beweis:** „Blue Dream" / „Northern Lights" / „White Widow" → alle identisch `Babylon Mist`, total 29.
+
+**Audit (`scripts/price-coverage-audit.js`) widerlegte die vorherige Matching-Hypothese:**
+12.046 Seeds, 7.026 mit gültigem Preis; 800er-Sample der 4.503 Community-Strains → 100 % Namenstreffer,
+**85 % mit gültigem Preis**. Daten & Matching waren nie das Problem.
+
+### Fix
+1. `cache.middleware.ts`: Key um `req.originalUrl` erweitert → `cache:${keyPrefix}:${req.originalUrl}`.
+   Korrigiert auch den latenten `/today`-Bug (limit/skip fehlten im Key).
+2. `prices.routes.ts`: sauberer Prefix `withCache('search', …)` statt des kaputten Literals.
+
+### Zusammenspiel mit P1
+Ohne diesen Fix bleibt der präzise Matching-Fix (nächster Abschnitt) unsichtbar — der kollabierte Cache
+liefert für jede Query dieselbe Antwort. **Beide müssen deployed sein.**
+
+---
+
 ## price-service — Search-Matching präzise: AND-Token statt Wort-OR [2026-07-21]
 
 ### Problem (P1, Relevanz)
