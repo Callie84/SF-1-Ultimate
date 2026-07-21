@@ -34,10 +34,37 @@ für **alle** Strains zurückgegeben (X-Cache: HIT, identisches Ergebnis).
    Korrigiert auch den latenten `/today`-Bug (limit/skip fehlten im Key).
 2. `prices.routes.ts`: sauberer Prefix `withCache('search', …)` statt des kaputten Literals.
 
-### Offen (P1, separat)
-Wort-OR-Matching ist sehr locker (100 % „Treffer", weil jeder gemeinsame Wortteil matcht) → gezeigte
-Preise teils vom falschen Seed. Relevanz-Verbesserung via vorberechnetem `matchKey`-Strain↔Seed-Link
-als niedrig-priorisiertes Follow-up (kein €=0-Bug).
+### Zusammenspiel mit P1
+Ohne diesen Fix bleibt der präzise Matching-Fix (nächster Abschnitt) unsichtbar — der kollabierte Cache
+liefert für jede Query dieselbe Antwort. **Beide müssen deployed sein.**
+
+---
+
+## price-service — Search-Matching präzise: AND-Token statt Wort-OR [2026-07-21]
+
+### Problem (P1, Relevanz)
+`searchSeeds` matchte mit **Wort-OR**: bei EINEM gemeinsamen Wort galt ein Seed als Treffer.
+„Blue Dream" traf jeden Seed mit „Blue" (Blueberry …) oder „Dream" → Detailseiten zeigten Preise vom
+**falschen** Seed. Nur ein Relevanz-, kein €=0-Bug (das war der Cache-Key, separater Fix 2026-07-21).
+
+### Fix
+`price.service.ts`: neues Token-Matching.
+- `matchTokens(name)`: camelCase auftrennen, klein, an Nicht-Alphanumerik splitten, Rausch-Tokens
+  (`auto/feminized/regular/seeds/fast/…`) und Tokens <2 Zeichen entfernen.
+- Query: **ALLE** Tokens müssen als ganzes Wort (`\b…\b`) im Seed vorkommen (name ODER breeder), per `$and`.
+- Fallback: nur Rausch-Tokens → Rohbegriff als Teilstring.
+
+### Live-Validierung (read-only, 600er-Sample der 4.503 Community-Strains)
+- Coverage gültiger Preise: **85 % → 39 %**. Der Rückgang ist fast vollständig das Entfernen von
+  Fehltreffern (lockeres OR matchte quer).
+- Precision-Stichprobe: durchweg korrekt — z. B. „California Indica" → California-Indica-Varianten,
+  „Banana Kush Cake Automatic" → Banana-Kush-Cake-Varianten, „Fat Banana" → Fat-Banana-Varianten.
+- Bewusste Entscheidung: 39 % **korrekte** Preise > 85 % überwiegend **falsche** (falscher Preis +
+  falscher Affiliate-Link ist schlechter als keiner).
+
+### Offen (Follow-up, niedrig)
+Recall für Abkürzungen/Alias (z. B. „GSC" ↔ „Girl Scout Cookies") bräuchte einen Alias-/Synonym-Layer
+oder vorberechneten `matchKey`-Strain↔Seed-Link. Nicht dringend.
 
 ---
 
