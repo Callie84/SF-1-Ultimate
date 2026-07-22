@@ -584,11 +584,22 @@ Kompilierter Service ohne Key gestartet und geprüft:
 - **Topcannaseed:** Domain `topinfo.help` (von Exa falsch zugeordnet) → korrekt `topcannaseed.com` (Schwestershop `topgrowshop.de`). Sitz DE (Erkelenz) war korrekt.
 - **Linda Seeds:** Sitz `DE` (von Exa als „HQ Berlin" gemeldet) → korrekt **Valencia, Spanien (ES)** (Gerichtsstand/Impressum, spanisches Recht; nur der Gründer aus Köln). Folge: erfüllt das DACH-Sitz-Kriterium nicht mehr → in der Tabelle als DACH-Sitz-Konflikt markiert.
 
-### Offener Punkt — ToS-4.2a-Lücke: Exa-Rohdaten gehen ungefiltert an den Aufrufer [erfasst 2026-07-14, NICHT gefixt]
+### ToS-4.2a-Compliance — ERLEDIGT (Commit aa57072, 2026-07-17)
 
-**Problem:** Laut Projektregel (Exa.ai ToS Abschnitt 4.2a) dürfen Roh-Exa-Ergebnisse **nicht an Endnutzer** ausgeliefert, sondern nur in interne MongoDB-Collections geschrieben werden. Der aktuelle Code setzt das **nicht** um: `POST /partners` (`apps/research-service/src/routes/partners.ts`) gibt das komplette Exa-Rohergebnis direkt per `res.json({ query, category, result })` an den HTTP-Aufrufer zurück; es findet keine Mongo-Persistenz und keine Filterung statt.
+**Ursprüngliches Problem (erfasst 2026-07-14):** Laut Projektregel (Exa.ai ToS Abschnitt 4.2a) dürfen Roh-Exa-Ergebnisse **nicht an Endnutzer** ausgeliefert, sondern nur in interne MongoDB-Collections geschrieben werden. Der damalige Code gab das komplette Exa-Rohergebnis direkt per `res.json` zurück.
 
-**Bewusst heute NICHT gefixt** — nur dokumentiert. Geplante Richtung (spätere Session): Rohergebnis in eine interne Collection (z. B. `research.partner_candidates`) schreiben und dem Aufrufer nur ein gefiltertes/reduziertes DTO (oder eine Referenz-ID) zurückgeben. Erfordert neue Mongo-Anbindung im Service + Deploy-Reihenfolge (Lenovo → GitHub → Server).
+**Behoben durch `aa57072`:** `POST /partners` schreibt das rawResult jetzt nach `sf1_research.partner_candidates` (Model `PartnerCandidate`) und gibt nur ein gefiltertes DTO zurück (`candidateId`, `resultCount`, `items[title/url/publishedDate]`). Rohdaten nur intern via `GET /partners/:id/raw` (Service ist `traefik.enable=false`, nicht öffentlich).
+
+### Kuratierte Kandidaten-Collection `seedbank_candidates` [gebaut 2026-07-22]
+
+Die rohe `partner_candidates`-Collection speichert pro Suchanfrage den kompletten Exa-Blob — **kein** strukturierter Firmen-Datensatz. Für die verwertbare Kandidatenliste daher eine **zweite, kuratierte** Collection ergänzt (Rohdaten bleiben getrennt):
+
+- **Model:** `apps/research-service/src/models/SeedbankCandidate.model.ts` → Collection `seedbank_candidates`. Felder pro Firma: `name, website, domain (unique), country, tier (primary|secondary), isDACH, reason, source, corrections[], status`. `domain` = Dedup-Schlüssel.
+- **Seed:** `apps/research-service/src/scripts/seedSeedbankCandidates.ts` (`npm run seed:candidates`) — idempotenter Upsert per `domain`. Befüllt die **6 primär + 3 sekundär** Kandidaten aus dem Exa-Pilot 2026-07-14 inkl. der beiden Korrekturen (Topcannaseed `topcannaseed.com`, Linda Seeds Sitz `ES`). Linda Seeds bleibt bewusst `tier: primary`, aber ehrlich `isDACH: false` + Korrektur-Notiz in `corrections[]`.
+- **Read-Endpoint:** `GET /partners/curated` (Filter `?tier=`, `?isDACH=`, `?status=`) — enthält keine Exa-Rohdaten, daher unbedenklich.
+- **Rate-Limiting (2026-07-22):** Neue `middleware/rate-limit.middleware.ts` (`express-rate-limit` v7, 200 Req/15 min pro IP, internes Docker-Netz `172.28.*` ausgenommen), via `partnersRouter.use(apiRateLimiter)` auf alle DB-zugreifenden Partner-Routen angewendet. Behebt CodeQL `js/missing-rate-limiting` (HIGH) — betraf den neuen Endpoint **und** die beiden Alt-Routen aus `aa57072` (`GET /partners`, `GET /:id/raw`). Verifiziert per `RateLimit-*`-Headern; `/health` bewusst ungedrosselt.
+- **Lokal verifiziert (2026-07-22):** `tsc` grün; gegen lokale `mongo:7` geseedet (9 Dokumente, Re-Run idempotent = 0 neu); `GET /partners/curated?tier=primary` → 6, `?isDACH=false` → nur Linda Seeds. Runtime-Test lief mit ephemerem lokalen `mongo:7`-Container.
+- **Offen:** Auf dem Server muss `npm run seed:candidates` einmalig gegen die Server-Mongo laufen (nach Deploy) — der Server-Zähler/-Bestand ist unabhängig vom lokalen Test.
 
 ---
 

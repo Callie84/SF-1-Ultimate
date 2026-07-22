@@ -12,12 +12,23 @@ import { z } from 'zod';
 import { guardedSearch, ExaInactiveError, ExaBudgetError } from '../exaClient';
 import { logger } from '../utils/logger';
 import { PartnerCandidate } from '../models/PartnerCandidate.model';
+import { SeedbankCandidate } from '../models/SeedbankCandidate.model';
+import { apiRateLimiter } from '../middleware/rate-limit.middleware';
 
 export const partnersRouter = Router();
+
+// Rate-Limiting für alle DB-zugreifenden Partner-Routen (POST/GET).
+partnersRouter.use(apiRateLimiter);
 
 const partnerSearchSchema = z.object({
   query: z.string().min(3, 'query muss mindestens 3 Zeichen lang sein'),
   numResults: z.number().int().min(1).max(25).optional(),
+});
+
+const curatedQuerySchema = z.object({
+  tier: z.enum(['primary', 'secondary']).optional(),
+  status: z.string().min(1).optional(),
+  isDACH: z.enum(['true', 'false']).optional(),
 });
 
 // Nur unbedenkliche Felder für die Antwort an den Aufrufer — kein Volltext
@@ -91,6 +102,37 @@ partnersRouter.get('/', async (_req: Request, res: Response) => {
     return res.json({ count: candidates.length, candidates });
   } catch (err) {
     logger.error('[partners] Fehler beim Laden der Kandidatenliste', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Interner Fehler' });
+  }
+});
+
+// GET /partners/curated — kuratierte, strukturierte Kandidatenliste
+// (seedbank_candidates). Enthält keine Exa-Rohdaten, daher unbedenklich.
+// Optionale Filter: ?tier=primary|secondary, ?isDACH=true|false, ?status=new|...
+partnersRouter.get('/curated', async (req: Request, res: Response) => {
+  try {
+    const parsed = curatedQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'BAD_REQUEST',
+        message: 'Ungültige Query-Parameter',
+        details: parsed.error.flatten(),
+      });
+    }
+
+    const filter: Record<string, unknown> = {};
+    if (parsed.data.tier) filter.tier = { $eq: parsed.data.tier };
+    if (parsed.data.status) filter.status = { $eq: parsed.data.status };
+    if (parsed.data.isDACH === 'true') filter.isDACH = { $eq: true };
+    if (parsed.data.isDACH === 'false') filter.isDACH = { $eq: false };
+
+    const candidates = await SeedbankCandidate.find(filter).sort({
+      tier: 1,
+      name: 1,
+    });
+    return res.json({ count: candidates.length, candidates });
+  } catch (err) {
+    logger.error('[partners] Fehler beim Laden der kuratierten Liste', err);
     return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Interner Fehler' });
   }
 });
