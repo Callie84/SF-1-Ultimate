@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { guardedSearch, ExaInactiveError, ExaBudgetError } from '../exaClient';
 import { logger } from '../utils/logger';
 import { PartnerCandidate } from '../models/PartnerCandidate.model';
+import { SeedbankCandidate } from '../models/SeedbankCandidate.model';
 
 export const partnersRouter = Router();
 
@@ -91,6 +92,28 @@ partnersRouter.get('/', async (_req: Request, res: Response) => {
     return res.json({ count: candidates.length, candidates });
   } catch (err) {
     logger.error('[partners] Fehler beim Laden der Kandidatenliste', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Interner Fehler' });
+  }
+});
+
+// GET /partners/curated — kuratierte, strukturierte Kandidatenliste
+// (seedbank_candidates). Enthält keine Exa-Rohdaten, daher unbedenklich.
+// Optionale Filter: ?tier=primary|secondary, ?isDACH=true|false, ?status=new|...
+partnersRouter.get('/curated', async (req: Request, res: Response) => {
+  try {
+    const filter: Record<string, unknown> = {};
+    if (req.query.tier) filter.tier = req.query.tier;
+    if (req.query.status) filter.status = req.query.status;
+    if (req.query.isDACH === 'true') filter.isDACH = true;
+    if (req.query.isDACH === 'false') filter.isDACH = false;
+
+    const candidates = await SeedbankCandidate.find(filter).sort({
+      tier: 1,
+      name: 1,
+    });
+    return res.json({ count: candidates.length, candidates });
+  } catch (err) {
+    logger.error('[partners] Fehler beim Laden der kuratierten Liste', err);
     return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Interner Fehler' });
   }
 });
