@@ -21,6 +21,12 @@ const partnerSearchSchema = z.object({
   numResults: z.number().int().min(1).max(25).optional(),
 });
 
+const curatedQuerySchema = z.object({
+  tier: z.enum(['primary', 'secondary']).optional(),
+  status: z.string().min(1).optional(),
+  isDACH: z.enum(['true', 'false']).optional(),
+});
+
 // Nur unbedenkliche Felder für die Antwort an den Aufrufer — kein Volltext
 // (`text`), keine internen Exa-Metadaten, keine Scores.
 function toPublicDTO(candidateId: string, exaResult: any) {
@@ -101,11 +107,20 @@ partnersRouter.get('/', async (_req: Request, res: Response) => {
 // Optionale Filter: ?tier=primary|secondary, ?isDACH=true|false, ?status=new|...
 partnersRouter.get('/curated', async (req: Request, res: Response) => {
   try {
+    const parsed = curatedQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'BAD_REQUEST',
+        message: 'Ungültige Query-Parameter',
+        details: parsed.error.flatten(),
+      });
+    }
+
     const filter: Record<string, unknown> = {};
-    if (req.query.tier) filter.tier = req.query.tier;
-    if (req.query.status) filter.status = req.query.status;
-    if (req.query.isDACH === 'true') filter.isDACH = true;
-    if (req.query.isDACH === 'false') filter.isDACH = false;
+    if (parsed.data.tier) filter.tier = { $eq: parsed.data.tier };
+    if (parsed.data.status) filter.status = { $eq: parsed.data.status };
+    if (parsed.data.isDACH === 'true') filter.isDACH = { $eq: true };
+    if (parsed.data.isDACH === 'false') filter.isDACH = { $eq: false };
 
     const candidates = await SeedbankCandidate.find(filter).sort({
       tier: 1,
