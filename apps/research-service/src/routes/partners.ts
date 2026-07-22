@@ -13,8 +13,12 @@ import { guardedSearch, ExaInactiveError, ExaBudgetError } from '../exaClient';
 import { logger } from '../utils/logger';
 import { PartnerCandidate } from '../models/PartnerCandidate.model';
 import { SeedbankCandidate } from '../models/SeedbankCandidate.model';
+import { apiRateLimiter } from '../middleware/rate-limit.middleware';
 
 export const partnersRouter = Router();
+
+// Rate-Limiting für alle DB-zugreifenden Partner-Routen (POST/GET).
+partnersRouter.use(apiRateLimiter);
 
 const partnerSearchSchema = z.object({
   query: z.string().min(3, 'query muss mindestens 3 Zeichen lang sein'),
