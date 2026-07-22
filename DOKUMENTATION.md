@@ -599,7 +599,7 @@ Die rohe `partner_candidates`-Collection speichert pro Suchanfrage den komplette
 - **Read-Endpoint:** `GET /partners/curated` (Filter `?tier=`, `?isDACH=`, `?status=`) — enthält keine Exa-Rohdaten, daher unbedenklich.
 - **Rate-Limiting (2026-07-22):** Neue `middleware/rate-limit.middleware.ts` (`express-rate-limit` v7, 200 Req/15 min pro IP, internes Docker-Netz `172.28.*` ausgenommen), via `partnersRouter.use(apiRateLimiter)` auf alle DB-zugreifenden Partner-Routen angewendet. Behebt CodeQL `js/missing-rate-limiting` (HIGH) — betraf den neuen Endpoint **und** die beiden Alt-Routen aus `aa57072` (`GET /partners`, `GET /:id/raw`). Verifiziert per `RateLimit-*`-Headern; `/health` bewusst ungedrosselt.
 - **Lokal verifiziert (2026-07-22):** `tsc` grün; gegen lokale `mongo:7` geseedet (9 Dokumente, Re-Run idempotent = 0 neu); `GET /partners/curated?tier=primary` → 6, `?isDACH=false` → nur Linda Seeds. Runtime-Test lief mit ephemerem lokalen `mongo:7`-Container.
-- **Offen:** Auf dem Server muss `npm run seed:candidates` einmalig gegen die Server-Mongo laufen (nach Deploy) — der Server-Zähler/-Bestand ist unabhängig vom lokalen Test.
+- **Server-Deploy + Seed erledigt (2026-07-22):** Deploy via `./scripts/deploy.sh production origin/main` (nur research-service recreatet, Health-Check grün, Rollback-Baseline `94c06ef`). Seed produktiv über den **kompilierten** Pfad `docker exec sf1-research-service node dist/scripts/seedSeedbankCandidates.js` (nicht `npm run seed:candidates` — `tsx` ist im Prod-Image nicht vorhanden). Live verifiziert via `GET /partners/curated`: 9 Docs (6 primär + 3 sekundär), Korrekturen wirksam (topcannaseed.com, Linda Seeds ES/primary/isDACH=false), `topinfo.help` weg.
 
 ---
 
