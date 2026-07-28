@@ -12,6 +12,27 @@
 
 ---
 
+## CI/CD — Deploy scheiterte an driftenden Lockfiles auf dem Server [2026-07-28]
+
+### Problem
+Erster Auto-Deploy (nach Approve) brach in `deploy.sh` an der Dirty-Tree-Schutzprüfung ab:
+getrackte, nicht committete Änderungen an `apps/{community,journal,media,price}-service/package-lock.json`
+auf dem Server (npm-Install-Drift). `deploy.sh` setzte bisher nur die `web-app`-Artefakte automatisch
+zurück, diese Service-Lockfiles nicht → harter Abbruch, Fix kam nicht auf den Server.
+
+### Fix
+- **`.github/workflows/ci-cd.yml`** (Deploy-Step): vor `deploy.sh` per SSH die driftenden Lockfiles
+  bereinigen — `git checkout -- 'package-lock.json' 'apps/*/package-lock.json' 'apps/web-app/tsconfig.json'`.
+  Wirkt sofort (Workflow läuft aus dem gemergten Commit), entblockt also genau diesen Deploy.
+- **`scripts/deploy.sh`**: `KNOWN_BUILD_ARTIFACTS` deckt jetzt **alle** Lockfiles ab (Root + `apps/*`,
+  via `git ls-files`) statt nur `web-app` — Selbstheilung für künftige manuelle/lokale Deploys.
+
+Server-Zustand ist unkritisch: committeter Stand ist maßgeblich, driftende Lockfiles werden beim nächsten
+Build ohnehin neu erzeugt. Verifikation: `bash -n` (deploy.sh) + YAML-Parse (ci-cd.yml) grün; Infra-Change,
+daher kein Regel-13-Unit-Test.
+
+---
+
 ## CI/CD — Auto-Deploy bei Merge auf main (mit Freigabe-Gate) [2026-07-28]
 
 ### Ziel
