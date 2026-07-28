@@ -12,6 +12,30 @@
 
 ---
 
+## CI/CD — Auto-Deploy bei Merge auf main (mit Freigabe-Gate) [2026-07-28]
+
+### Ziel
+Verhindern, dass ein Fix „fertig" wirkt, aber auf GitHub hängenbleibt und nie auf den Server kommt. Deploys
+sollen automatisch angestoßen werden, aber vor dem Server-Zugriff auf ein manuelles OK warten.
+
+### Änderung (`.github/workflows/ci-cd.yml`, Job `deploy-production`)
+- **Trigger erweitert:** vorher nur Tag `v*.*.*` → jetzt **Push auf `main` ODER Tag** (`if: github.event_name ==
+  'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))`). Jeder gemergte PR löst
+  damit einen Deploy-Lauf aus.
+- **Freigabe-Gate bleibt:** `environment: production` → der Job pausiert und wartet auf ein manuelles „Approve",
+  BEVOR der Server angefasst wird. **Voraussetzung:** im Repo unter *Settings → Environments → production* muss ein
+  *Required reviewer* gesetzt sein, sonst entfällt der Klick und es wird ungefragt deployt.
+- **Deploy-Ref robuster:** übergibt jetzt den exakten `${{ github.sha }}` an `scripts/deploy.sh` (statt
+  `github.ref_name`) — so trifft `git checkout` auf dem Server garantiert den frisch gepushten Commit, auch bei
+  Branch-Refs (bei `main` würde der Branch-Name sonst evtl. auf einen veralteten lokalen Stand zeigen).
+
+### Verifikation
+Config-/Infra-Änderung (kein App-Logik-Code) → Regel-13-Unit-Test nicht anwendbar. Geprüft: YAML valide,
+`deploy.sh <env> <ref>` akzeptiert einen SHA (`git checkout "$GIT_REF"`, Zeile 115), Health-Check + Auto-Rollback
+unverändert.
+
+---
+
 ## price-service + web-app — Angebots-Ranking nach €/Samen statt Packungspreis [2026-07-28]
 
 ### Problem (User-Report)

@@ -147,14 +147,20 @@ jobs:
           JWT_REFRESH_SECRET: test_jwt_refresh_secret_for_ci_minimum_32_chars
 
   # ==========================================
-  # DEPLOY: NUR bei Tag v*.*.*  (manuelles Freigabe-Gate)
-  #   echtes Rebuild + Health-Check + Auto-Rollback via scripts/deploy.sh
+  # DEPLOY: automatisch bei Push auf main (jeder gemergte PR) ODER Tag v*.*.*
+  #   -> WARTET am Freigabe-Gate (environment: production, "Required reviewers")
+  #      auf ein manuelles OK, BEVOR der Server angefasst wird.
+  #   -> echtes Rebuild + Health-Check + Auto-Rollback via scripts/deploy.sh
+  #   WICHTIG: Der Freigabe-Klick existiert nur, wenn im Repo unter
+  #   Settings -> Environments -> production ein "Required reviewer" gesetzt ist.
   # ==========================================
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: [frontend-ci, backend-ci, test-auth]
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     environment:
       name: production
       url: https://seedfinderpro.de
@@ -171,8 +177,8 @@ jobs:
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
           chmod 600 ~/.ssh/known_hosts
-      - name: Deploy (getaggter Release)
+      - name: Deploy (exakter Commit-SHA)
         run: |
           ssh -o StrictHostKeyChecking=yes \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
-            "cd '${{ secrets.SERVER_PATH }}' && git fetch --all --prune --tags && ./scripts/deploy.sh production '${{ github.ref_name }}'"
+            "cd '${{ secrets.SERVER_PATH }}' && git fetch --all --prune --tags && ./scripts/deploy.sh production '${{ github.sha }}'"
