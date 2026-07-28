@@ -88,8 +88,14 @@ log "Umgebung: $ENVIRONMENT | Compose: $COMPOSE_FILE | Env: $ENV_FILE | Ref: $GI
 # ANDERE getrackte Aenderung bleibt weiterhin ein harter Abbruch (Schutz bleibt).
 KNOWN_BUILD_ARTIFACTS=(
   "apps/web-app/tsconfig.json"
-  "apps/web-app/package-lock.json"
 )
+# package-lock.json aller Services (Root + apps/*): npm(-ci) schreibt sie beim
+# Build/Install gelegentlich um (install-Drift). Auf dem Server ist der committete
+# Stand maßgeblich -> driftende Lockfiles gefahrlos zuruecksetzen, sonst blockiert
+# die Dirty-Tree-Pruefung jeden Deploy. Frueher nur web-app abgedeckt.
+while IFS= read -r _lock; do
+  [ -n "$_lock" ] && KNOWN_BUILD_ARTIFACTS+=("$_lock")
+done < <(git ls-files 'package-lock.json' 'apps/*/package-lock.json' 2>/dev/null)
 for _artifact in "${KNOWN_BUILD_ARTIFACTS[@]}"; do
   if ! git diff --quiet -- "$_artifact" 2>/dev/null; then
     warn "Build-Artefakt zurueckgesetzt (wird beim Build neu erzeugt): $_artifact"
