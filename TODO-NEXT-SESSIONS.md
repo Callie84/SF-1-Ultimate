@@ -9,6 +9,26 @@
 
 ---
 
+## 🔓 OFFEN / BACKLOG (noch nicht terminiert)
+
+### CI-Test-Gate schärfen (Priorität: 🟢 Nice-to-have, ~30 min)
+*(vermerkt 2026-07-28)*
+
+Aktuell laufen die Backend-Tests in CI mit `npm test || echo "No tests defined"`
+(`.github/workflows/ci-backend.yml`, `ci-cd.yml`). Ein **fehlschlagender** Test macht die
+CI dadurch **nicht rot** — echte Regressionen würden lautlos durchrutschen.
+
+- [ ] `|| echo "No tests defined"` aus den Test-Schritten entfernen
+- [ ] stattdessen `--passWithNoTests` an die Test-Läufe hängen (damit testlose Services grün bleiben)
+- [ ] danach: bricht ein echter Test-Fehler die CI ab, testlose Services bleiben trotzdem grün
+
+**Kontext:** Kam auf bei PR #39 (Angebots-Ranking €/Samen). Der neue Unit-Test
+(`apps/price-service/src/services/__tests__/offer-sort.test.ts`) schützt aktuell nur lokal
+(`npm test`) — als echtes CI-Gate wirkt er erst nach dieser Änderung. Betrifft alle Services
+gleich, daher als eigener kleiner PR sinnvoll.
+
+---
+
 ## ✅ SESSION 70 — Altersverifikation + Security Headers + Cookie-Banner
 *(abgeschlossen 2026-03-16)*
 
