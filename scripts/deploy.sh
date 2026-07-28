@@ -35,6 +35,12 @@ STATE_DIR="${SF1_STATE_DIR:-$HOME/.sf1-deploy}"
 mkdir -p "$STATE_DIR"
 STATE_FILE="$STATE_DIR/last-good-${ENVIRONMENT}.ref"
 FORCE_ALL="${SF1_DEPLOY_FORCE_ALL:-0}"
+# Health-Check-Fenster. Das Frontend baut beim Recreate ~10 min (Next.js
+# Production-Build) und meldet solange health=starting — das ist KEIN Fehler,
+# nur "noch nicht fertig". Fenster daher grosszuegig: 90 x 10s = 15 min.
+# Ueber Env anpassbar (SF1_HEALTH_ATTEMPTS / SF1_HEALTH_INTERVAL).
+HEALTH_ATTEMPTS="${SF1_HEALTH_ATTEMPTS:-90}"
+HEALTH_INTERVAL="${SF1_HEALTH_INTERVAL:-10}"
 
 log()  { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m  OK  %s\033[0m\n' "$*"; }
@@ -228,12 +234,12 @@ else
 fi
 
 # ---------- 7) Health-Check mit Warte-Fenster --------------------------------
-log "Health-Check (max ~120s) fuer alle ${#APP_SERVICES[@]} App-Services"
+log "Health-Check (max ~$((HEALTH_ATTEMPTS * HEALTH_INTERVAL))s) fuer alle ${#APP_SERVICES[@]} App-Services"
 DEPLOY_OK=0
-for i in $(seq 1 12); do
-  echo "  Versuch $i/12 ..."
+for i in $(seq 1 "$HEALTH_ATTEMPTS"); do
+  echo "  Versuch $i/$HEALTH_ATTEMPTS ..."
   if health_ok; then DEPLOY_OK=1; break; fi
-  sleep 10
+  sleep "$HEALTH_INTERVAL"
 done
 
 # ---------- 8) Erfolg oder Rollback ------------------------------------------
@@ -263,10 +269,10 @@ for s in "${RECREATE_LIST[@]}"; do [ "${SVC_KIND[$s]}" = "build" ] && RB_BUILD+=
 dc up -d --no-deps --force-recreate "${RECREATE_LIST[@]}"
 
 ROLLBACK_OK=0
-for i in $(seq 1 12); do
-  echo "  Rollback-Health $i/12 ..."
+for i in $(seq 1 "$HEALTH_ATTEMPTS"); do
+  echo "  Rollback-Health $i/$HEALTH_ATTEMPTS ..."
   if health_ok; then ROLLBACK_OK=1; break; fi
-  sleep 10
+  sleep "$HEALTH_INTERVAL"
 done
 
 if [ "$ROLLBACK_OK" -eq 1 ]; then

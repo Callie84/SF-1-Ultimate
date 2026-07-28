@@ -181,4 +181,4 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=yes \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
-            "cd '${{ secrets.SERVER_PATH }}' && git fetch --all --prune --tags && (git checkout -- 'package-lock.json' 'apps/*/package-lock.json' 'apps/web-app/tsconfig.json' 2>/dev/null || true) && ./scripts/deploy.sh production '${{ github.sha }}'"
+            "cd '${{ secrets.SERVER_PATH }}' && git fetch --all --prune --tags && (git checkout -- 'package-lock.json' 'apps/*/package-lock.json' 'apps/web-app/tsconfig.json' 2>/dev/null || true) && git show '${{ github.sha }}:scripts/deploy.sh' > scripts/.deploy-runner.sh && bash scripts/.deploy-runner.sh production '${{ github.sha }}'"
