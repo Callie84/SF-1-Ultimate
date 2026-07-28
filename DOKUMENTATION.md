@@ -12,6 +12,30 @@
 
 ---
 
+## CI/CD — Health-Check-Fenster zu kurz fürs Frontend + deploy.sh-Self-Update [2026-07-28]
+
+### Problem
+Nach behobenem Lockfile-Blocker lief `deploy.sh` durch, scheiterte aber am **Health-Check**:
+`frontend: health=starting` über alle 12 Versuche (2 Min). Das Frontend baut beim Recreate ~10 Min
+(Next.js-Prod-Build) → 120-s-Fenster viel zu kurz → Timeout → Auto-Rollback → der Rollback baut das
+Frontend **erneut** ~10 Min → auch Timeout → „Deploy UND Rollback fehlgeschlagen". Beweis, dass es NICHT
+am Code liegt: der Rollback auf den alten Commit zeigt exakt dasselbe `health=starting`.
+
+### Fix
+- **`scripts/deploy.sh`**: Health-Fenster konfigurierbar + großzügig — `HEALTH_ATTEMPTS` (Default 90) ×
+  `HEALTH_INTERVAL` (Default 10 s) = **15 Min**, für Deploy- UND Rollback-Loop. `health=starting` ist kein
+  Fehler, nur „noch nicht fertig" → jetzt genug Zeit.
+- **`.github/workflows/ci-cd.yml`**: `deploy.sh`-Änderungen greifen sonst NICHT sofort (der Server führt beim
+  Deploy noch seine alte `deploy.sh` aus, die neue wird erst mitten drin ausgecheckt → Henne-Ei). Deshalb
+  führt die Pipeline jetzt die **Ziel-Version** direkt aus dem Commit aus:
+  `git show <sha>:scripts/deploy.sh > scripts/.deploy-runner.sh && bash scripts/.deploy-runner.sh …`.
+  Datei ist untracked (Dirty-Check nutzt `--untracked-files=no`), `BASH_SOURCE/..` ergibt weiterhin den
+  Repo-Root. Damit wirkt jede künftige `deploy.sh`-Änderung sofort auf dem Deploy, der sie einführt.
+
+Verifikation: `bash -n` + YAML-Parse grün. Infra-Change → kein Regel-13-Unit-Test.
+
+---
+
 ## CI/CD — Deploy scheiterte an driftenden Lockfiles auf dem Server [2026-07-28]
 
 ### Problem
