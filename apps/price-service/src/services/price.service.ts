@@ -5,6 +5,7 @@ import { redis } from '../config/redis';
 import { generateSlug } from '../utils/helpers';
 import { logger } from '../utils/logger';
 import { ScrapedProduct } from '../scrapers/base.scraper';
+import { sortOffersForSeed } from './offer-sort';
 // Nicht-Seed-Produkte (Merch) erkennen und beim Import ueberspringen
 const MERCH_RE = /\b(t[- ]?shirts?|stickers?|keychains?|lanyards?|hoodies?|sweatshirts?|beanies?|grinders?|organiplugs|mousepads?|posters?|filter papers?|rolling papers?|plant tags?)\b/i;
 
@@ -80,49 +81,6 @@ function aliasTokenSets(query: string): string[][] {
     }
   }
   return out;
-}
-
-/**
- * Preis pro Samen — die faire Vergleichsbasis. Shops verkaufen unterschiedliche
- * Packungsgrößen; der absolute Packungspreis benachteiligt größere Packs und lässt
- * Kleinpackungs-Reseller (z. B. Linda Seeds) fälschlich als "günstigster Anbieter"
- * oben stehen. Fällt seedCount weg, wird 1 angenommen.
- */
-function pricePerSeed(p: { price: number; seedCount?: number | null }): number {
-  const count = p.seedCount && p.seedCount > 0 ? p.seedCount : 1;
-  return p.price / count;
-}
-
-/**
- * Sortiert die Angebote EINES Seeds für die Anzeige:
- *   1. primär nach €/Samen aufsteigend (fairer Vergleich statt Packungspreis)
- *   2. bei knappem Gleichstand (≤5 % €/Samen-Differenz) den Hersteller-eigenen Shop
- *      bevorzugen — bei einem Royal-Queen-Seeds-Strain also RQS statt Reseller
- *   3. als letzter Tiebreaker der absolute Preis
- * Der Hersteller-Shop wird erkannt, indem der Breeder-Slug (generateSlug) mit dem
- * seedbankSlug des Angebots verglichen wird ("Royal Queen Seeds" → royal-queen-seeds).
- */
-function sortOffersForSeed<
-  T extends { price: number; seedCount?: number | null; seedbank?: string; seedbankSlug?: string }
->(prices: T[], breeder?: string): T[] {
-  const ownSlug = breeder ? generateSlug(breeder) : '';
-  const isOwnShop = (p: T) =>
-    !!ownSlug &&
-    (p.seedbankSlug === ownSlug || (p.seedbank ? generateSlug(p.seedbank) === ownSlug : false));
-
-  return [...prices].sort((a, b) => {
-    const ppsA = pricePerSeed(a);
-    const ppsB = pricePerSeed(b);
-    const tolerance = 0.05 * Math.min(ppsA, ppsB);
-
-    if (Math.abs(ppsA - ppsB) <= tolerance) {
-      const ownA = isOwnShop(a) ? 1 : 0;
-      const ownB = isOwnShop(b) ? 1 : 0;
-      if (ownA !== ownB) return ownB - ownA; // Hersteller-Shop zuerst
-      return a.price - b.price;
-    }
-    return ppsA - ppsB;
-  });
 }
 
 /**

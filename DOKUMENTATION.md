@@ -40,6 +40,17 @@ Neue Sortierlogik für die Angebote **eines** Seeds — an beiden Stellen konsis
 Card-Reihenfolge (`lowestPrice`-„ab"-Preis) bleibt bewusst unverändert — nur das Ranking **innerhalb** eines
 Strains und damit der „Bester Preis"-/Shop-Link ändert sich.
 
+### Automatischer Test (neu, Regel 13)
+Die reine Sortier-Logik wurde in `apps/price-service/src/services/offer-sort.ts` ausgelagert (DB-frei, isoliert
+testbar) und von `price.service.ts` importiert. Unit-Test unter
+`apps/price-service/src/services/__tests__/offer-sort.test.ts` deckt u. a. das gemeldete RQS-vs-Linda-Szenario,
+die €/Samen-Sortierung, die Hersteller-Bevorzugung bei Gleichstand und die Nicht-Mutation der Eingabe ab
+(**10/10 grün**, `npm test`). Dafür erhielt der price-service erstmals eine Jest-Einrichtung
+(`jest.config.js`, `jest.setup.ts`, devDep `ts-jest`).
+
+**Neue Pflicht-Regel 13** in `CLAUDE.md` verankert: Nach jeder Logik-/Bugfix-Änderung ein automatischer Test,
+lokal grün, vor Commit/Push.
+
 ---
 
 ## price-service — Alias-Precision: bloßes `gg` aus Gorilla-Glue-Gruppe entfernt [2026-07-21]
