@@ -44,6 +44,7 @@ Vollständig in Vault: `Regeln & Protokolle/Pflicht-Regeln.md`
 - **Regel 8:** Keine Secrets hardcoden
 - **Regel 10:** Nie alle Services gleichzeitig restarten
 - **Regel 12:** `prisma db push` nur nach Backup
+- **Regel 13:** Nach JEDER Logik-/Bugfix-Änderung einen automatischen Test (Unit/Integration) schreiben oder erweitern, der genau das gefixte Verhalten abdeckt, und ihn lokal grün laufen lassen (`npm test` im betroffenen Service), BEVOR committet/gepusht wird. Kein Fix ohne verifizierenden Test.
 
 ---
 

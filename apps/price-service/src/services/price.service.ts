@@ -5,6 +5,7 @@ import { redis } from '../config/redis';
 import { generateSlug } from '../utils/helpers';
 import { logger } from '../utils/logger';
 import { ScrapedProduct } from '../scrapers/base.scraper';
+import { sortOffersForSeed } from './offer-sort';
 // Nicht-Seed-Produkte (Merch) erkennen und beim Import ueberspringen
 const MERCH_RE = /\b(t[- ]?shirts?|stickers?|keychains?|lanyards?|hoodies?|sweatshirts?|beanies?|grinders?|organiplugs|mousepads?|posters?|filter papers?|rolling papers?|plant tags?)\b/i;
 
@@ -466,7 +467,7 @@ export class PriceService {
 
     const enriched = seeds.map((seed) => ({
       ...seed,
-      prices: (pricesBySeedId[seed._id.toString()] || []).map(p => ({
+      prices: sortOffersForSeed(pricesBySeedId[seed._id.toString()] || [], seed.breeder).map(p => ({
         seedbank: p.seedbank,
         seedbankSlug: p.seedbankSlug,
         price: p.price,
@@ -554,7 +555,9 @@ export class PriceService {
 
     const enriched = seeds.map((seed) => ({
       ...seed,
-      prices: (pricesBySeedId[seed._id.toString()] || []).slice(0, 5).map(p => ({
+      // Erst per-Seed nach €/Samen (+ Hersteller-Bevorzugung) sortieren, DANN Top 5 —
+      // sonst würde vor dem Sortieren nach absolutem Preis abgeschnitten.
+      prices: sortOffersForSeed(pricesBySeedId[seed._id.toString()] || [], seed.breeder).slice(0, 5).map(p => ({
         seedbank: p.seedbank,
         seedbankSlug: p.seedbankSlug,
         price: p.price,

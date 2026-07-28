@@ -50,6 +50,31 @@ interface SeedResult {
   prices: SeedPrice[];
 }
 
+// Preis pro Samen — faire Vergleichsbasis statt absolutem Packungspreis.
+function perSeed(p: SeedPrice): number {
+  const count = p.seedCount && p.seedCount > 0 ? p.seedCount : 1;
+  return p.price / count;
+}
+
+// Vereinfachte Slug-Normalisierung, kompatibel zu den seedbankSlugs
+// ("Royal Queen Seeds" → "royal-queen-seeds").
+function toSlug(text: string): string {
+  return (text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/['"*+~.()!:@]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// Ist das Angebot der Shop des Herstellers selbst? (Breeder ↔ Anbieter)
+function isOwnShop(seed: SeedResult, p: SeedPrice): boolean {
+  const ownSlug = toSlug(seed.breeder);
+  if (!ownSlug) return false;
+  return p.seedbankSlug === ownSlug || toSlug(p.seedbank) === ownSlug;
+}
+
 interface Review {
   _id: string;
   userId: string;
@@ -199,9 +224,23 @@ export function StrainDetailClient({
     ? Object.entries(strain.terpenes).sort((a, b) => b[1] - a[1])
     : [];
 
+  // Angebote fair nach €/Samen ranken (nicht nach absolutem Packungspreis) und bei
+  // knappem Gleichstand den Hersteller-eigenen Shop bevorzugen — sonst steht ein
+  // Kleinpackungs-Reseller (z. B. Linda Seeds) bei einem RQS-Strain immer oben.
   const priceEntries = (seedsData?.seeds || [])
     .flatMap((seed) => seed.prices.map((price) => ({ seed, price })))
-    .sort((a, b) => a.price.price - b.price.price);
+    .sort((a, b) => {
+      const ppsA = perSeed(a.price);
+      const ppsB = perSeed(b.price);
+      const tolerance = 0.05 * Math.min(ppsA, ppsB);
+      if (Math.abs(ppsA - ppsB) <= tolerance) {
+        const ownA = isOwnShop(a.seed, a.price) ? 1 : 0;
+        const ownB = isOwnShop(b.seed, b.price) ? 1 : 0;
+        if (ownA !== ownB) return ownB - ownA; // Hersteller-Shop zuerst
+        return a.price.price - b.price.price;
+      }
+      return ppsA - ppsB;
+    });
 
   const reviews = reviewsData?.reviews || [];
   const avgRating = reviewsData?.avgRating;
