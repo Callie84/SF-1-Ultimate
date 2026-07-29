@@ -6,6 +6,13 @@ import { generateSlug } from '../utils/helpers';
 import { logger } from '../utils/logger';
 import { ScrapedProduct } from '../scrapers/base.scraper';
 import { sortOffersForSeed } from './offer-sort';
+import { isEuropeanBreeder } from '../config/european-breeders';
+
+// Preisvergleich auf europäische Züchter beschränken (User-Wunsch "Europa,
+// nicht Welt"). Über SF1_EUROPE_ONLY=false global abschaltbar.
+function isEuropeOnly(): boolean {
+  return process.env.SF1_EUROPE_ONLY !== 'false';
+}
 // Nicht-Seed-Produkte (Merch) erkennen und beim Import ueberspringen
 const MERCH_RE = /\b(t[- ]?shirts?|stickers?|keychains?|lanyards?|hoodies?|sweatshirts?|beanies?|grinders?|organiplugs|mousepads?|posters?|filter papers?|rolling papers?|plant tags?)\b/i;
 
@@ -109,6 +116,30 @@ export class PriceService {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * Distinct-Breeder (mit gültigem Preis), gefiltert auf die kuratierte
+   * Europa-Whitelist. Nach Produktanzahl sortiert, 1h gecacht. Dient sowohl als
+   * Dropdown-Liste als auch als $in-Filter, damit im EU-only-Modus nur Strains
+   * europäischer Züchter im Preisvergleich auftauchen.
+   */
+  private async getEuropeanBreeders(): Promise<string[]> {
+    const cacheKey = 'browse:breeders:eu';
+    const cached = await redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
+    const agg = await Seed.aggregate([
+      { $match: { priceCount: { $gt: 0 } } },
+      { $group: { _id: '$breeder', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+    const eu = agg
+      .map((b: any) => b._id)
+      .filter((name: string) => name && isEuropeanBreeder(name));
+
+    await redis.setEx(cacheKey, 3600, JSON.stringify(eu));
+    return eu;
   }
   
   /**
@@ -439,6 +470,10 @@ export class PriceService {
 
     if (resolvedType) searchQuery.type = resolvedType;
     if (options.breeder) searchQuery.breeder = options.breeder;
+    else if (isEuropeOnly()) {
+      // EU-only: auch Suchtreffer auf europäische Züchter beschränken.
+      searchQuery.breeder = { $in: await this.getEuropeanBreeders() };
+    }
 
     const [seeds, total] = await Promise.all([
       Seed.find(searchQuery)
@@ -516,19 +551,27 @@ export class PriceService {
     else if (options.sort === 'popular') sortObj = { viewCount: -1 };
 
     // Breeders-Liste separat mit langem Cache (ändert sich selten)
-    const breedersCacheKey = 'browse:breeders';
     let breeders: string[];
-    const cachedBreeders = await redis.get(breedersCacheKey);
-    if (cachedBreeders) {
-      breeders = JSON.parse(cachedBreeders);
+    if (isEuropeOnly()) {
+      // EU-only: Dropdown = nur europäische Züchter, UND die Ergebnisliste auf
+      // ebendiese beschränken. Bei explizit gewähltem Breeder (kommt aus dem
+      // bereits EU-gefilterten Dropdown) bleibt der gesetzte Query-Wert.
+      breeders = await this.getEuropeanBreeders();
+      if (!options.breeder) query.breeder = { $in: breeders };
     } else {
-      const breedersAgg = await Seed.aggregate([
-        { $match: { priceCount: { $gt: 0 } } },
-        { $group: { _id: '$breeder', count: { $sum: 1 } } },
-        { $sort: { count: -1 } }
-      ]);
-      breeders = breedersAgg.map((b: any) => b._id);
-      await redis.setEx(breedersCacheKey, 3600, JSON.stringify(breeders)); // 1h
+      const breedersCacheKey = 'browse:breeders';
+      const cachedBreeders = await redis.get(breedersCacheKey);
+      if (cachedBreeders) {
+        breeders = JSON.parse(cachedBreeders);
+      } else {
+        const breedersAgg = await Seed.aggregate([
+          { $match: { priceCount: { $gt: 0 } } },
+          { $group: { _id: '$breeder', count: { $sum: 1 } } },
+          { $sort: { count: -1 } }
+        ]);
+        breeders = breedersAgg.map((b: any) => b._id);
+        await redis.setEx(breedersCacheKey, 3600, JSON.stringify(breeders)); // 1h
+      }
     }
 
     const [seeds, total] = await Promise.all([

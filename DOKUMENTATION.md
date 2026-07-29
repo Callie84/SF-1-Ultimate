@@ -12,6 +12,31 @@
 
 ---
 
+## price-service — Preisvergleich auf europäische Breeder beschränken (EU-only) [2026-07-28]
+
+### Ziel (User-Wunsch)
+Das Marken-/Breeder-Dropdown im Preisvergleich zeigte „quasi jede Samenbank der Welt", weil es automatisch aus
+**allen** gescrapten `breeder`-Werten entsteht — und die (europäischen) Shops führen Weltmarken. Gewünscht:
+nur **europäische** Züchter, und zwar auf der **ganzen Seite** (Dropdown + Ergebnisse).
+
+### Umsetzung (Whitelist, da keine Herkunftsdaten existieren)
+- **`apps/price-service/src/config/european-breeders.ts`** (neu): kuratierte, editierbare Whitelist
+  europäischer Breeder (🇳🇱🇪🇸🇩🇪🇬🇧 …) + `normalizeBreeder()` (klein, nur a-z0-9) + `isEuropeanBreeder()`.
+  Matching ist normalisiert (Groß-/Klein-/Sonderzeichen egal), aber **exakt** — Abkürzungen matchen nicht.
+- **`price.service.ts`**: `getEuropeanBreeders()` (distinct-Breeder ∩ Whitelist, 1h gecacht) wird in
+  `browseSeeds` und `searchSeeds` genutzt: Dropdown = nur EU-Breeder **und** `query.breeder = { $in: euBreeders }`
+  → nicht-europäische Strains verschwinden aus Browse/Suche/Detailseiten-Preisen.
+- **Abschaltbar** via Env **`SF1_EUROPE_ONLY=false`** (Default: an).
+- Unit-Test `src/config/__tests__/european-breeders.test.ts` (EU-Marken erkannt, US/CA blockt, ES-vs-US-
+  Unterscheidung Humboldt Seed Organization ↔ Company). `npm test` grün.
+
+### Pflege-Hinweis
+Da keine DB-Herkunftsdaten existieren und exakt gematcht wird, kann eine europäische Marke fehlen, wenn ihr
+gespeicherter Name nicht in der Liste steht → dann in `european-breeders.ts` ergänzen. Kein Redeploy-Zwang für
+Tests: Liste = eine Datei.
+
+---
+
 ## CI/CD — Health-Check-Fenster zu kurz fürs Frontend + deploy.sh-Self-Update [2026-07-28]
 
 ### Problem
