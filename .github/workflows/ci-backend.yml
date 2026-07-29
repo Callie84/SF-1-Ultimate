@@ -61,7 +61,7 @@ jobs:
 
       - name: Run Tests
         working-directory: apps/${{ matrix.service }}
-        run: npm test || echo "No tests defined"
+        run: npm run test --if-present -- --passWithNoTests --coverage=false
         env:
           MONGODB_URL: mongodb://test_admin:test_password@localhost:27017/sf1_test?authSource=admin
           REDIS_URL: redis://localhost:6379
@@ -102,4 +102,4 @@ jobs:
 
       - name: Test (if available)
         working-directory: apps/${{ matrix.service }}
-        run: npm test || echo "No tests defined"
+        run: npm run test --if-present -- --passWithNoTests --coverage=false
