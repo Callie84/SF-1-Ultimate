@@ -83,6 +83,24 @@ Verifikation: `bash -n` + YAML-Parse grün. Infra-Change → kein Regel-13-Unit-
 
 ---
 
+## CI/CD — Pre-Clean: gesamten Working-Tree zurücksetzen (statt Einzeldateien) [2026-07-29]
+
+### Problem
+Der Deploy des Test-Gate-PRs (#44) brach erneut am Dirty-Tree-Schutz von `deploy.sh` ab — diesmal an
+` M DOKUMENTATION.md` (Server-Drift). Die bisherige Pipeline-Bereinigung setzte nur Lockfiles + `web-app`-
+tsconfig zurück, nicht beliebige andere getrackte Dateien → immer wieder dieselbe Fehlerklasse mit neuer Datei.
+
+### Fix (`.github/workflows/ci-cd.yml`, Deploy-Step)
+Pre-Clean vor `deploy.sh` von gezielten Pfaden auf den **gesamten** getrackten Working-Tree erweitert:
+`git checkout -- 'package-lock.json' 'apps/*/…'` → **`git checkout -- .`**. Auf einem reinen Deploy-Ziel ist
+der committete Stand maßgeblich; jede Drift getrackter Dateien wird verworfen. Untracked (`.env`, Secrets,
+`node_modules`, Daten) bleibt unberührt. Damit blockiert keine driftende Datei je wieder einen Deploy.
+
+Hinweis: Der Abbruch passierte VOR jedem Server-Eingriff → keine Auswirkung auf die laufende Seite. Der
+Inhalt von #44 (Test-Scripts/Config) hat ohnehin keine Laufzeit-Wirkung.
+
+---
+
 ## CI/CD — Deploy scheiterte an driftenden Lockfiles auf dem Server [2026-07-28]
 
 ### Problem
