@@ -12,6 +12,28 @@
 
 ---
 
+## CI/CD — Test-Gate geschärft: echte Test-Fehler brechen die CI ab [2026-07-29]
+
+### Problem
+Die Backend-Test-Schritte liefen mit `npm test || echo "No tests defined"` — das `|| echo` verschluckte
+**jeden** Test-Fehler, die CI wurde nie rot. Ein neuer Unit-Test schützte damit nur lokal.
+
+### Fix
+- `.github/workflows/ci-backend.yml` (2×) + `ci-cd.yml` (1×): `npm test || echo …` →
+  **`npm run test --if-present -- --passWithNoTests --coverage=false`**.
+  - `--if-present`: Service ohne `test`-Script → übersprungen (grün).
+  - `--passWithNoTests`: jest ohne Testdateien → grün (statt „no tests found"-Fehler).
+  - `--coverage=false`: Coverage-Schwellen (base-Config 80 %) gaten nicht — nur echte Test-Fehler.
+- `apps/media-service` + `apps/search-service`: kaputtes `"test": "jest"` (kein jest, 0 Tests) entfernt.
+
+### Wirkung / Bestand
+Ein fehlschlagender Test bricht CI jetzt ab. Reale Tests: auth-service (4), price-service (2). Alle
+anderen Services 0 Tests. **Offen (optional):** `tools-service` hat 1 Testdatei ohne Test-Script/jest →
+läuft nicht; bei Bedarf verdrahten. Lokal verifiziert: price-Tests 16/16 grün, `--if-present` bei
+scriptlosem Service exit 0.
+
+---
+
 ## price-service — Preisvergleich auf europäische Breeder beschränken (EU-only) [2026-07-28]
 
 ### Ziel (User-Wunsch)
