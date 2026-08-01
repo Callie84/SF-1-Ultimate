@@ -15,7 +15,7 @@
     "express-rate-limit": "^7.5.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.0.0",
+    "mongoose": "^8.24.2",
     "multer": "^2.2.0",
     "nanoid": "^5.0.4",
     "prom-client": "15.1.3",
